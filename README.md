@@ -36,22 +36,22 @@ The shared database layer enforces logical ownership via 10 canonical stores, wi
 
 
 ## Tech Stack
-> **Note:** Stack to be finalized before skeleton initialization.
 
-- **Backend Framework:** [e.g., Spring Boot / Node.js Express / Django]
-- **Mobile App:** [e.g., React Native / Flutter]
-- **Events / Messaging:** [e.g., Spring ApplicationEvents / RabbitMQ]
+- **Backend Framework:** Node.js / TypeScript / TypeORM / PostgreSQL
+- **Mobile App:** React Native
+- **Events / Messaging:** In-memory EventBus (MVP)
 
 ## Getting Started
 
 
 ### Prerequisites
-- [e.g., Java 17+]
-- [e.g., Docker & Docker Compose]
+- Node.js 18+ or 20+
+- Docker & Docker Compose
 
 ### Local Setup
 1. Clone the repository: `git clone https://github.com/your-org/incampus.git`
 2. Set up environment variables: `cp .env.example .env`
 3. Start the database: `docker-compose up -d`
-4. Run database migrations: `[command]`
-5. Start the application: `[command]`
+4. Install dependencies: `npm install`
+5. Run database migrations: `npm run typeorm migration:run`
+6. Start the application: `npm run dev`

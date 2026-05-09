@@ -19,15 +19,11 @@ Thumbs.db
 *.swo
 *.suo
 
-# Frontend Dependencies and Builds (e.g., React Native / Node)
+# Node Dependencies and Builds (Backend & Mobile)
 node_modules/
 npm-debug.log
 yarn-error.log
 dist/
 build/
-
-# Backend Builds (e.g., Java / Spring Boot)
-target/
-*.class
-.gradle/
-*.jar
+coverage/
+.tsbuildinfo

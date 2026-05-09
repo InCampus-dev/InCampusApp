@@ -13,7 +13,7 @@ Implemented now:
 - Node.js / TypeScript backend workspace.
 - Express backend health route: `GET /health`.
 - Modular monolith package skeletons under `backend/packages/`.
-- Shared TypeScript contracts, enums, auth contexts, errors, EventBus, TypeORM config, and transaction helper.
+- Shared TypeScript contracts, enums, auth contexts, middleware placeholders, errors, EventBus, TypeORM config, DB constraint notes, demo seed data, and transaction helper.
 - Contract docs under `docs/`.
 - Folder-only mobile shell under `mobile/`.
 - GitHub Actions CI under `.github/workflows/ci.yml`.
@@ -29,6 +29,7 @@ InCampus uses one deployable multi-tenant modular monolith.
 - The shared persistence layer keeps logical store ownership.
 - Cross-module access must use shared contracts, exported interfaces, or owning-module services.
 - `AuthenticatedAdminContext` is runtime context only. There is no Campus Admin database/store.
+- D&P owns no persistent entities or stores; it reads/orchestrates through the owning modules.
 - NSF is the only writer of notification records.
 - Notification records have no `isRead`, `readAt`, or read/unread state.
 - Pending request withdrawal creates no notification.
@@ -95,6 +96,8 @@ See `mobile/README.md` for the intended setup commands.
 
 ## Contracts and Setup
 
+Root `docs/` is the Phase 0 / Phase 1 contract location. `backend/docs/` is only for backend-local notes.
+
 - API contract: `docs/api-contract.md`
 - Event contract: `docs/event-contract.md`
 - Internal command contract: `docs/internal-command-contract.md`
@@ -123,4 +126,4 @@ feature/francesco/phase-0-foundation
 
 ## Documentation
 
-The source documentation remains in `Documentation/` and `codingOrganization/`. These folders are retained as project source material and are not copied into the new foundation.
+The source documentation remains in `Documentation/` and `codingOrganization/`. These folders are retained as planning and traceability source material, not runtime code.

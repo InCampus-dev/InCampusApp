@@ -4,6 +4,8 @@
 
 This repository is the first coding foundation for the InCampus alpha sprint. It keeps the final documentation in `Documentation/` and `codingOrganization/` untouched while adding a GitHub monorepo foundation.
 
+Root `docs/` is the active contract location for Phase 0 / Phase 1 implementation. `backend/docs/` is reserved for backend-local notes only.
+
 ## Architecture
 
 The backend is one deployable multi-tenant modular monolith.
@@ -13,6 +15,7 @@ The backend is one deployable multi-tenant modular monolith.
 - Cross-module access goes through shared contracts, exported interfaces, or owning-module services.
 - `AuthenticatedAdminContext` is runtime context only.
 - There is no Campus Admin database/store.
+- D&P owns no persistent entities or stores; it reads/orchestrates through the owning modules.
 - NSF is the only writer of notification records.
 - Notification records have no `isRead`, `readAt`, or read/unread state.
 - Pending request withdrawal creates no notification.
@@ -77,11 +80,11 @@ feature/francesco/phase-0-foundation
 
 ## Contributor Ownership
 
-| Contributor | GitHub | Ownership |
-| --- | --- | --- |
-| Francesco | `Natizh` | CA, SM, shared infrastructure, CI, DB, admin auth, integration review |
-| Jacopo | `jaacopocoding` | AP, NSF, shared auth contracts, AP mobile flows |
-| Matteo | `MatteoSilvestro` | H&L, D&P, activity mobile flows, transaction-sensitive participation flows |
+| Contributor | GitHub            | Ownership                                                                  |
+| ----------- | ----------------- | -------------------------------------------------------------------------- |
+| Francesco   | `Natizh`          | CA, SM, shared infrastructure, CI, DB, admin auth, integration review      |
+| Jacopo      | `jaacopocoding`   | AP, NSF, shared auth contracts, AP mobile flows                            |
+| Matteo      | `MatteoSilvestro` | H&L, D&P, activity mobile flows, transaction-sensitive participation flows |
 
 ## Documentation Sources Used
 

@@ -32,3 +32,7 @@ Packages under `backend/packages/` are logical module boundaries:
 - `notifications-system-flow`
 
 They are not separately deployed services.
+
+D&P intentionally has no `src/entities/` folder because it owns no persistent store. Participation writes belong to H&L-owned interfaces or transaction services.
+
+Shared Phase 0 / Phase 1 contract documents live at repository root under `../docs/`. Keep `backend/docs/` for backend-local notes only.

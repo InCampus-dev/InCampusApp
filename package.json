@@ -1,0 +1,19 @@
+{
+  "name": "incampus",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Phase 0 monorepo foundation for the InCampus alpha sprint.",
+  "workspaces": [
+    "backend",
+    "mobile"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace backend",
+    "lint": "npm run lint --workspace backend",
+    "build": "npm run build --workspace backend",
+    "test": "npm test --workspace backend"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

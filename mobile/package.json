@@ -1,0 +1,9 @@
+{
+  "name": "@incampus/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Folder-only React Native/Expo shell for the InCampus alpha sprint.",
+  "scripts": {
+    "setup:expo": "echo \"Run npx create-expo-app@latest mobile when the team is ready to initialize Expo dependencies.\""
+  }
+}

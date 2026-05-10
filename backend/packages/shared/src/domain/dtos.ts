@@ -17,6 +17,7 @@ export type StudentAccountId = string;
 export type ActivityId = string;
 export type ParticipationId = string;
 export type NotificationId = string;
+export type BlockId = string;
 export type ReportId = string;
 
 export interface HealthResponseDto {
@@ -51,6 +52,13 @@ export interface CampusSummaryDto {
   activationStatus: boolean;
 }
 
+export interface CampusConfigurationDto {
+  campusId: CampusId;
+  universityName: string;
+  campusName: string;
+  activationStatus: boolean;
+}
+
 export interface CampusStructuredOptionDto {
   optionId: string;
   campusId: CampusId;
@@ -58,6 +66,67 @@ export interface CampusStructuredOptionDto {
   name: string;
   description?: string | null;
   isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateStructuredOptionRequestDto {
+  optionType: CampusStructuredOptionType;
+  name: string;
+  description?: string | null;
+  isActive?: boolean;
+}
+
+export interface UpdateStructuredOptionRequestDto {
+  name?: string;
+  description?: string | null;
+  isActive?: boolean;
+}
+
+export interface CreateCampusRequestDto {
+  campusId?: CampusId;
+  universityName: string;
+  campusName: string;
+  activationStatus?: boolean;
+  initialStructuredOptions?: CreateStructuredOptionRequestDto[];
+}
+
+export interface CampusCreatedDto {
+  campusId: CampusId;
+  universityName: string;
+  campusName: string;
+  activationStatus: boolean;
+  structuredOptions: CampusStructuredOptionDto[];
+}
+
+export interface DeletionConfirmationDto {
+  deactivated: boolean;
+  resourceType: string;
+  resourceId: string;
+}
+
+export interface CreateBlockRequestDto {
+  targetAccountId: StudentAccountId;
+}
+
+export interface BlockCreatedDto {
+  blockId: BlockId;
+  initiatorAccountId: StudentAccountId;
+  blockedAccountId: StudentAccountId;
+  createdAt: string;
+  alreadyExisted: boolean;
+}
+
+export interface CommunityRuleSectionDto {
+  sectionId: string;
+  title: string;
+  body: string;
+}
+
+export interface CommunityRulesDto {
+  locale: string;
+  title: string;
+  sections: CommunityRuleSectionDto[];
 }
 
 export interface StudentProfileDto {

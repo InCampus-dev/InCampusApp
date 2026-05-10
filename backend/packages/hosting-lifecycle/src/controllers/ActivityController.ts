@@ -1,18 +1,23 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { ActivityLifecycleService } from "../services/ActivityLifecycleService";
 import { GenderPreference } from "../../../shared/src/domain/enums";
+import { AppError } from "../../../shared/src/errors/AppError";
 
 export class ActivityController {
   constructor(private activityLifecycleService: ActivityLifecycleService) {}
 
-  createActivity = async (req: Request, res: Response): Promise<void> => {
+  createActivity = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
     try {
-      // In a real app, the JWT middleware injects this into req.user
-      // Fallback used here to keep it safe for alpha skeleton testing
-      const user = (req as any).user;
+      const user = req.studentContext ?? (req as { user?: { studentAccountId?: string; selectedCampusId?: string } }).user;
+
       if (!user || !user.studentAccountId || !user.selectedCampusId) {
-        res.status(401).json({ error: "Unauthorized: Missing authenticated context or campus selection" });
-        return;
+        throw new AppError("AUTH_REQUIRED", "Student authentication is required", 401, {
+          authReason: "missing_student_context"
+        });
       }
 
       const {
@@ -28,10 +33,22 @@ export class ActivityController {
         genderPreference
       } = req.body;
 
-      // Basic input validation
-      if (!title || !categoryId || !scheduledDateTime || !meetingPointId || !participationMode || !maxParticipants) {
-        res.status(400).json({ error: "Missing required fields to create an activity" });
-        return;
+      if (
+        !title ||
+        !categoryId ||
+        !scheduledDateTime ||
+        !meetingPointId ||
+        !participationMode ||
+        maxParticipants === undefined
+      ) {
+        throw AppError.validation("Request validation failed", [
+          {
+            field: "body",
+            message:
+              "title, categoryId, scheduledDateTime, meetingPointId, participationMode, and maxParticipants are required",
+            code: "missing_required_fields"
+          }
+        ]);
       }
 
       const activity = await this.activityLifecycleService.createActivity(
@@ -47,13 +64,13 @@ export class ActivityController {
           participationMode,
           maxParticipants,
           maxRequests,
-          genderPreference: genderPreference || GenderPreference.All,
+          genderPreference: genderPreference || GenderPreference.All
         }
       );
 
       res.status(201).json({ message: "Activity created successfully", data: activity });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message || "An error occurred while creating the activity" });
+    } catch (error) {
+      next(error);
     }
   };
 }

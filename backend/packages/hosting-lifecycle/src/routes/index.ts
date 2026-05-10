@@ -1,18 +1,27 @@
 import { Router } from "express";
 import { DataSource } from "typeorm";
+import { CampusStructuredOptionLookup } from "../../../campus-administration/src/services/CampusOptionsService";
 import { ActivityRepo } from "../repositories/ActivityRepo";
 import { ActivityLifecycleService } from "../services/ActivityLifecycleService";
 import { ActivityController } from "../controllers/ActivityController";
 
-export const hostingLifecycleRouter = Router();
+export interface CreateHostingLifecycleRoutesArgs {
+  dataSource: DataSource;
+  campusStructuredOptionLookup: CampusStructuredOptionLookup;
+}
 
-export function createHostingLifecycleRoutes(dataSource: DataSource): Router {
-  const activityRepo = new ActivityRepo(dataSource);
-  const activityLifecycleService = new ActivityLifecycleService(dataSource, activityRepo);
+export function createHostingLifecycleRoutes(
+  args: CreateHostingLifecycleRoutesArgs
+): Router {
+  const router = Router();
+  const activityRepo = new ActivityRepo(args.dataSource);
+  const activityLifecycleService = new ActivityLifecycleService(
+    activityRepo,
+    args.campusStructuredOptionLookup
+  );
   const activityController = new ActivityController(activityLifecycleService);
 
-  // POST /activities - Create a new activity
-  hostingLifecycleRouter.post("/activities", activityController.createActivity);
+  router.post("/activities", activityController.createActivity);
 
-  return hostingLifecycleRouter;
+  return router;
 }

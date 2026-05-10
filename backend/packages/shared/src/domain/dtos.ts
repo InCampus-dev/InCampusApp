@@ -51,6 +51,13 @@ export interface CampusSummaryDto {
   activationStatus: boolean;
 }
 
+export interface CampusConfigurationDto {
+  campusId: CampusId;
+  universityName: string;
+  campusName: string;
+  activationStatus: boolean;
+}
+
 export interface CampusStructuredOptionDto {
   optionId: string;
   campusId: CampusId;
@@ -58,6 +65,43 @@ export interface CampusStructuredOptionDto {
   name: string;
   description?: string | null;
   isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateStructuredOptionRequestDto {
+  optionType: CampusStructuredOptionType;
+  name: string;
+  description?: string | null;
+  isActive?: boolean;
+}
+
+export interface UpdateStructuredOptionRequestDto {
+  name?: string;
+  description?: string | null;
+  isActive?: boolean;
+}
+
+export interface CreateCampusRequestDto {
+  campusId?: CampusId;
+  universityName: string;
+  campusName: string;
+  activationStatus?: boolean;
+  initialStructuredOptions?: CreateStructuredOptionRequestDto[];
+}
+
+export interface CampusCreatedDto {
+  campusId: CampusId;
+  universityName: string;
+  campusName: string;
+  activationStatus: boolean;
+  structuredOptions: CampusStructuredOptionDto[];
+}
+
+export interface DeletionConfirmationDto {
+  deactivated: boolean;
+  resourceType: string;
+  resourceId: string;
 }
 
 export interface StudentProfileDto {

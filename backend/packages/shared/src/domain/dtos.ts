@@ -17,6 +17,7 @@ export type StudentAccountId = string;
 export type ActivityId = string;
 export type ParticipationId = string;
 export type NotificationId = string;
+export type BlockId = string;
 export type ReportId = string;
 
 export interface HealthResponseDto {
@@ -102,6 +103,30 @@ export interface DeletionConfirmationDto {
   deactivated: boolean;
   resourceType: string;
   resourceId: string;
+}
+
+export interface CreateBlockRequestDto {
+  targetAccountId: StudentAccountId;
+}
+
+export interface BlockCreatedDto {
+  blockId: BlockId;
+  initiatorAccountId: StudentAccountId;
+  blockedAccountId: StudentAccountId;
+  createdAt: string;
+  alreadyExisted: boolean;
+}
+
+export interface CommunityRuleSectionDto {
+  sectionId: string;
+  title: string;
+  body: string;
+}
+
+export interface CommunityRulesDto {
+  locale: string;
+  title: string;
+  sections: CommunityRuleSectionDto[];
 }
 
 export interface StudentProfileDto {

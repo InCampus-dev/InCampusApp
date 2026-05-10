@@ -7,6 +7,7 @@ import { Campus } from "../../../campus-administration/src/entities/Campus";
 import { CampusStructuredOption } from "../../../campus-administration/src/entities/CampusStructuredOption";
 import { Activity } from "../../../hosting-lifecycle/src/entities/Activity";
 import { Participation } from "../../../hosting-lifecycle/src/entities/Participation";
+import { BlockRelationship } from "../../../safety-moderation/src/entities/BlockRelationship";
 
 dotenv.config();
 
@@ -21,7 +22,7 @@ export const databaseConfig: DataSourceOptions = {
   database: process.env.DB_DATABASE ?? "incampus",
   synchronize: false,
   logging: process.env.TYPEORM_LOGGING === "true",
-  entities: [Campus, CampusStructuredOption, Activity, Participation],
+  entities: [Campus, CampusStructuredOption, Activity, Participation, BlockRelationship],
   migrations: ["dist/packages/shared/src/migrations/*.js"]
 };
 

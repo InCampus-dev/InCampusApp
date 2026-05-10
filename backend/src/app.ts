@@ -17,24 +17,35 @@ import { CampusOptionsService } from "../packages/campus-administration/src/serv
 import { discoveryParticipationRouter } from "../packages/discovery-participation/src/routes";
 import { createHostingLifecycleRoutes } from "../packages/hosting-lifecycle/src/routes";
 import { notificationsSystemFlowRouter } from "../packages/notifications-system-flow/src/routes";
-import { safetyModerationRouter } from "../packages/safety-moderation/src/routes";
+import { BlockRepo } from "../packages/safety-moderation/src/repositories/BlockRepo";
+import { createSafetyModerationRoutes } from "../packages/safety-moderation/src/routes";
+import { BlockManagementService } from "../packages/safety-moderation/src/services/BlockManagementService";
+import { CommunityRulesContentProvider } from "../packages/safety-moderation/src/services/CommunityRulesContentProvider";
+import { noOpPendingParticipationConsequenceDispatcher } from "../packages/safety-moderation/src/services/PendingParticipationConsequenceDispatcher";
+import { type StudentAccountExistenceLookup } from "../packages/safety-moderation/src/services/StudentAccountExistenceLookup";
 import type { AuthenticatedAdminContext } from "../packages/shared/src/auth/AuthenticatedAdminContext";
+import type { AuthenticatedStudentContext } from "../packages/shared/src/auth/AuthenticatedStudentContext";
 import { AppDataSource } from "../packages/shared/src/config/database";
+import { PlatformAccessStatus, VerificationStatus } from "../packages/shared/src/domain/enums";
 import { type HealthResponseDto } from "../packages/shared/src/domain/dtos";
 import { AppError } from "../packages/shared/src/errors/AppError";
 import type { AdminContextResolver } from "../packages/shared/src/middleware/adminAuth";
+import type { StudentContextResolver } from "../packages/shared/src/middleware/auth";
 
 export interface CreateAppArgs {
   dataSource?: DataSource;
   resolveAdminContext?: AdminContextResolver;
+  resolveStudentContext?: StudentContextResolver;
 }
 
 export function createApp(args: CreateAppArgs = {}): Express {
   const app = express();
   const dataSource = args.dataSource ?? AppDataSource;
   const resolveAdminContext = args.resolveAdminContext ?? resolveAdminContextFromHeaders;
+  const resolveStudentContext = args.resolveStudentContext ?? resolveStudentContextFromHeaders;
   const campusRepo = new CampusRepo(dataSource);
   const campusOptionsRepo = new CampusOptionsRepo(dataSource);
+  const blockRepo = new BlockRepo(dataSource);
   const campusAuthorizationService = new CampusAuthorizationService();
   const campusConfigurationService = new CampusConfigurationService(
     dataSource,
@@ -45,6 +56,17 @@ export function createApp(args: CreateAppArgs = {}): Express {
     campusOptionsRepo,
     campusAuthorizationService
   );
+  const studentAccountExistenceLookup: StudentAccountExistenceLookup = {
+    async exists(studentAccountId: string): Promise<boolean> {
+      return typeof studentAccountId === "string" && studentAccountId.trim().length > 0;
+    }
+  };
+  const blockManagementService = new BlockManagementService(
+    blockRepo,
+    studentAccountExistenceLookup,
+    noOpPendingParticipationConsequenceDispatcher
+  );
+  const communityRulesContentProvider = new CommunityRulesContentProvider();
   const moduleRouters: Array<{ basePath: string; router: Router }> = [
     { basePath: "/", router: accessProfileRouter },
     {
@@ -63,7 +85,14 @@ export function createApp(args: CreateAppArgs = {}): Express {
       })
     },
     { basePath: "/", router: discoveryParticipationRouter },
-    { basePath: "/", router: safetyModerationRouter },
+    {
+      basePath: "/",
+      router: createSafetyModerationRoutes({
+        resolveStudentContext,
+        blockManagementService,
+        communityRulesContentProvider
+      })
+    },
     { basePath: "/", router: notificationsSystemFlowRouter }
   ];
 
@@ -132,6 +161,50 @@ function resolveAdminContextFromHeaders(request: Request): AuthenticatedAdminCon
   };
 }
 
+function resolveStudentContextFromHeaders(request: Request): AuthenticatedStudentContext | null {
+  const studentAccountId = readRequiredHeader(request, "x-student-account-id");
+  const universityEmail = readRequiredHeader(request, "x-student-email");
+  const platformAccessStatusHeader = readRequiredHeader(
+    request,
+    "x-student-platform-access-status"
+  );
+  const verificationStatusHeader = readRequiredHeader(
+    request,
+    "x-student-verification-status"
+  );
+  const selectedCampusId = readRequiredHeader(request, "x-student-selected-campus-id");
+
+  if (
+    !studentAccountId ||
+    !universityEmail ||
+    !platformAccessStatusHeader ||
+    !verificationStatusHeader
+  ) {
+    return null;
+  }
+
+  const platformAccessStatus = parseEnumHeaderValue(
+    platformAccessStatusHeader,
+    PlatformAccessStatus
+  );
+  const verificationStatus = parseEnumHeaderValue(
+    verificationStatusHeader,
+    VerificationStatus
+  );
+
+  if (!platformAccessStatus || !verificationStatus) {
+    return null;
+  }
+
+  return {
+    studentAccountId,
+    universityEmail,
+    selectedCampusId,
+    platformAccessStatus,
+    verificationStatus
+  };
+}
+
 function readRequiredHeader(request: Request, headerName: string): string | null {
   const headerValue = request.header(headerName);
 
@@ -142,4 +215,11 @@ function readRequiredHeader(request: Request, headerName: string): string | null
   const normalizedHeaderValue = headerValue.trim();
 
   return normalizedHeaderValue.length === 0 ? null : normalizedHeaderValue;
+}
+
+function parseEnumHeaderValue<T extends string>(
+  value: string,
+  enumObject: Record<string, T>
+): T | null {
+  return Object.values(enumObject).includes(value as T) ? (value as T) : null;
 }

@@ -25,7 +25,9 @@ export enum PlatformAccessStatus {
 
 export enum VerificationStatus {
   Pending = "Pending",
-  Verified = "Verified"
+  Verified = "Verified",
+  Rejected = "Rejected",
+  Expired = "Expired"
 }
 
 export enum NotificationType {

@@ -1,27 +1,36 @@
 import { Router } from "express";
 import { DataSource } from "typeorm";
+import { CampusStructuredOptionLookup } from "../../../campus-administration/src/services/CampusOptionsService";
 import { ActivityRepo } from "../repositories/ActivityRepo";
 import { ActivityLifecycleService } from "../services/ActivityLifecycleService";
 import { ActivityController } from "../controllers/ActivityController";
 import { JoinRequestManagementService } from "../services/JoinRequestManagementService";
 import { JoinRequestController } from "../controllers/JoinRequestController";
 
-export const hostingLifecycleRouter = Router();
+export interface CreateHostingLifecycleRoutesArgs {
+  dataSource: DataSource;
+  campusStructuredOptionLookup: CampusStructuredOptionLookup;
+}
 
-export function createHostingLifecycleRoutes(dataSource: DataSource): Router {
-  const activityRepo = new ActivityRepo(dataSource);
-  const activityLifecycleService = new ActivityLifecycleService(dataSource, activityRepo);
+export function createHostingLifecycleRoutes(
+  args: CreateHostingLifecycleRoutesArgs
+): Router {
+  const router = Router();
+  const activityRepo = new ActivityRepo(args.dataSource);
+  const activityLifecycleService = new ActivityLifecycleService(
+    activityRepo,
+    args.campusStructuredOptionLookup
+  );
   const activityController = new ActivityController(activityLifecycleService);
   
-  const joinRequestService = new JoinRequestManagementService(dataSource);
+  const joinRequestService = new JoinRequestManagementService(args.dataSource);
   const joinRequestController = new JoinRequestController(joinRequestService);
 
-  // POST /activities - Create a new activity
-  hostingLifecycleRouter.post("/activities", activityController.createActivity);
+  router.post("/activities", activityController.createActivity);
 
-   // Join Request Management
-  hostingLifecycleRouter.get("/activities/:id/requests", joinRequestController.getRequests);
-  hostingLifecycleRouter.patch("/activities/:id/requests/:requestId", joinRequestController.reviewRequest);
-  
-  return hostingLifecycleRouter;
+  // Join Request Management
+  router.get("/activities/:id/requests", joinRequestController.getRequests);
+  router.patch("/activities/:id/requests/:requestId", joinRequestController.reviewRequest);
+
+  return router;
 }

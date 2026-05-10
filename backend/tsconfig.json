@@ -1,26 +1,20 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "CommonJS",
-    "moduleResolution": "Node",
-    "rootDir": ".",
-    "outDir": "dist",
-    "strict": true,
+    "target": "es2020",
+    "module": "commonjs",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strictPropertyInitialization": false,
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "types": [
-      "node",
-      "vitest"
-    ]
+    "forceConsistentCasingInFileNames": true,
+    "rootDir": "./",
+    "outDir": "./dist"
   },
   "include": [
-    "src/**/*.ts",
-    "packages/**/*.ts"
+    "**/*.ts"
   ],
   "exclude": [
-    "dist",
     "node_modules"
   ]
 }

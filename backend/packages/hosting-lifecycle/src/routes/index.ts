@@ -19,9 +19,9 @@ export function createHostingLifecycleRoutes(dataSource: DataSource): Router {
   // POST /activities - Create a new activity
   hostingLifecycleRouter.post("/activities", activityController.createActivity);
 
-  // Join Request Management
+   // Join Request Management
   hostingLifecycleRouter.get("/activities/:id/requests", joinRequestController.getRequests);
   hostingLifecycleRouter.patch("/activities/:id/requests/:requestId", joinRequestController.reviewRequest);
-
+  
   return hostingLifecycleRouter;
 }

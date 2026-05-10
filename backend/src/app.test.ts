@@ -18,6 +18,20 @@ describe("GET /health", () => {
       architecture: "multi-tenant modular monolith"
     });
   });
+
+  it("mounts the Safety & Moderation block and community rules routes", () => {
+    const app = createApp();
+    const routes = collectRoutes(app);
+
+    expect(routes).toContainEqual({
+      method: "post",
+      path: "/blocks"
+    });
+    expect(routes).toContainEqual({
+      method: "get",
+      path: "/community-rules"
+    });
+  });
 });
 
 interface MockResponse {
@@ -56,4 +70,35 @@ function findRouteHandler(app: ReturnType<typeof createApp>, path: string, metho
     request: Request,
     response: Response
   ) => Promise<void> | void;
+}
+
+function collectRoutes(app: ReturnType<typeof createApp>): Array<{ method: string; path: string }> {
+  const expressRouter = (app as unknown as { _router?: { stack?: Array<any> } })._router;
+  const routes: Array<{ method: string; path: string }> = [];
+
+  collectRoutesFromStack(expressRouter?.stack ?? [], routes);
+
+  return routes;
+}
+
+function collectRoutesFromStack(
+  stack: Array<any>,
+  routes: Array<{ method: string; path: string }>
+): void {
+  stack.forEach((layer) => {
+    if (layer.route?.path) {
+      Object.keys(layer.route.methods)
+        .filter((method) => layer.route.methods[method] === true)
+        .forEach((method) => {
+          routes.push({
+            method,
+            path: layer.route.path
+          });
+        });
+    }
+
+    if (layer.handle?.stack) {
+      collectRoutesFromStack(layer.handle.stack, routes);
+    }
+  });
 }

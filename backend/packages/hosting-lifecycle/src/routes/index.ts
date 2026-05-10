@@ -4,6 +4,8 @@ import { CampusStructuredOptionLookup } from "../../../campus-administration/src
 import { ActivityRepo } from "../repositories/ActivityRepo";
 import { ActivityLifecycleService } from "../services/ActivityLifecycleService";
 import { ActivityController } from "../controllers/ActivityController";
+import { JoinRequestManagementService } from "../services/JoinRequestManagementService";
+import { JoinRequestController } from "../controllers/JoinRequestController";
 
 export interface CreateHostingLifecycleRoutesArgs {
   dataSource: DataSource;
@@ -20,8 +22,15 @@ export function createHostingLifecycleRoutes(
     args.campusStructuredOptionLookup
   );
   const activityController = new ActivityController(activityLifecycleService);
+  
+  const joinRequestService = new JoinRequestManagementService(args.dataSource);
+  const joinRequestController = new JoinRequestController(joinRequestService);
 
   router.post("/activities", activityController.createActivity);
+
+  // Join Request Management
+  router.get("/activities/:id/requests", joinRequestController.getRequests);
+  router.patch("/activities/:id/requests/:requestId", joinRequestController.reviewRequest);
 
   return router;
 }

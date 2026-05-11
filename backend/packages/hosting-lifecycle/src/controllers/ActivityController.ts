@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { ActivityLifecycleService } from "../services/ActivityLifecycleService";
-import { GenderPreference } from "../../../shared/src/domain/enums";
+import { ActivityStatus, GenderPreference } from "../../../shared/src/domain/enums";
 import { AppError } from "../../../shared/src/errors/AppError";
 
 export class ActivityController {
@@ -69,6 +69,53 @@ export class ActivityController {
       );
 
       res.status(201).json({ message: "Activity created successfully", data: activity });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const user = req.studentContext ?? (req as { user?: { studentAccountId?: string; selectedCampusId?: string } }).user;
+      if (!user || !user.studentAccountId || !user.selectedCampusId) {
+        throw new AppError("AUTH_REQUIRED", "Student authentication is required", 401, { authReason: "missing_student_context" });
+      }
+
+      const { id } = req.params;
+      const { status } = req.body;
+
+      const activity = await this.activityLifecycleService.updateActivityStatus(
+        user.studentAccountId,
+        user.selectedCampusId,
+        id,
+        status as ActivityStatus
+      );
+
+      res.status(200).json({ message: "Status updated successfully", data: activity });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  deleteActivity = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const user = req.studentContext ?? (req as { user?: { studentAccountId?: string; selectedCampusId?: string } }).user;
+      if (!user || !user.studentAccountId || !user.selectedCampusId) {
+        throw new AppError("AUTH_REQUIRED", "Student authentication is required", 401, { authReason: "missing_student_context" });
+      }
+
+      const { id } = req.params;
+      await this.activityLifecycleService.deleteActivity(user.studentAccountId, user.selectedCampusId, id);
+
+      res.status(204).send();
     } catch (error) {
       next(error);
     }

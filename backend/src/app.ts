@@ -5,9 +5,10 @@ import express, {
   type Response,
   type Router
 } from "express";
+import jwt from "jsonwebtoken";
 import type { DataSource } from "typeorm";
 
-import { accessProfileRouter } from "../packages/access-profile/src/routes";
+import { createAccessProfileRoutes } from "../packages/access-profile/src/routes";
 import { createCampusAdministrationRoutes } from "../packages/campus-administration/src/routes";
 import { CampusRepo } from "../packages/campus-administration/src/repositories/CampusRepo";
 import { CampusOptionsRepo } from "../packages/campus-administration/src/repositories/CampusOptionsRepo";
@@ -42,7 +43,7 @@ export function createApp(args: CreateAppArgs = {}): Express {
   const app = express();
   const dataSource = args.dataSource ?? AppDataSource;
   const resolveAdminContext = args.resolveAdminContext ?? resolveAdminContextFromHeaders;
-  const resolveStudentContext = args.resolveStudentContext ?? resolveStudentContextFromHeaders;
+  const resolveStudentContext = args.resolveStudentContext ?? resolveStudentContextFromJwtOrHeaders;
   const campusRepo = new CampusRepo(dataSource);
   const campusOptionsRepo = new CampusOptionsRepo(dataSource);
   const blockRepo = new BlockRepo(dataSource);
@@ -68,7 +69,10 @@ export function createApp(args: CreateAppArgs = {}): Express {
   );
   const communityRulesContentProvider = new CommunityRulesContentProvider();
   const moduleRouters: Array<{ basePath: string; router: Router }> = [
-    { basePath: "/", router: accessProfileRouter },
+    {
+      basePath: "/",
+      router: createAccessProfileRoutes({ dataSource, resolveStudentContext })
+    },
     {
       basePath: "/",
       router: createCampusAdministrationRoutes({
@@ -127,6 +131,51 @@ export function createApp(args: CreateAppArgs = {}): Express {
   );
 
   return app;
+}
+
+// Tries JWT Bearer token first; falls back to header-based resolution for dev/test convenience.
+function resolveStudentContextFromJwtOrHeaders(request: Request): AuthenticatedStudentContext | null {
+  const authHeader = request.headers.authorization;
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    try {
+      const payload = jwt.verify(
+        token,
+        process.env.JWT_SECRET ?? "inCampus-mvp-dev-secret"
+      ) as {
+        sub?: string;
+        email?: string;
+        campusId?: string | null;
+        platformAccessStatus?: string;
+        verificationStatus?: string;
+      };
+
+      const platformAccessStatus = parseEnumHeaderValue(
+        payload.platformAccessStatus ?? "",
+        PlatformAccessStatus
+      );
+      const verificationStatus = parseEnumHeaderValue(
+        payload.verificationStatus ?? "",
+        VerificationStatus
+      );
+
+      if (!payload.sub || !payload.email || !platformAccessStatus || !verificationStatus) {
+        return null;
+      }
+
+      return {
+        studentAccountId: payload.sub,
+        universityEmail: payload.email,
+        selectedCampusId: payload.campusId ?? null,
+        platformAccessStatus,
+        verificationStatus
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  return resolveStudentContextFromHeaders(request);
 }
 
 function resolveAdminContextFromHeaders(request: Request): AuthenticatedAdminContext | null {

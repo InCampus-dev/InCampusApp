@@ -36,6 +36,12 @@ export class StudentAccount {
   @Column({ type: "boolean", default: false })
   campusInsightSharingConsent!: boolean;
 
+  // ⚠️ NOT in Entities & Attributes v1.2 catalog — approved implementation detail.
+  // Realises the abstract token exchange in UCR-A&P v1.2 DUC-AP-01 (verify email step).
+  // Cleared to null upon successful verification.
+  @Column({ type: "varchar", nullable: true })
+  verificationToken!: string | null;
+
   @CreateDateColumn()
   createdAt!: Date;
 }

@@ -12,7 +12,9 @@ export type ErrorCode =
   | "ACCOUNT_BANNED"
   | "CAMPUS_SCOPE_VIOLATION"
   | "BLOCK_RELATIONSHIP_EXISTS"
-  | "TARGET_UNAVAILABLE";
+  | "TARGET_UNAVAILABLE"
+  | "INVALID_CREDENTIALS"
+  | "INVALID_VERIFICATION_TOKEN";
 
 export interface ValidationIssue {
   field: string;

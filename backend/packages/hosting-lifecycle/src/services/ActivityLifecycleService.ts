@@ -6,12 +6,19 @@ import { ActivityStatus, CampusStructuredOptionType } from "../../../shared/src/
 export interface ActivityRepositoryPort {
   create(payload: Partial<Activity>): Activity;
   save(activity: Activity): Promise<Activity>;
+  findOne(options: any): Promise<Activity | null>;
+  remove(activity: Activity): Promise<Activity>;
+}
+
+export interface ActivityEventDispatcherPort {
+  dispatch(eventName: string, payload: any): Promise<void>;
 }
 
 export class ActivityLifecycleService {
   constructor(
     private activityRepo: ActivityRepositoryPort,
-    private campusStructuredOptionLookup: CampusStructuredOptionLookup
+    private campusStructuredOptionLookup: CampusStructuredOptionLookup,
+    private eventDispatcher: ActivityEventDispatcherPort
   ) {}
 
   async createActivity(
@@ -86,5 +93,52 @@ export class ActivityLifecycleService {
     });
 
     return await this.activityRepo.save(activity);
+  }
+
+  async updateActivityStatus(
+    hostAccountId: string,
+    campusId: string,
+    activityId: string,
+    newStatus: ActivityStatus
+  ): Promise<Activity> {
+    const activity = await this.activityRepo.findOne({ where: { activityId } });
+    
+    if (!activity) throw AppError.notFound("Activity", activityId);
+    if (activity.campusId !== campusId) throw AppError.notFound("Activity", activityId);
+    if (activity.hostAccountId !== hostAccountId) {
+      throw new AppError("AUTH_REQUIRED", "Only the host can update the activity status", 403);
+    }
+
+    if (newStatus !== ActivityStatus.Completed && newStatus !== ActivityStatus.Cancelled) {
+      throw AppError.validation("Invalid status update", [
+        { field: "status", message: "Can only update to completed or cancelled", code: "invalid_status" }
+      ]);
+    }
+
+    activity.status = newStatus;
+    const savedActivity = await this.activityRepo.save(activity);
+
+    if (newStatus === ActivityStatus.Cancelled) {
+      await this.eventDispatcher.dispatch("ActivityCancelled", {
+        activityId: activity.activityId,
+        hostAccountId: activity.hostAccountId
+      });
+    }
+
+    return savedActivity;
+  }
+
+  async deleteActivity(hostAccountId: string, campusId: string, activityId: string): Promise<void> {
+    const activity = await this.activityRepo.findOne({ where: { activityId } });
+    
+    if (!activity) throw AppError.notFound("Activity", activityId);
+    if (activity.campusId !== campusId) throw AppError.notFound("Activity", activityId);
+    if (activity.hostAccountId !== hostAccountId) throw new AppError("AUTH_REQUIRED", "Only the host can delete the activity", 403);
+
+    if (new Date() >= activity.scheduledDateTime) {
+      throw AppError.conflict("Cannot delete an activity that has already started", "Activity");
+    }
+
+    await this.activityRepo.remove(activity);
   }
 }

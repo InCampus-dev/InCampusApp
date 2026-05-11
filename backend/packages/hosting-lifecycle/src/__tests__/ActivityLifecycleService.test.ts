@@ -5,6 +5,10 @@ import { Activity } from "../entities/Activity";
 import { ActivityLifecycleService } from "../services/ActivityLifecycleService";
 
 describe("ActivityLifecycleService", () => {
+  const mockEventDispatcher = {
+    dispatch: async () => {}
+  };
+
   it("accepts active campus options and preserves snapshot labels", async () => {
     const activityStore: Activity[] = [];
     const service = new ActivityLifecycleService(
@@ -22,7 +26,8 @@ describe("ActivityLifecycleService", () => {
           optionType: CampusStructuredOptionType.CampusLocation,
           name: "Jiading Library"
         }
-      ])
+      ]),
+      mockEventDispatcher
     );
 
     const activity = await service.createActivity(
@@ -46,7 +51,11 @@ describe("ActivityLifecycleService", () => {
   });
 
   it("rejects inactive category options", async () => {
-    const service = new ActivityLifecycleService(createActivityRepo([]), createStructuredOptionLookup([]));
+    const service = new ActivityLifecycleService(
+      createActivityRepo([]), 
+      createStructuredOptionLookup([]),
+      mockEventDispatcher
+    );
 
     await expect(
       service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
@@ -73,7 +82,8 @@ describe("ActivityLifecycleService", () => {
           optionType: CampusStructuredOptionType.ActivityCategory,
           name: "Lunch"
         }
-      ])
+      ]),
+      mockEventDispatcher
     );
 
     await expect(
@@ -108,6 +118,12 @@ function createActivityRepo(activityStore: Activity[]) {
     },
     async save(activity: Activity) {
       activityStore.push(activity);
+      return activity;
+    },
+    async findOne(_options: any) {
+      return null;
+    },
+    async remove(activity: Activity) {
       return activity;
     }
   };

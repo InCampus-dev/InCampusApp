@@ -1,3 +1,4 @@
+import { vi, describe, beforeEach, it, expect, Mock } from 'vitest';
 import { JoinService } from '../services/JoinService';
 import { ActivityStatus, ParticipationMode, ParticipationRecordType, ParticipationStatus } from '../../../shared/src/domain/enums';
 import { AppError } from '../../../shared/src/errors/AppError';
@@ -6,33 +7,33 @@ import { Activity } from '../../../hosting-lifecycle/src/entities/Activity';
 import { Participation } from '../../../hosting-lifecycle/src/entities/Participation';
 
 // Mock the transaction helpers to bypass real DB locking while verifying they are called
-jest.mock('../../../shared/src/db/transaction', () => ({
-  executeTransaction: jest.fn(),
-  findWithPessimisticWriteLock: jest.fn(),
+vi.mock('../../../shared/src/db/transaction', () => ({
+  executeTransaction: vi.fn(),
+  findWithPessimisticWriteLock: vi.fn(),
 }));
 
 describe('JoinService (DP07)', () => {
   let service: JoinService;
   
   const mockManager = {
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
+    findOne: vi.fn(),
+    create: vi.fn(),
+    save: vi.fn(),
   };
 
   const mockDataSource = {} as any;
-  const mockBlockLookup = { getBlockedAndBlockerIds: jest.fn() };
-  const mockEventDispatcher = { dispatch: jest.fn() };
+  const mockBlockLookup = { getBlockedAndBlockerIds: vi.fn() };
+  const mockEventDispatcher = { dispatch: vi.fn() };
 
   const defaultStudentId = 'student-123';
   const defaultCampusId = 'campus-abc';
   const defaultActivityId = 'act-999';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     
     // Wire executeTransaction to immediately invoke its callback with our mock manager
-    (executeTransaction as jest.Mock).mockImplementation(async (ds: any, callback: any) => {
+    (executeTransaction as Mock).mockImplementation(async (ds: any, callback: any) => {
       return await callback(mockManager);
     });
 
@@ -55,7 +56,7 @@ describe('JoinService (DP07)', () => {
         currentParticipantCount: 0,
       };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValueOnce(mockActivity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
       mockBlockLookup.getBlockedAndBlockerIds.mockResolvedValueOnce([]);
       mockManager.findOne.mockResolvedValueOnce(null); // No existing participation
       mockManager.create.mockReturnValueOnce({});
@@ -83,7 +84,7 @@ describe('JoinService (DP07)', () => {
         currentParticipantCount: 4,
       };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValueOnce(mockActivity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
       mockBlockLookup.getBlockedAndBlockerIds.mockResolvedValueOnce([]);
       mockManager.findOne.mockResolvedValueOnce(null);
       mockManager.create.mockReturnValueOnce({ activityId: defaultActivityId, studentAccountId: defaultStudentId });
@@ -115,7 +116,7 @@ describe('JoinService (DP07)', () => {
         currentParticipantCount: 5, // Full
       };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValueOnce(mockActivity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
       mockBlockLookup.getBlockedAndBlockerIds.mockResolvedValueOnce([]);
       mockManager.findOne.mockResolvedValueOnce(null);
 
@@ -136,7 +137,7 @@ describe('JoinService (DP07)', () => {
         currentRequestCount: 2,
       };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValueOnce(mockActivity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
       mockBlockLookup.getBlockedAndBlockerIds.mockResolvedValueOnce([]);
       mockManager.findOne.mockResolvedValueOnce(null);
       
@@ -161,7 +162,7 @@ describe('JoinService (DP07)', () => {
         hostAccountId: 'host-456',
       };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValueOnce(mockActivity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
       mockBlockLookup.getBlockedAndBlockerIds.mockResolvedValueOnce(['host-456']); // Block relationship exists
 
       await expect(service.joinActivity(defaultStudentId, defaultCampusId, defaultActivityId))
@@ -174,7 +175,7 @@ describe('JoinService (DP07)', () => {
         campusId: 'different-campus', // Mismatch
       };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValueOnce(mockActivity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
 
       await expect(service.joinActivity(defaultStudentId, defaultCampusId, defaultActivityId))
         .rejects.toMatchObject({ code: 'NOT_FOUND' });

@@ -53,7 +53,8 @@ export function createDiscoveryParticipationRoutes(dataSource: DataSource): Rout
   discoveryParticipationRouter.get("/activities", discoveryController.getFeed);
   discoveryParticipationRouter.get("/activities/:id", discoveryController.getActivityDetails);
   discoveryParticipationRouter.post("/activities/:id/join", participationController.joinActivity);
-  discoveryParticipationRouter.delete("/activities/:id/join", participationController.withdrawOrLeaveActivity);
+  discoveryParticipationRouter.delete("/activities/:id/requests/me", participationController.withdrawRequest);
+  discoveryParticipationRouter.delete("/activities/:id/participants/me", participationController.leaveActivity);
   discoveryParticipationRouter.get("/profiles/me/activities", participationController.getPersonalActivities);
 
   return discoveryParticipationRouter;

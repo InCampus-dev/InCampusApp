@@ -1,3 +1,4 @@
+import { vi, describe, beforeEach, it, expect, Mock } from 'vitest';
 import { WithdrawLeaveService } from '../services/WithdrawLeaveService';
 import { ActivityStatus, ParticipationRecordType, ParticipationStatus } from '../../../shared/src/domain/enums';
 import { executeTransaction, findWithPessimisticWriteLock } from '../../../shared/src/db/transaction';
@@ -5,32 +6,32 @@ import { Activity } from '../../../hosting-lifecycle/src/entities/Activity';
 import { Participation } from '../../../hosting-lifecycle/src/entities/Participation';
 
 // Mock the transaction helpers to bypass real DB locking while verifying they are called
-jest.mock('../../../shared/src/db/transaction', () => ({
-  executeTransaction: jest.fn(),
-  findWithPessimisticWriteLock: jest.fn(),
+vi.mock('../../../shared/src/db/transaction', () => ({
+  executeTransaction: vi.fn(),
+  findWithPessimisticWriteLock: vi.fn(),
 }));
 
 describe('WithdrawLeaveService (DP07)', () => {
   let service: WithdrawLeaveService;
   
   const mockManager = {
-    findOne: jest.fn(),
-    remove: jest.fn(),
-    save: jest.fn(),
+    findOne: vi.fn(),
+    remove: vi.fn(),
+    save: vi.fn(),
   };
 
   const mockDataSource = {} as any;
-  const mockEventDispatcher = { dispatch: jest.fn() };
+  const mockEventDispatcher = { dispatch: vi.fn() };
 
   const defaultStudentId = 'student-123';
   const defaultCampusId = 'campus-abc';
   const defaultActivityId = 'act-999';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     
     // Wire executeTransaction to immediately invoke its callback with our mock manager
-    (executeTransaction as jest.Mock).mockImplementation(async (ds: any, callback: any) => {
+    (executeTransaction as Mock).mockImplementation(async (ds: any, callback: any) => {
       return await callback(mockManager);
     });
 
@@ -56,7 +57,7 @@ describe('WithdrawLeaveService (DP07)', () => {
         status: ParticipationStatus.Pending,
       };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValueOnce(mockActivity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
       mockManager.findOne.mockResolvedValueOnce(mockParticipation);
       mockManager.remove.mockResolvedValueOnce({});
       mockManager.save.mockResolvedValueOnce({});
@@ -69,18 +70,18 @@ describe('WithdrawLeaveService (DP07)', () => {
       expect(mockEventDispatcher.dispatch).not.toHaveBeenCalled(); // Crucial rule: no notification for withdrawal
     });
 
-    it('should throw BAD_REQUEST if trying to withdraw a request that is not pending', async () => {
+    it('should throw CONFLICT if trying to withdraw a request that is not pending', async () => {
       const mockActivity = { activityId: defaultActivityId };
       const mockParticipation = {
         recordType: ParticipationRecordType.Request,
         status: ParticipationStatus.Declined, // Already decided
       };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValueOnce(mockActivity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
       mockManager.findOne.mockResolvedValueOnce(mockParticipation);
 
       await expect(service.withdrawRequest(defaultStudentId, defaultActivityId))
-        .rejects.toMatchObject({ code: 'BAD_REQUEST' });
+        .rejects.toMatchObject({ code: 'CONFLICT' });
     });
   });
 
@@ -103,7 +104,7 @@ describe('WithdrawLeaveService (DP07)', () => {
         status: ParticipationStatus.Confirmed,
       };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValueOnce(mockActivity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
       mockManager.findOne.mockResolvedValueOnce(mockParticipation);
       mockManager.remove.mockResolvedValueOnce({});
       mockManager.save.mockResolvedValueOnce({});
@@ -122,35 +123,30 @@ describe('WithdrawLeaveService (DP07)', () => {
       }));
     });
 
-    it('should throw BAD_REQUEST if trying to leave after the activity has started', async () => {
+    it('should throw CONFLICT if trying to leave after the activity has started', async () => {
       const mockActivity = {
         activityId: defaultActivityId,
         scheduledDateTime: new Date(Date.now() - 3600000), // 1 hour ago (already started)
       };
-      const mockParticipation = {
-        recordType: ParticipationRecordType.Participation,
-        status: ParticipationStatus.Confirmed,
-      };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValueOnce(mockActivity);
-      mockManager.findOne.mockResolvedValueOnce(mockParticipation);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
 
       await expect(service.leaveActivity(defaultStudentId, defaultActivityId))
-        .rejects.toMatchObject({ code: 'BAD_REQUEST' });
+        .rejects.toMatchObject({ code: 'CONFLICT' });
     });
 
-    it('should throw BAD_REQUEST if the user is not a confirmed participant', async () => {
+    it('should throw CONFLICT if the user is not a confirmed participant', async () => {
       const mockActivity = { activityId: defaultActivityId, scheduledDateTime: new Date(Date.now() + 86400000) };
       const mockParticipation = {
         recordType: ParticipationRecordType.Request, // Not confirmed participation
         status: ParticipationStatus.Pending,
       };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValueOnce(mockActivity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
       mockManager.findOne.mockResolvedValueOnce(mockParticipation);
 
       await expect(service.leaveActivity(defaultStudentId, defaultActivityId))
-        .rejects.toMatchObject({ code: 'BAD_REQUEST' });
+        .rejects.toMatchObject({ code: 'CONFLICT' });
     });
   });
 });

@@ -70,7 +70,7 @@ describe('WithdrawLeaveService (DP07)', () => {
       expect(mockEventDispatcher.dispatch).not.toHaveBeenCalled(); // Crucial rule: no notification for withdrawal
     });
 
-    it('should throw BAD_REQUEST if trying to withdraw a request that is not pending', async () => {
+    it('should throw CONFLICT if trying to withdraw a request that is not pending', async () => {
       const mockActivity = { activityId: defaultActivityId };
       const mockParticipation = {
         recordType: ParticipationRecordType.Request,
@@ -81,7 +81,7 @@ describe('WithdrawLeaveService (DP07)', () => {
       mockManager.findOne.mockResolvedValueOnce(mockParticipation);
 
       await expect(service.withdrawRequest(defaultStudentId, defaultActivityId))
-        .rejects.toMatchObject({ code: 'BAD_REQUEST' });
+        .rejects.toMatchObject({ code: 'CONFLICT' });
     });
   });
 
@@ -123,24 +123,19 @@ describe('WithdrawLeaveService (DP07)', () => {
       }));
     });
 
-    it('should throw BAD_REQUEST if trying to leave after the activity has started', async () => {
+    it('should throw CONFLICT if trying to leave after the activity has started', async () => {
       const mockActivity = {
         activityId: defaultActivityId,
         scheduledDateTime: new Date(Date.now() - 3600000), // 1 hour ago (already started)
       };
-      const mockParticipation = {
-        recordType: ParticipationRecordType.Participation,
-        status: ParticipationStatus.Confirmed,
-      };
 
       (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
-      mockManager.findOne.mockResolvedValueOnce(mockParticipation);
 
       await expect(service.leaveActivity(defaultStudentId, defaultActivityId))
-        .rejects.toMatchObject({ code: 'BAD_REQUEST' });
+        .rejects.toMatchObject({ code: 'CONFLICT' });
     });
 
-    it('should throw BAD_REQUEST if the user is not a confirmed participant', async () => {
+    it('should throw CONFLICT if the user is not a confirmed participant', async () => {
       const mockActivity = { activityId: defaultActivityId, scheduledDateTime: new Date(Date.now() + 86400000) };
       const mockParticipation = {
         recordType: ParticipationRecordType.Request, // Not confirmed participation
@@ -151,7 +146,7 @@ describe('WithdrawLeaveService (DP07)', () => {
       mockManager.findOne.mockResolvedValueOnce(mockParticipation);
 
       await expect(service.leaveActivity(defaultStudentId, defaultActivityId))
-        .rejects.toMatchObject({ code: 'BAD_REQUEST' });
+        .rejects.toMatchObject({ code: 'CONFLICT' });
     });
   });
 });

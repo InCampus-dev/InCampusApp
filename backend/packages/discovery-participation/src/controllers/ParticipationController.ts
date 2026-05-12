@@ -32,7 +32,7 @@ export class ParticipationController {
     }
   };
 
-  withdrawOrLeaveActivity = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  withdrawRequest = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = (req as any).user;
       if (!user || !user.studentAccountId || !user.selectedCampusId) {
@@ -41,13 +41,32 @@ export class ParticipationController {
 
       const { id: activityId } = req.params;
 
-      await this.withdrawLeaveService.withdrawOrLeaveActivity(
+      await this.withdrawLeaveService.withdrawRequest(
         user.studentAccountId,
-        user.selectedCampusId,
         activityId
       );
 
       res.status(204).send(); // 204 No Content è lo standard per una DELETE andata a buon fine
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  leaveActivity = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.studentAccountId || !user.selectedCampusId) {
+        throw new AppError("AUTH_REQUIRED", "Unauthorized: Missing authenticated context or campus selection", 401);
+      }
+
+      const { id: activityId } = req.params;
+
+      await this.withdrawLeaveService.leaveActivity(
+        user.studentAccountId,
+        activityId
+      );
+
+      res.status(204).send();
     } catch (error) {
       next(error);
     }

@@ -4,9 +4,10 @@ import {
   createStudentAuthMiddleware,
   type StudentContextResolver
 } from "../../../shared/src/middleware/auth";
+import { InternalEventDispatcher } from "../../../shared/src/events/InternalEventDispatcher";
 import { FeedService, BlockLookupPort } from "../services/FeedService";
 import { ActivityDetailService, HostProfileLookupPort } from "../services/ActivityDetailService";
-import { JoinService, EventDispatcherPort } from "../services/JoinService";
+import { JoinService } from "../services/JoinService";
 import { WithdrawLeaveService } from "../services/WithdrawLeaveService";
 import { PersonalListService } from "../services/PersonalListService";
 import { DiscoveryController } from "../controllers/DiscoveryController";
@@ -22,6 +23,7 @@ export const discoveryParticipationRouter = Router();
 export interface CreateDiscoveryParticipationRoutesArgs {
   dataSource: DataSource;
   resolveStudentContext: StudentContextResolver;
+  eventDispatcher: InternalEventDispatcher;
 }
 
 // Temporary placeholder until the SM-owned block lookup is integrated.
@@ -50,20 +52,12 @@ class StubHostProfileLookup implements HostProfileLookupPort {
   }
 }
 
-// Temporary placeholder until the shared event bus integration is wired.
-class StubEventDispatcher implements EventDispatcherPort {
-  async dispatch(eventName: string, payload: any): Promise<void> {
-    console.log(`[EventBus Stub] Emitted '${eventName}' with payload:`, payload);
-  }
-}
-
 export function createDiscoveryParticipationRoutes(
   args: CreateDiscoveryParticipationRoutesArgs
 ): Router {
   const router = Router();
   const blockLookup = new StubBlockLookup();
   const hostProfileLookup = new StubHostProfileLookup();
-  const eventDispatcher = new StubEventDispatcher();
   const studentAuthMiddleware = createStudentAuthMiddleware(args.resolveStudentContext);
 
   const feedService = new FeedService(args.dataSource, blockLookup);
@@ -72,8 +66,8 @@ export function createDiscoveryParticipationRoutes(
     blockLookup,
     hostProfileLookup
   );
-  const joinService = new JoinService(args.dataSource, blockLookup, eventDispatcher);
-  const withdrawLeaveService = new WithdrawLeaveService(args.dataSource, eventDispatcher);
+  const joinService = new JoinService(args.dataSource, blockLookup, args.eventDispatcher);
+  const withdrawLeaveService = new WithdrawLeaveService(args.dataSource, args.eventDispatcher);
   const personalListService = new PersonalListService(args.dataSource);
 
   const discoveryController = new DiscoveryController(feedService, activityDetailService);

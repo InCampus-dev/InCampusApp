@@ -14,7 +14,7 @@ import { NotificationDispatcher } from "../services/NotificationDispatcher";
 
 /**
  * NSF04: Consumes ActivityCancelled and notifies confirmed participants.
- * Source: DUC-NSF-04 (Notify Participant of Activity Cancellation).
+ * Source: DUC-NSF-03 (Notify Participant of Activity Cancellation).
  */
 export class CancellationHandler {
   constructor(

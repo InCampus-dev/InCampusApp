@@ -12,7 +12,7 @@ import { NotificationDispatcher } from "../services/NotificationDispatcher";
 
 /**
  * NSF05: Consumes JoinedParticipantLeft and notifies the activity host.
- * Source: DUC-NSF-05 (Notify Host of Leave Event).
+ * Source: DUC-NSF-04 (Notify Host of Leave Event).
  */
 export class LeaveEventHandler {
   constructor(

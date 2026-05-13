@@ -18,8 +18,17 @@ import { CampusConfigurationService } from "../packages/campus-administration/sr
 import { CampusOptionsService } from "../packages/campus-administration/src/services/CampusOptionsService";
 import { createDiscoveryParticipationRoutes } from "../packages/discovery-participation/src/routes";
 import { ActivityRepo } from "../packages/hosting-lifecycle/src/repositories/ActivityRepo";
+import { ParticipationRepo } from "../packages/hosting-lifecycle/src/repositories/ParticipationRepo";
 import { createHostingLifecycleRoutes } from "../packages/hosting-lifecycle/src/routes";
+import { ApplicationOutcomeHandler } from "../packages/notifications-system-flow/src/handlers/ApplicationOutcomeHandler";
+import { JoinEventHandler } from "../packages/notifications-system-flow/src/handlers/JoinEventHandler";
+import { registerNSFHandlers } from "../packages/notifications-system-flow/src/handlers/registerNSFHandlers";
+import { NotificationRepo } from "../packages/notifications-system-flow/src/repositories/NotificationRepo";
 import { notificationsSystemFlowRouter } from "../packages/notifications-system-flow/src/routes";
+import { BlockSuppressionService } from "../packages/notifications-system-flow/src/services/BlockSuppressionService";
+import { NotificationComposer } from "../packages/notifications-system-flow/src/services/NotificationComposer";
+import { NotificationDispatcher } from "../packages/notifications-system-flow/src/services/NotificationDispatcher";
+import { RecipientResolutionService } from "../packages/notifications-system-flow/src/services/RecipientResolutionService";
 import { BlockRepo } from "../packages/safety-moderation/src/repositories/BlockRepo";
 import { ReportRepo } from "../packages/safety-moderation/src/repositories/ReportRepo";
 import { createSafetyModerationRoutes } from "../packages/safety-moderation/src/routes";
@@ -36,11 +45,14 @@ import { AppDataSource } from "../packages/shared/src/config/database";
 import { PlatformAccessStatus, VerificationStatus } from "../packages/shared/src/domain/enums";
 import { type HealthResponseDto } from "../packages/shared/src/domain/dtos";
 import { AppError } from "../packages/shared/src/errors/AppError";
+import { type EventBus, InMemoryEventBus } from "../packages/shared/src/events/EventBus";
+import { InternalEventDispatcher } from "../packages/shared/src/events/InternalEventDispatcher";
 import type { AdminContextResolver } from "../packages/shared/src/middleware/adminAuth";
 import type { StudentContextResolver } from "../packages/shared/src/middleware/auth";
 
 export interface CreateAppArgs {
   dataSource?: DataSource;
+  eventBus?: EventBus;
   resolveAdminContext?: AdminContextResolver;
   resolveStudentContext?: StudentContextResolver;
 }
@@ -48,6 +60,7 @@ export interface CreateAppArgs {
 export function createApp(args: CreateAppArgs = {}): Express {
   const app = express();
   const dataSource = args.dataSource ?? AppDataSource;
+  const eventBus = args.eventBus ?? new InMemoryEventBus();
   const resolveAdminContext = args.resolveAdminContext ?? resolveAdminContextFromHeaders;
   const resolveStudentContext = args.resolveStudentContext ?? resolveStudentContextFromJwtOrHeaders;
   const campusRepo = new CampusRepo(dataSource);
@@ -56,6 +69,9 @@ export function createApp(args: CreateAppArgs = {}): Express {
   const reportRepo = new ReportRepo(dataSource);
   const studentAccountRepo = new StudentAccountRepo(dataSource);
   const activityRepo = new ActivityRepo(dataSource);
+  const participationRepo = new ParticipationRepo(dataSource);
+  const notificationRepo = new NotificationRepo(dataSource);
+  const internalEventDispatcher = new InternalEventDispatcher(eventBus);
   const campusAuthorizationService = new CampusAuthorizationService();
   const campusConfigurationService = new CampusConfigurationService(
     dataSource,
@@ -86,6 +102,29 @@ export function createApp(args: CreateAppArgs = {}): Express {
     campusAuthorizationService,
     moderationActionDispatcher
   );
+  const recipientResolutionService = new RecipientResolutionService(
+    activityRepo,
+    participationRepo,
+    studentAccountRepo
+  );
+  const blockSuppressionService = new BlockSuppressionService(blockRepo);
+  const notificationComposer = new NotificationComposer(notificationRepo);
+  const notificationDispatcher = new NotificationDispatcher();
+  const joinEventHandler = new JoinEventHandler(
+    recipientResolutionService,
+    blockSuppressionService,
+    notificationComposer,
+    notificationDispatcher
+  );
+  const applicationOutcomeHandler = new ApplicationOutcomeHandler(
+    recipientResolutionService,
+    blockSuppressionService,
+    notificationComposer,
+    notificationDispatcher
+  );
+
+  registerNSFHandlers(eventBus, joinEventHandler, applicationOutcomeHandler);
+
   const moduleRouters: Array<{ basePath: string; router: Router }> = [
     {
       basePath: "/",
@@ -104,12 +143,17 @@ export function createApp(args: CreateAppArgs = {}): Express {
       router: createHostingLifecycleRoutes({
         dataSource,
         campusStructuredOptionLookup: campusOptionsService,
-        resolveStudentContext
+        resolveStudentContext,
+        eventDispatcher: internalEventDispatcher
       })
     },
     {
       basePath: "/",
-      router: createDiscoveryParticipationRoutes({ dataSource, resolveStudentContext })
+      router: createDiscoveryParticipationRoutes({
+        dataSource,
+        resolveStudentContext,
+        eventDispatcher: internalEventDispatcher
+      })
     },
     {
       basePath: "/",

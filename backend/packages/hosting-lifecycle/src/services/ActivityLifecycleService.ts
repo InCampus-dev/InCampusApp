@@ -1,7 +1,9 @@
+import { randomUUID } from "crypto";
 import { Activity } from "../entities/Activity";
 import { CampusStructuredOptionLookup } from "../../../campus-administration/src/services/CampusOptionsService";
 import { AppError } from "../../../shared/src/errors/AppError";
 import { ActivityStatus, CampusStructuredOptionType } from "../../../shared/src/domain/enums";
+import { type ActivityCancelledEvent } from "../../../shared/src/events/EventBus";
 
 export interface ActivityRepositoryPort {
   create(payload: Partial<Activity>): Activity;
@@ -119,10 +121,16 @@ export class ActivityLifecycleService {
     const savedActivity = await this.activityRepo.save(activity);
 
     if (newStatus === ActivityStatus.Cancelled) {
-      await this.eventDispatcher.dispatch("ActivityCancelled", {
+      const eventPayload: ActivityCancelledEvent = {
+        eventId: randomUUID(),
+        eventType: "ActivityCancelled",
+        occurredAt: new Date().toISOString(),
         activityId: activity.activityId,
-        hostAccountId: activity.hostAccountId
-      });
+        triggeringAccountId: activity.hostAccountId,
+        outcome: "cancelled"
+      };
+
+      await this.eventDispatcher.dispatch("ActivityCancelled", eventPayload);
     }
 
     return savedActivity;

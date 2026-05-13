@@ -88,7 +88,7 @@ describe('JoinService (DP07)', () => {
       mockBlockLookup.getBlockedAndBlockerIds.mockResolvedValueOnce([]);
       mockManager.findOne.mockResolvedValueOnce(null);
       mockManager.create.mockReturnValueOnce({ activityId: defaultActivityId, studentAccountId: defaultStudentId });
-      mockManager.save.mockResolvedValueOnce({ participationId: 'part-111' }); // For Activity save
+      mockManager.save.mockResolvedValueOnce(mockActivity); // For Activity save
       mockManager.save.mockResolvedValueOnce({ participationId: 'part-111' }); // For Participation save
 
       await service.joinActivity(defaultStudentId, defaultCampusId, defaultActivityId);
@@ -99,9 +99,12 @@ describe('JoinService (DP07)', () => {
       
       expect(mockManager.create).toHaveBeenCalledWith(Participation, expect.any(Object));
       expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith('DirectJoinCompleted', expect.objectContaining({
+        eventId: expect.any(String),
+        eventType: 'DirectJoinCompleted',
+        occurredAt: expect.any(String),
         participationId: 'part-111',
         activityId: defaultActivityId,
-        studentAccountId: defaultStudentId
+        triggeringAccountId: defaultStudentId
       }));
     });
 
@@ -143,14 +146,22 @@ describe('JoinService (DP07)', () => {
       
       const createdParticipation: any = { recordType: null, status: null };
       mockManager.create.mockReturnValueOnce(createdParticipation);
-      mockManager.save.mockResolvedValue({ participationId: 'req-222' });
+      mockManager.save.mockResolvedValueOnce(mockActivity);
+      mockManager.save.mockResolvedValueOnce({ participationId: 'req-222' });
 
       await service.joinActivity(defaultStudentId, defaultCampusId, defaultActivityId);
 
       expect(createdParticipation.recordType).toBe(ParticipationRecordType.Request);
       expect(createdParticipation.status).toBe(ParticipationStatus.Pending);
       expect(mockActivity.currentRequestCount).toBe(3);
-      expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith('JoinRequestSubmitted', expect.any(Object));
+      expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith('JoinRequestSubmitted', expect.objectContaining({
+        eventId: expect.any(String),
+        eventType: 'JoinRequestSubmitted',
+        occurredAt: expect.any(String),
+        participationId: 'req-222',
+        activityId: defaultActivityId,
+        triggeringAccountId: defaultStudentId
+      }));
     });
   });
 

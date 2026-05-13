@@ -5,8 +5,9 @@ import {
   createStudentAuthMiddleware,
   type StudentContextResolver
 } from "../../../shared/src/middleware/auth";
+import { InternalEventDispatcher } from "../../../shared/src/events/InternalEventDispatcher";
 import { ActivityRepo } from "../repositories/ActivityRepo";
-import { ActivityLifecycleService, ActivityEventDispatcherPort } from "../services/ActivityLifecycleService";
+import { ActivityLifecycleService } from "../services/ActivityLifecycleService";
 import { ActivityController } from "../controllers/ActivityController";
 import { JoinRequestManagementService } from "../services/JoinRequestManagementService";
 import { JoinRequestController } from "../controllers/JoinRequestController";
@@ -15,13 +16,7 @@ export interface CreateHostingLifecycleRoutesArgs {
   dataSource: DataSource;
   campusStructuredOptionLookup: CampusStructuredOptionLookup;
   resolveStudentContext: StudentContextResolver;
-}
-
-// Temporary placeholder until the shared event bus integration is wired.
-class StubActivityEventDispatcher implements ActivityEventDispatcherPort {
-  async dispatch(eventName: string, payload: any): Promise<void> {
-    console.log(`[EventBus Stub H&L] Emitted '${eventName}' with payload:`, payload);
-  }
+  eventDispatcher: InternalEventDispatcher;
 }
 
 export function createHostingLifecycleRoutes(
@@ -29,17 +24,19 @@ export function createHostingLifecycleRoutes(
 ): Router {
   const router = Router();
   const activityRepo = new ActivityRepo(args.dataSource);
-  const eventDispatcher = new StubActivityEventDispatcher();
   const studentAuthMiddleware = createStudentAuthMiddleware(args.resolveStudentContext);
   
   const activityLifecycleService = new ActivityLifecycleService(
     activityRepo,
     args.campusStructuredOptionLookup,
-    eventDispatcher
+    args.eventDispatcher
   );
   const activityController = new ActivityController(activityLifecycleService);
   
-  const joinRequestService = new JoinRequestManagementService(args.dataSource);
+  const joinRequestService = new JoinRequestManagementService(
+    args.dataSource,
+    args.eventDispatcher
+  );
   const joinRequestController = new JoinRequestController(joinRequestService);
 
   router.post("/activities", studentAuthMiddleware, activityController.createActivity);

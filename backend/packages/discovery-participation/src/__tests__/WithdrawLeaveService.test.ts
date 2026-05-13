@@ -117,8 +117,11 @@ describe('WithdrawLeaveService (DP07)', () => {
       expect(mockManager.save).toHaveBeenCalledWith(Activity, mockActivity);
       
       expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith('JoinedParticipantLeft', expect.objectContaining({
+        eventId: expect.any(String),
+        eventType: 'JoinedParticipantLeft',
+        occurredAt: expect.any(String),
         activityId: defaultActivityId,
-        studentAccountId: defaultStudentId,
+        triggeringAccountId: defaultStudentId,
         participationId: 'part-222'
       }));
     });

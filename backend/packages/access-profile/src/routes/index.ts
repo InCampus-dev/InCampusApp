@@ -3,6 +3,8 @@
 import { Router } from "express";
 import type { DataSource } from "typeorm";
 
+import { Campus } from "../../../campus-administration/src/entities/Campus";
+
 import {
   createStudentAuthMiddleware,
   type StudentContextResolver
@@ -34,7 +36,12 @@ export function createAccessProfileRoutes(args: CreateAccessProfileRoutesArgs): 
   const domainValidationService = new DomainValidationService(identityRuleRepo);
   const accountActivationService = new AccountActivationService(studentAccountRepo);
   const emailVerificationService = new EmailVerificationService();
-  const campusAssociationService = new CampusAssociationService(studentAccountRepo);
+  const campusRepo = args.dataSource.getRepository(Campus);
+  const campusAssociationService = new CampusAssociationService(
+    studentAccountRepo,
+    campusRepo,
+    identityRuleRepo
+  );
   const studentProfileService = new StudentProfileService(studentProfileRepo);
   const campusInsightConsentService = new CampusInsightConsentService(studentAccountRepo);
 
@@ -60,7 +67,7 @@ export function createAccessProfileRoutes(args: CreateAccessProfileRoutesArgs): 
   router.post("/auth/verify-email", authController.verifyEmail);
   router.post("/auth/signin", authController.signIn);
 
-  router.get("/campuses", campusController.getCampuses);
+  router.get("/campuses", studentAuthMiddleware, campusController.getCampuses);
   router.patch("/accounts/me/campus", studentAuthMiddleware, campusController.selectCampus);
   router.patch(
     "/accounts/me/consent",

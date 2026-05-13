@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createApp } from "./app";
 
@@ -26,6 +26,10 @@ describe("GET /health", () => {
     expect(routes).toContainEqual({
       method: "post",
       path: "/auth/signup"
+    });
+    expect(routes).toContainEqual({
+      method: "get",
+      path: "/campuses"
     });
     expect(routes).toContainEqual({
       method: "post",
@@ -279,6 +283,49 @@ describe("GET /health", () => {
         code: "AUTH_REQUIRED"
       }
     });
+  });
+
+  it("requires student auth for GET /campuses", async () => {
+    const app = createApp();
+
+    const response = await dispatchAppRequest(app, {
+      method: "GET",
+      path: "/campuses"
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "AUTH_REQUIRED"
+      }
+    });
+  });
+
+  it("registers NSF handlers on the shared event bus during app creation", () => {
+    const eventBus = {
+      publish: vi.fn(),
+      subscribe: vi.fn(() => () => undefined)
+    };
+
+    createApp({ eventBus: eventBus as any });
+
+    expect(eventBus.subscribe).toHaveBeenCalledTimes(4);
+    expect(eventBus.subscribe).toHaveBeenCalledWith(
+      "DirectJoinCompleted",
+      expect.any(Function)
+    );
+    expect(eventBus.subscribe).toHaveBeenCalledWith(
+      "JoinRequestSubmitted",
+      expect.any(Function)
+    );
+    expect(eventBus.subscribe).toHaveBeenCalledWith(
+      "JoinRequestApproved",
+      expect.any(Function)
+    );
+    expect(eventBus.subscribe).toHaveBeenCalledWith(
+      "JoinRequestDeclined",
+      expect.any(Function)
+    );
   });
 });
 

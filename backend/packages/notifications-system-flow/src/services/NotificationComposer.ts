@@ -52,6 +52,10 @@ export class NotificationComposer {
           : "New join request";
       case NotificationType.ApplicationOutcome:
         return input.outcome === "approved" ? "Join request approved" : "Join request declined";
+      case NotificationType.ActivityCancellation:
+        return "Activity cancelled";
+      case NotificationType.LeaveEvent:
+        return "Participant left activity";
       default:
         return "Notification";
     }
@@ -68,6 +72,10 @@ export class NotificationComposer {
         return input.outcome === "approved"
           ? `Your request to join "${actTitle}" has been approved.`
           : `Your request to join "${actTitle}" has been declined.`;
+      case NotificationType.ActivityCancellation:
+        return `The activity "${actTitle}" has been cancelled.`;
+      case NotificationType.LeaveEvent:
+        return `A participant has left "${actTitle}".`;
       default:
         return `Notification about "${actTitle}".`;
     }

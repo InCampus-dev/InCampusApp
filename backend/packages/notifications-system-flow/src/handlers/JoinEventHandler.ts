@@ -35,7 +35,7 @@ export class JoinEventHandler {
     private readonly dispatcher: NotificationDispatcher
   ) {}
 
-  public getHandledEvents(): string[] {
+  public getHandledEvents(): Array<JoinEventPayload["eventType"]> {
     return ["DirectJoinCompleted", "JoinRequestSubmitted"];
   }
 

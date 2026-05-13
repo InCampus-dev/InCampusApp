@@ -36,7 +36,7 @@ export class ApplicationOutcomeHandler {
     private readonly dispatcher: NotificationDispatcher
   ) {}
 
-  public getHandledEvents(): string[] {
+  public getHandledEvents(): Array<ApplicationOutcomePayload["eventType"]> {
     return ["JoinRequestApproved", "JoinRequestDeclined"];
   }
 

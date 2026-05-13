@@ -21,7 +21,9 @@ import { ActivityRepo } from "../packages/hosting-lifecycle/src/repositories/Act
 import { ParticipationRepo } from "../packages/hosting-lifecycle/src/repositories/ParticipationRepo";
 import { createHostingLifecycleRoutes } from "../packages/hosting-lifecycle/src/routes";
 import { ApplicationOutcomeHandler } from "../packages/notifications-system-flow/src/handlers/ApplicationOutcomeHandler";
+import { CancellationHandler } from "../packages/notifications-system-flow/src/handlers/CancellationHandler";
 import { JoinEventHandler } from "../packages/notifications-system-flow/src/handlers/JoinEventHandler";
+import { LeaveEventHandler } from "../packages/notifications-system-flow/src/handlers/LeaveEventHandler";
 import { registerNSFHandlers } from "../packages/notifications-system-flow/src/handlers/registerNSFHandlers";
 import { NotificationRepo } from "../packages/notifications-system-flow/src/repositories/NotificationRepo";
 import { notificationsSystemFlowRouter } from "../packages/notifications-system-flow/src/routes";
@@ -122,8 +124,29 @@ export function createApp(args: CreateAppArgs = {}): Express {
     notificationComposer,
     notificationDispatcher
   );
+  const cancellationHandler = new CancellationHandler(
+    activityRepo,
+    participationRepo,
+    studentAccountRepo,
+    blockSuppressionService,
+    notificationComposer,
+    notificationDispatcher
+  );
+  const leaveEventHandler = new LeaveEventHandler(
+    activityRepo,
+    studentAccountRepo,
+    blockSuppressionService,
+    notificationComposer,
+    notificationDispatcher
+  );
 
-  registerNSFHandlers(eventBus, joinEventHandler, applicationOutcomeHandler);
+  registerNSFHandlers(
+    eventBus,
+    joinEventHandler,
+    applicationOutcomeHandler,
+    cancellationHandler,
+    leaveEventHandler
+  );
 
   const moduleRouters: Array<{ basePath: string; router: Router }> = [
     {

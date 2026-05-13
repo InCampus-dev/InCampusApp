@@ -21,6 +21,19 @@ export class NotificationRepo extends Repository<NotificationRecord> {
     });
   }
 
+  public async findByRecipientPaginated(
+    recipientId: string,
+    options: { limit: number; offset: number }
+  ): Promise<{ records: NotificationRecord[]; total: number }> {
+    const [records, total] = await this.findAndCount({
+      where: { recipientAccountId: recipientId },
+      order: { createdAt: "DESC" },
+      take: options.limit,
+      skip: options.offset
+    });
+    return { records, total };
+  }
+
   public async findById(id: string): Promise<NotificationRecord | null> {
     return this.findOne({ where: { notificationId: id } });
   }

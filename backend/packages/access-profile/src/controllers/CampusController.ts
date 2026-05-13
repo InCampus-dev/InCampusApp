@@ -12,12 +12,15 @@ export class CampusController {
 
   // GET /campuses
   public getCampuses = async (
-    _request: Request,
+    request: Request,
     response: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
-      const campuses = await this.campusAssociationService.getCampuses();
+      const studentContext = requireStudentContext(request);
+      const campuses = await this.campusAssociationService.getCampuses(
+        studentContext.universityEmail
+      );
       response.json(campuses);
     } catch (error) {
       next(error);

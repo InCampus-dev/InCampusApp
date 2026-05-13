@@ -37,7 +37,11 @@ export function createAccessProfileRoutes(args: CreateAccessProfileRoutesArgs): 
   const accountActivationService = new AccountActivationService(studentAccountRepo);
   const emailVerificationService = new EmailVerificationService();
   const campusRepo = args.dataSource.getRepository(Campus);
-  const campusAssociationService = new CampusAssociationService(studentAccountRepo, campusRepo);
+  const campusAssociationService = new CampusAssociationService(
+    studentAccountRepo,
+    campusRepo,
+    identityRuleRepo
+  );
   const studentProfileService = new StudentProfileService(studentProfileRepo);
   const campusInsightConsentService = new CampusInsightConsentService(studentAccountRepo);
 
@@ -63,7 +67,7 @@ export function createAccessProfileRoutes(args: CreateAccessProfileRoutesArgs): 
   router.post("/auth/verify-email", authController.verifyEmail);
   router.post("/auth/signin", authController.signIn);
 
-  router.get("/campuses", campusController.getCampuses);
+  router.get("/campuses", studentAuthMiddleware, campusController.getCampuses);
   router.patch("/accounts/me/campus", studentAuthMiddleware, campusController.selectCampus);
   router.patch(
     "/accounts/me/consent",

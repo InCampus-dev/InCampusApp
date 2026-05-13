@@ -5,6 +5,7 @@ import { StudentAccount } from "../entities/StudentAccount";
 import { StudentAccountRepo } from "../repositories/StudentAccountRepo";
 import { CampusInsightConsentService } from "../services/CampusInsightConsentService";
 import { CampusAssociationService } from "../services/CampusAssociationService";
+import { IdentityRuleRepo } from "../repositories/IdentityRuleRepo";
 
 describe("CampusInsightConsentService", () => {
   it("updates campus insight consent to true", async () => {
@@ -46,7 +47,20 @@ describe("CampusInsightConsentService", () => {
     const consentService = new CampusInsightConsentService(studentAccountRepo);
     const campusAssociationService = new CampusAssociationService(
       studentAccountRepo,
-      createCampusRepo([{ campusId: "campus-001", activationStatus: true }])
+      createCampusRepo([
+        {
+          campusId: "campus-001",
+          universityName: "Tongji University",
+          activationStatus: true
+        }
+      ]),
+      createIdentityRuleRepo([
+        {
+          emailDomain: "tongji.edu.cn",
+          universityName: "Tongji University",
+          ruleStatus: "Active"
+        }
+      ])
     );
 
     await consentService.updateOwnConsent("student-001", false);
@@ -57,14 +71,19 @@ describe("CampusInsightConsentService", () => {
   });
 });
 
-function createCampusRepo(campuses: Array<{ campusId: string; activationStatus: boolean }>) {
+function createCampusRepo(
+  campuses: Array<{ campusId: string; universityName: string; activationStatus: boolean }>
+) {
   return {
-    async findOne(options: any): Promise<{ campusId: string; activationStatus: boolean } | null> {
+    async findOne(
+      options: any
+    ): Promise<{ campusId: string; universityName: string; activationStatus: boolean } | null> {
       const where = options?.where ?? {};
       return (
         campuses.find(
           (c) =>
             (where.campusId === undefined || c.campusId === where.campusId) &&
+            (where.universityName === undefined || c.universityName === where.universityName) &&
             (where.activationStatus === undefined || c.activationStatus === where.activationStatus)
         ) ?? null
       );
@@ -73,6 +92,18 @@ function createCampusRepo(campuses: Array<{ campusId: string; activationStatus: 
       return campuses.filter((c) => c.activationStatus);
     }
   } as any;
+}
+
+function createIdentityRuleRepo(
+  identityRules: Array<{ emailDomain: string; universityName: string; ruleStatus: string }>
+) {
+  return {
+    async findByDomain(emailDomain: string) {
+      return (
+        identityRules.find((identityRule) => identityRule.emailDomain === emailDomain) ?? null
+      );
+    }
+  } as unknown as IdentityRuleRepo;
 }
 
 function createStudentAccountRepo(studentAccountStore: StudentAccount[]): StudentAccountRepo {

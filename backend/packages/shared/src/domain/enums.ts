@@ -54,6 +54,22 @@ export enum ModerationAction {
   RemoveActivity = "remove_activity"
 }
 
+export enum ReportTargetType {
+  Student = "student",
+  Activity = "activity"
+}
+
+export enum ReportStatus {
+  PendingReview = "pending_review",
+  Reviewed = "reviewed"
+}
+
+export enum ReviewOutcome {
+  NoAction = "no_action",
+  ActionTaken = "action_taken",
+  Dismissed = "dismissed"
+}
+
 export enum GenderPreference {
   All = "all",
   MaleOnly = "male_only",

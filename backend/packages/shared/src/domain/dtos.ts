@@ -8,6 +8,9 @@ import {
   ParticipationRecordType,
   ParticipationStatus,
   PlatformAccessStatus,
+  ReportStatus,
+  ReportTargetType,
+  ReviewOutcome,
   TargetContextType,
   VerificationStatus
 } from "./enums";
@@ -129,6 +132,81 @@ export interface CommunityRulesDto {
   sections: CommunityRuleSectionDto[];
 }
 
+export interface SubmitReportRequestDto {
+  campusId: CampusId;
+  targetType: ReportTargetType;
+  targetAccountId?: StudentAccountId | null;
+  targetActivityId?: ActivityId | null;
+  reasonCode: string;
+  description?: string | null;
+}
+
+export interface ReportSubmittedDto {
+  reportId: ReportId;
+  campusId: CampusId;
+  reporterAccountId: StudentAccountId;
+  targetType: ReportTargetType;
+  targetAccountId?: StudentAccountId | null;
+  targetActivityId?: ActivityId | null;
+  reasonCode: string;
+  description?: string | null;
+  status: ReportStatus;
+  submittedAt: string;
+}
+
+export interface ReportListDto {
+  reportId: ReportId;
+  campusId: CampusId;
+  targetType: ReportTargetType;
+  targetAccountId?: StudentAccountId | null;
+  targetActivityId?: ActivityId | null;
+  reasonCode: string;
+  status: ReportStatus;
+  submittedAt: string;
+  reviewedAt?: string | null;
+  moderationAction: ModerationAction;
+  reviewOutcome?: ReviewOutcome | null;
+  commandDispatchPending: boolean;
+}
+
+export interface UserReportTargetContextDto {
+  studentAccountId: StudentAccountId;
+  selectedCampusId?: CampusId | null;
+}
+
+export interface ActivityReportTargetContextDto {
+  activityId: ActivityId;
+  campusId: CampusId;
+  hostAccountId: StudentAccountId;
+  title: string;
+  scheduledDateTime: string;
+  status: ActivityStatus;
+}
+
+export interface ReportDetailDto extends ReportListDto {
+  reporterAccountId: StudentAccountId;
+  reviewedByAdminId?: string | null;
+  reviewNotes?: string | null;
+  targetContext?: UserReportTargetContextDto | ActivityReportTargetContextDto;
+}
+
+export interface ReviewReportRequestDto {
+  reviewOutcome: ReviewOutcome;
+  moderationAction: ModerationAction;
+  reviewNotes?: string | null;
+}
+
+export interface ReportReviewedDto {
+  reportId: ReportId;
+  campusId: CampusId;
+  status: ReportStatus;
+  reviewOutcome: ReviewOutcome;
+  moderationAction: ModerationAction;
+  reviewedAt: string;
+  reviewedByAdminId: string;
+  commandDispatchPending: boolean;
+}
+
 export interface StudentProfileDto {
   profileId: string;
   studentAccountId: StudentAccountId;
@@ -192,5 +270,5 @@ export interface NotificationRecordDto {
 export interface ReportReviewCommandDto {
   reportId: ReportId;
   moderationAction: ModerationAction;
-  reviewOutcome: string;
+  reviewOutcome: ReviewOutcome;
 }

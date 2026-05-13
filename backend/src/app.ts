@@ -9,6 +9,7 @@ import jwt from "jsonwebtoken";
 import type { DataSource } from "typeorm";
 
 import { createAccessProfileRoutes } from "../packages/access-profile/src/routes";
+import { StudentAccountRepo } from "../packages/access-profile/src/repositories/StudentAccountRepo";
 import { createCampusAdministrationRoutes } from "../packages/campus-administration/src/routes";
 import { CampusRepo } from "../packages/campus-administration/src/repositories/CampusRepo";
 import { CampusOptionsRepo } from "../packages/campus-administration/src/repositories/CampusOptionsRepo";
@@ -16,13 +17,18 @@ import { CampusAuthorizationService } from "../packages/campus-administration/sr
 import { CampusConfigurationService } from "../packages/campus-administration/src/services/CampusConfigurationService";
 import { CampusOptionsService } from "../packages/campus-administration/src/services/CampusOptionsService";
 import { discoveryParticipationRouter } from "../packages/discovery-participation/src/routes";
+import { ActivityRepo } from "../packages/hosting-lifecycle/src/repositories/ActivityRepo";
 import { createHostingLifecycleRoutes } from "../packages/hosting-lifecycle/src/routes";
 import { notificationsSystemFlowRouter } from "../packages/notifications-system-flow/src/routes";
 import { BlockRepo } from "../packages/safety-moderation/src/repositories/BlockRepo";
+import { ReportRepo } from "../packages/safety-moderation/src/repositories/ReportRepo";
 import { createSafetyModerationRoutes } from "../packages/safety-moderation/src/routes";
 import { BlockManagementService } from "../packages/safety-moderation/src/services/BlockManagementService";
 import { CommunityRulesContentProvider } from "../packages/safety-moderation/src/services/CommunityRulesContentProvider";
+import { ModerationActionDispatcher } from "../packages/safety-moderation/src/services/ModerationActionDispatcher";
 import { noOpPendingParticipationConsequenceDispatcher } from "../packages/safety-moderation/src/services/PendingParticipationConsequenceDispatcher";
+import { ReportReviewService } from "../packages/safety-moderation/src/services/ReportReviewService";
+import { ReportSubmissionService } from "../packages/safety-moderation/src/services/ReportSubmissionService";
 import { type StudentAccountExistenceLookup } from "../packages/safety-moderation/src/services/StudentAccountExistenceLookup";
 import type { AuthenticatedAdminContext } from "../packages/shared/src/auth/AuthenticatedAdminContext";
 import type { AuthenticatedStudentContext } from "../packages/shared/src/auth/AuthenticatedStudentContext";
@@ -47,6 +53,9 @@ export function createApp(args: CreateAppArgs = {}): Express {
   const campusRepo = new CampusRepo(dataSource);
   const campusOptionsRepo = new CampusOptionsRepo(dataSource);
   const blockRepo = new BlockRepo(dataSource);
+  const reportRepo = new ReportRepo(dataSource);
+  const studentAccountRepo = new StudentAccountRepo(dataSource);
+  const activityRepo = new ActivityRepo(dataSource);
   const campusAuthorizationService = new CampusAuthorizationService();
   const campusConfigurationService = new CampusConfigurationService(
     dataSource,
@@ -68,6 +77,15 @@ export function createApp(args: CreateAppArgs = {}): Express {
     noOpPendingParticipationConsequenceDispatcher
   );
   const communityRulesContentProvider = new CommunityRulesContentProvider();
+  const reportSubmissionService = new ReportSubmissionService(reportRepo, studentAccountRepo);
+  const moderationActionDispatcher = new ModerationActionDispatcher();
+  const reportReviewService = new ReportReviewService(
+    reportRepo,
+    studentAccountRepo,
+    activityRepo,
+    campusAuthorizationService,
+    moderationActionDispatcher
+  );
   const moduleRouters: Array<{ basePath: string; router: Router }> = [
     {
       basePath: "/",
@@ -93,8 +111,11 @@ export function createApp(args: CreateAppArgs = {}): Express {
       basePath: "/",
       router: createSafetyModerationRoutes({
         resolveStudentContext,
+        resolveAdminContext,
         blockManagementService,
-        communityRulesContentProvider
+        communityRulesContentProvider,
+        reportSubmissionService,
+        reportReviewService
       })
     },
     { basePath: "/", router: notificationsSystemFlowRouter }

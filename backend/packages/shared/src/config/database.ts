@@ -11,6 +11,7 @@ import { Activity } from "../../../hosting-lifecycle/src/entities/Activity";
 import { Participation } from "../../../hosting-lifecycle/src/entities/Participation";
 import { NotificationRecord } from "../../../notifications-system-flow/src/entities/NotificationRecord";
 import { BlockRelationship } from "../../../safety-moderation/src/entities/BlockRelationship";
+import { ReportRecord } from "../../../safety-moderation/src/entities/ReportRecord";
 
 dotenv.config();
 
@@ -33,7 +34,8 @@ export const databaseConfig: DataSourceOptions = {
     Activity,
     Participation,
     NotificationRecord,
-    BlockRelationship
+    BlockRelationship,
+    ReportRecord
   ],
   migrations: ["dist/packages/shared/src/migrations/*.js"]
 };

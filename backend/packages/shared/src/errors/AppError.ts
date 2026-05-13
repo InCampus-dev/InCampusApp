@@ -39,6 +39,13 @@ export class AppError extends Error {
     });
   }
 
+  public static targetUnavailable(resourceType: string, resourceId?: string): AppError {
+    return new AppError("TARGET_UNAVAILABLE", `${resourceType} is unavailable`, 410, {
+      resourceType,
+      resourceId
+    });
+  }
+
   public static conflict(message: string, conflictResource: string): AppError {
     return new AppError("CONFLICT", message, 409, { conflictResource });
   }

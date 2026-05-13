@@ -12,6 +12,7 @@ import { PersonalListService } from "../services/PersonalListService";
 import { DiscoveryController } from "../controllers/DiscoveryController";
 import { ParticipationController } from "../controllers/ParticipationController";
 import { StudentProfileDto } from "../../../shared/src/domain/dtos";
+import { StudentProfileGender } from "../../../shared/src/domain/enums";
 
 /**
  * @deprecated Not intended for app composition. Use createDiscoveryParticipationRoutes(...) instead.
@@ -36,7 +37,15 @@ class StubHostProfileLookup implements HostProfileLookupPort {
     return {
       profileId: "stub-profile-id",
       studentAccountId,
-      displayName: "Host Student"
+      displayName: "Host Student",
+      major: "Undeclared",
+      dateOfBirth: null,
+      gender: StudentProfileGender.PreferNotToSay,
+      interests: [],
+      languages: [],
+      shortBio: null,
+      createdAt: new Date(0).toISOString(),
+      updatedAt: null
     };
   }
 }

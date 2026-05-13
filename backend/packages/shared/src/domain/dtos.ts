@@ -11,6 +11,7 @@ import {
   ReportStatus,
   ReportTargetType,
   ReviewOutcome,
+  StudentProfileGender,
   TargetContextType,
   VerificationStatus
 } from "./enums";
@@ -38,6 +39,34 @@ export interface SignUpRequestDto {
 export interface SignInRequestDto {
   universityEmail: string;
   password: string;
+}
+
+export interface CreateStudentProfileRequestDto {
+  displayName: string;
+  major: string;
+  dateOfBirth?: string | null;
+  gender?: StudentProfileGender | null;
+  interests?: string[];
+  languages?: string[];
+  shortBio?: string | null;
+}
+
+export interface UpdateStudentProfileRequestDto {
+  displayName?: string;
+  major?: string;
+  dateOfBirth?: string | null;
+  gender?: StudentProfileGender | null;
+  interests?: string[];
+  languages?: string[];
+  shortBio?: string | null;
+}
+
+export interface UpdateCampusInsightConsentRequestDto {
+  campusInsightSharingConsent: boolean;
+}
+
+export interface CampusInsightConsentDto {
+  campusInsightSharingConsent: boolean;
 }
 
 export interface AuthenticatedResponseDto {
@@ -211,12 +240,14 @@ export interface StudentProfileDto {
   profileId: string;
   studentAccountId: StudentAccountId;
   displayName: string;
-  major?: string | null;
-  dateOfBirth?: string | null;
-  gender?: string | null;
-  interests?: string[];
-  languages?: string[];
-  shortBio?: string | null;
+  major: string;
+  dateOfBirth: string | null;
+  gender: StudentProfileGender | null;
+  interests: string[];
+  languages: string[];
+  shortBio: string | null;
+  createdAt: string;
+  updatedAt: string | null;
 }
 
 export interface ActivitySummaryDto {

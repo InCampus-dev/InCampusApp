@@ -398,13 +398,18 @@ describe("Notification event handlers", () => {
       getHandledEvents: () => ["JoinedParticipantLeft"] as const,
       handle: vi.fn()
     };
+    const reminderHandler = {
+      getHandledEvents: () => ["ActivityReminderDue"] as const,
+      handle: vi.fn()
+    };
 
     registerNSFHandlers(
       eventBus as any,
       joinHandler as any,
       outcomeHandler as any,
       cancellationHandler as any,
-      leaveEventHandler as any
+      leaveEventHandler as any,
+      reminderHandler as any
     );
 
     expect(eventBus.subscribe).toHaveBeenCalledWith("ActivityCancelled", expect.any(Function));

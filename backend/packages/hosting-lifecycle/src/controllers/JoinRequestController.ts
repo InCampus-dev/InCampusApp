@@ -1,51 +1,89 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
+import { AppError } from "../../../shared/src/errors/AppError";
+import { requireStudentContext } from "../../../shared/src/middleware/auth";
 import { JoinRequestManagementService } from "../services/JoinRequestManagementService";
 
 export class JoinRequestController {
   constructor(private joinRequestService: JoinRequestManagementService) {}
 
-  getRequests = async (req: Request, res: Response): Promise<void> => {
+  getRequests = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const user = (req as any).user;
-      if (!user || !user.studentAccountId) {
-        res.status(401).json({ error: "Unauthorized" });
-        return;
-      }
+      const studentContext = requireStudentContext(req);
 
       const { id: activityId } = req.params;
-      const requests = await this.joinRequestService.getPendingRequests(user.studentAccountId, activityId);
-      
+      const requests = await this.joinRequestService.getPendingRequests(
+        studentContext.studentAccountId,
+        activityId
+      );
+
       res.status(200).json({ data: requests });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
+    } catch (error) {
+      next(normalizeJoinRequestError(error, req.params.id));
     }
   };
 
-  reviewRequest = async (req: Request, res: Response): Promise<void> => {
+  reviewRequest = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
     try {
-      const user = (req as any).user;
-      if (!user || !user.studentAccountId) {
-        res.status(401).json({ error: "Unauthorized" });
-        return;
-      }
+      const studentContext = requireStudentContext(req);
 
       const { id: activityId, requestId: participationId } = req.params;
       const { decision } = req.body; // 'approve' | 'decline'
 
       if (decision !== "approve" && decision !== "decline") {
-        res.status(400).json({ error: "Invalid decision. Use 'approve' or 'decline'" });
-        return;
+        throw AppError.validation("Request validation failed", [
+          {
+            field: "decision",
+            message: "Invalid decision. Use 'approve' or 'decline'",
+            code: "invalid_join_request_decision"
+          }
+        ]);
       }
 
       const participation = await this.joinRequestService.reviewJoinRequest(
-        user.studentAccountId,
+        studentContext.studentAccountId,
         activityId,
         participationId,
         decision
       );
       res.status(200).json({ message: `Request ${decision}d successfully`, data: participation });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
+    } catch (error) {
+      next(normalizeJoinRequestError(error, req.params.id, req.params.requestId));
     }
   };
+}
+
+function normalizeJoinRequestError(
+  error: unknown,
+  activityId: string,
+  requestId?: string
+): AppError {
+  if (error instanceof AppError) {
+    return error;
+  }
+
+  if (!(error instanceof Error)) {
+    return new AppError("INTERNAL_ERROR", "Unexpected error", 500);
+  }
+
+  switch (error.message) {
+    case "Activity not found":
+      return AppError.notFound("Activity", activityId);
+    case "Join request not found":
+      return AppError.notFound("Participation", requestId ?? "unknown");
+    case "Unauthorized: Only the host can view requests":
+    case "Unauthorized: Only the host can review requests":
+      return new AppError("AUTH_FORBIDDEN", error.message, 403, {
+        authReason: "not_activity_host"
+      });
+    case "This request is not pending":
+      return AppError.conflict(error.message, "Participation");
+    case "Cannot approve request: Activity is already full":
+      return AppError.conflict(error.message, "Activity");
+    default:
+      return new AppError("INTERNAL_ERROR", error.message, 500);
+  }
 }

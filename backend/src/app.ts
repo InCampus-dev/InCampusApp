@@ -16,7 +16,7 @@ import { CampusOptionsRepo } from "../packages/campus-administration/src/reposit
 import { CampusAuthorizationService } from "../packages/campus-administration/src/services/CampusAuthorizationService";
 import { CampusConfigurationService } from "../packages/campus-administration/src/services/CampusConfigurationService";
 import { CampusOptionsService } from "../packages/campus-administration/src/services/CampusOptionsService";
-import { discoveryParticipationRouter } from "../packages/discovery-participation/src/routes";
+import { createDiscoveryParticipationRoutes } from "../packages/discovery-participation/src/routes";
 import { ActivityRepo } from "../packages/hosting-lifecycle/src/repositories/ActivityRepo";
 import { createHostingLifecycleRoutes } from "../packages/hosting-lifecycle/src/routes";
 import { notificationsSystemFlowRouter } from "../packages/notifications-system-flow/src/routes";
@@ -103,10 +103,14 @@ export function createApp(args: CreateAppArgs = {}): Express {
       basePath: "/",
       router: createHostingLifecycleRoutes({
         dataSource,
-        campusStructuredOptionLookup: campusOptionsService
+        campusStructuredOptionLookup: campusOptionsService,
+        resolveStudentContext
       })
     },
-    { basePath: "/", router: discoveryParticipationRouter },
+    {
+      basePath: "/",
+      router: createDiscoveryParticipationRoutes({ dataSource, resolveStudentContext })
+    },
     {
       basePath: "/",
       router: createSafetyModerationRoutes({

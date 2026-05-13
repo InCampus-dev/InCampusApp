@@ -1,5 +1,4 @@
 import type { Request, Response } from "express";
-import request from "supertest";
 import { describe, expect, it } from "vitest";
 
 import { createApp } from "./app";
@@ -26,6 +25,14 @@ describe("GET /health", () => {
 
     expect(routes).toContainEqual({
       method: "post",
+      path: "/auth/signup"
+    });
+    expect(routes).toContainEqual({
+      method: "post",
+      path: "/admin/campuses"
+    });
+    expect(routes).toContainEqual({
+      method: "post",
       path: "/blocks"
     });
     expect(routes).toContainEqual({
@@ -48,20 +55,48 @@ describe("GET /health", () => {
       method: "patch",
       path: "/admin/campuses/:campusId/reports/:reportId/review"
     });
+    expect(routes).toContainEqual({
+      method: "get",
+      path: "/activities"
+    });
+    expect(routes).toContainEqual({
+      method: "get",
+      path: "/activities/:id"
+    });
+    expect(routes).toContainEqual({
+      method: "post",
+      path: "/activities/:id/join"
+    });
+    expect(routes).toContainEqual({
+      method: "delete",
+      path: "/activities/:id/requests/me"
+    });
+    expect(routes).toContainEqual({
+      method: "delete",
+      path: "/activities/:id/participants/me"
+    });
+    expect(routes).toContainEqual({
+      method: "get",
+      path: "/profiles/me/activities"
+    });
   });
 
   it("requires student auth for POST /reports", async () => {
     const app = createApp();
 
-    const response = await request(app).post("/reports").send({
-      campusId: "campus-001",
-      targetType: "activity",
-      targetActivityId: "activity-001",
-      reasonCode: "unsafe_activity"
+    const response = await dispatchAppRequest(app, {
+      method: "POST",
+      path: "/reports",
+      body: {
+        campusId: "campus-001",
+        targetType: "activity",
+        targetActivityId: "activity-001",
+        reasonCode: "unsafe_activity"
+      }
     });
 
-    expect(response.status).toBe(401);
-    expect(response.body).toMatchObject({
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
       error: {
         code: "AUTH_REQUIRED"
       }
@@ -71,10 +106,85 @@ describe("GET /health", () => {
   it("requires admin auth for admin report routes", async () => {
     const app = createApp();
 
-    const response = await request(app).get("/admin/campuses/campus-001/reports");
+    const response = await dispatchAppRequest(app, {
+      method: "GET",
+      path: "/admin/campuses/campus-001/reports"
+    });
 
-    expect(response.status).toBe(401);
-    expect(response.body).toMatchObject({
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "AUTH_REQUIRED"
+      }
+    });
+  });
+
+  it("requires student auth for POST /activities", async () => {
+    const app = createApp();
+
+    const response = await dispatchAppRequest(app, {
+      method: "POST",
+      path: "/activities",
+      body: {
+        title: "Study Session",
+        categoryId: "category-001",
+        scheduledDateTime: "2026-05-15T10:00:00.000Z",
+        meetingPointId: "meeting-point-001",
+        participationMode: "approval",
+        maxParticipants: 10
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "AUTH_REQUIRED"
+      }
+    });
+  });
+
+  it("requires student auth for GET /activities/:id/requests", async () => {
+    const app = createApp();
+
+    const response = await dispatchAppRequest(app, {
+      method: "GET",
+      path: "/activities/activity-001/requests"
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "AUTH_REQUIRED"
+      }
+    });
+  });
+
+  it("requires student auth for GET /activities", async () => {
+    const app = createApp();
+
+    const response = await dispatchAppRequest(app, {
+      method: "GET",
+      path: "/activities"
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "AUTH_REQUIRED"
+      }
+    });
+  });
+
+  it("requires student auth for POST /activities/:id/join", async () => {
+    const app = createApp();
+
+    const response = await dispatchAppRequest(app, {
+      method: "POST",
+      path: "/activities/activity-001/join"
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
       error: {
         code: "AUTH_REQUIRED"
       }
@@ -83,25 +193,253 @@ describe("GET /health", () => {
 });
 
 interface MockResponse {
-  statusCode?: number;
+  statusCode: number;
+  headers: Record<string, string>;
   jsonPayload?: unknown;
+  sendPayload?: unknown;
+  finished: boolean;
   status(code: number): MockResponse;
   json(payload: unknown): MockResponse;
+  send(payload?: unknown): MockResponse;
+  end(payload?: unknown): MockResponse;
+  setHeader(name: string, value: string): MockResponse;
+  getHeader(name: string): string | undefined;
 }
 
 function createMockResponse(): MockResponse {
   return {
-    statusCode: undefined,
+    statusCode: 200,
+    headers: {},
     jsonPayload: undefined,
+    sendPayload: undefined,
+    finished: false,
     status(code: number): MockResponse {
       this.statusCode = code;
       return this;
     },
     json(payload: unknown): MockResponse {
       this.jsonPayload = payload;
+      this.finished = true;
       return this;
+    },
+    send(payload?: unknown): MockResponse {
+      this.sendPayload = payload;
+      this.finished = true;
+      return this;
+    },
+    end(payload?: unknown): MockResponse {
+      this.sendPayload = payload;
+      this.finished = true;
+      return this;
+    },
+    setHeader(name: string, value: string): MockResponse {
+      this.headers[name.toLowerCase()] = value;
+      return this;
+    },
+    getHeader(name: string): string | undefined {
+      return this.headers[name.toLowerCase()];
     }
   };
+}
+
+interface DispatchRequestArgs {
+  method: string;
+  path: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+}
+
+async function dispatchAppRequest(
+  app: ReturnType<typeof createApp>,
+  args: DispatchRequestArgs
+): Promise<MockResponse> {
+  const response = createMockResponse();
+  const request = createMockRequest(app, args);
+  const expressRouter = (app as unknown as { _router?: { stack?: Array<any> } })._router;
+  const stack = expressRouter?.stack ?? [];
+
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+
+    const finish = (): void => {
+      if (!settled) {
+        settled = true;
+        resolve();
+      }
+    };
+
+    const fail = (error: unknown): void => {
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+    };
+
+    attachCompletionCallback(response, finish);
+
+    const errorLayer = stack.find((layer) => layer.handle?.length === 4);
+
+    const dispatchError = (error: unknown): void => {
+      if (!errorLayer) {
+        fail(error instanceof Error ? error : new Error("Unhandled route error"));
+        return;
+      }
+
+      try {
+        errorLayer.handle(
+          error,
+          request as Request,
+          response as unknown as Response,
+          (nextError?: unknown) => {
+            if (nextError) {
+              fail(nextError);
+              return;
+            }
+
+            finish();
+          }
+        );
+      } catch (errorFromHandler) {
+        fail(errorFromHandler);
+      }
+    };
+
+    const runLayer = (index: number): void => {
+      if (response.finished) {
+        finish();
+        return;
+      }
+
+      const layer = stack[index];
+
+      if (!layer) {
+        finish();
+        return;
+      }
+
+      if (layer.handle?.length === 4 || layer.name === "jsonParser") {
+        runLayer(index + 1);
+        return;
+      }
+
+      if (!layer.route && !layer.handle?.stack) {
+        runLayer(index + 1);
+        return;
+      }
+
+      if (layer.route && !doesRouteMatch(layer.route, request.path, request.method)) {
+        runLayer(index + 1);
+        return;
+      }
+
+      invokeLayerHandler(
+        layer.handle,
+        request,
+        response,
+        (nextError?: unknown) => {
+          if (nextError) {
+            dispatchError(nextError);
+            return;
+          }
+
+          runLayer(index + 1);
+        },
+        fail
+      );
+    };
+
+    runLayer(0);
+  });
+
+  return response;
+}
+
+function attachCompletionCallback(
+  response: MockResponse,
+  onComplete: () => void
+): void {
+  const callbackCarrier = response as MockResponse & { __onComplete?: () => void };
+  callbackCarrier.__onComplete = onComplete;
+
+  const originalJson = response.json;
+  const originalSend = response.send;
+  const originalEnd = response.end;
+
+  response.json = function json(payload: unknown): MockResponse {
+    const result = originalJson.call(this, payload);
+    callbackCarrier.__onComplete?.();
+    return result;
+  };
+
+  response.send = function send(payload?: unknown): MockResponse {
+    const result = originalSend.call(this, payload);
+    callbackCarrier.__onComplete?.();
+    return result;
+  };
+
+  response.end = function end(payload?: unknown): MockResponse {
+    const result = originalEnd.call(this, payload);
+    callbackCarrier.__onComplete?.();
+    return result;
+  };
+}
+
+function createMockRequest(
+  app: ReturnType<typeof createApp>,
+  args: DispatchRequestArgs
+): Request {
+  const normalizedHeaders = Object.fromEntries(
+    Object.entries(args.headers ?? {}).map(([key, value]) => [key.toLowerCase(), value])
+  );
+
+  return {
+    app,
+    method: args.method,
+    url: args.path,
+    originalUrl: args.path,
+    path: args.path,
+    headers: normalizedHeaders,
+    body: args.body,
+    params: {},
+    query: {},
+    baseUrl: "",
+    header(name: string): string | undefined {
+      return normalizedHeaders[name.toLowerCase()];
+    },
+    get(name: string): string | undefined {
+      return normalizedHeaders[name.toLowerCase()];
+    }
+  } as unknown as Request;
+}
+
+function invokeLayerHandler(
+  handler: (
+    request: Request,
+    response: Response,
+    next: (error?: unknown) => void
+  ) => Promise<void> | void,
+  request: Request,
+  response: MockResponse,
+  next: (error?: unknown) => void,
+  fail: (error: unknown) => void
+): void {
+  try {
+    const result = handler(request, response as unknown as Response, next);
+
+    if (result && typeof result.then === "function") {
+      result.catch(fail);
+    }
+  } catch (error) {
+    fail(error);
+  }
+}
+
+function doesRouteMatch(
+  route: { path?: string; methods?: Record<string, boolean> },
+  path: string,
+  method: string
+): boolean {
+  return route.path === path && route.methods?.[method.toLowerCase()] === true;
 }
 
 function findRouteHandler(app: ReturnType<typeof createApp>, path: string, method: string) {

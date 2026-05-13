@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { requireStudentContext } from "../../../shared/src/middleware/auth";
 import { ActivityLifecycleService } from "../services/ActivityLifecycleService";
 import { ActivityStatus, GenderPreference } from "../../../shared/src/domain/enums";
 import { AppError } from "../../../shared/src/errors/AppError";
@@ -12,13 +13,7 @@ export class ActivityController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const user = req.studentContext ?? (req as { user?: { studentAccountId?: string; selectedCampusId?: string } }).user;
-
-      if (!user || !user.studentAccountId || !user.selectedCampusId) {
-        throw new AppError("AUTH_REQUIRED", "Student authentication is required", 401, {
-          authReason: "missing_student_context"
-        });
-      }
+      const studentContext = requireCampusSelectedStudentContext(req);
 
       const {
         title,
@@ -52,8 +47,8 @@ export class ActivityController {
       }
 
       const activity = await this.activityLifecycleService.createActivity(
-        user.studentAccountId,
-        user.selectedCampusId,
+        studentContext.studentAccountId,
+        studentContext.selectedCampusId,
         {
           title,
           categoryId,
@@ -80,17 +75,14 @@ export class ActivityController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const user = req.studentContext ?? (req as { user?: { studentAccountId?: string; selectedCampusId?: string } }).user;
-      if (!user || !user.studentAccountId || !user.selectedCampusId) {
-        throw new AppError("AUTH_REQUIRED", "Student authentication is required", 401, { authReason: "missing_student_context" });
-      }
+      const studentContext = requireCampusSelectedStudentContext(req);
 
       const { id } = req.params;
       const { status } = req.body;
 
       const activity = await this.activityLifecycleService.updateActivityStatus(
-        user.studentAccountId,
-        user.selectedCampusId,
+        studentContext.studentAccountId,
+        studentContext.selectedCampusId,
         id,
         status as ActivityStatus
       );
@@ -107,17 +99,36 @@ export class ActivityController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const user = req.studentContext ?? (req as { user?: { studentAccountId?: string; selectedCampusId?: string } }).user;
-      if (!user || !user.studentAccountId || !user.selectedCampusId) {
-        throw new AppError("AUTH_REQUIRED", "Student authentication is required", 401, { authReason: "missing_student_context" });
-      }
+      const studentContext = requireCampusSelectedStudentContext(req);
 
       const { id } = req.params;
-      await this.activityLifecycleService.deleteActivity(user.studentAccountId, user.selectedCampusId, id);
+      await this.activityLifecycleService.deleteActivity(
+        studentContext.studentAccountId,
+        studentContext.selectedCampusId,
+        id
+      );
 
       res.status(204).send();
     } catch (error) {
       next(error);
     }
+  };
+}
+
+function requireCampusSelectedStudentContext(request: Request): {
+  studentAccountId: string;
+  selectedCampusId: string;
+} {
+  const studentContext = requireStudentContext(request);
+
+  if (!studentContext.selectedCampusId) {
+    throw new AppError("AUTH_REQUIRED", "A selected campus is required", 401, {
+      authReason: "missing_selected_campus"
+    });
+  }
+
+  return {
+    studentAccountId: studentContext.studentAccountId,
+    selectedCampusId: studentContext.selectedCampusId
   };
 }

@@ -8,6 +8,7 @@ export * from "./domain/enums";
 export * from "./errors/AppError";
 export * from "./errors/ErrorContract";
 export * from "./events/EventBus";
+export * from "./events/InternalEventDispatcher";
 export * from "./middleware/adminAuth";
 export * from "./middleware/auth";
 export * from "./seed/demoSeed";

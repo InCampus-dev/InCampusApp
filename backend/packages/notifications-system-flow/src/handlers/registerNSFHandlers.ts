@@ -10,10 +10,7 @@
  */
 import { ApplicationOutcomeHandler } from "./ApplicationOutcomeHandler";
 import { JoinEventHandler } from "./JoinEventHandler";
-
-interface EventBus {
-  subscribe(eventType: string, handler: (event: any) => Promise<void>): void;
-}
+import type { EventBus } from "../../../shared/src/events/EventBus";
 
 export function registerNSFHandlers(
   eventBus: EventBus,

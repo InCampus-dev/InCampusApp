@@ -29,6 +29,22 @@ describe("GET /health", () => {
     });
     expect(routes).toContainEqual({
       method: "post",
+      path: "/profiles"
+    });
+    expect(routes).toContainEqual({
+      method: "get",
+      path: "/profiles/me"
+    });
+    expect(routes).toContainEqual({
+      method: "patch",
+      path: "/profiles/me"
+    });
+    expect(routes).toContainEqual({
+      method: "patch",
+      path: "/accounts/me/consent"
+    });
+    expect(routes).toContainEqual({
+      method: "post",
       path: "/admin/campuses"
     });
     expect(routes).toContainEqual({
@@ -181,6 +197,80 @@ describe("GET /health", () => {
     const response = await dispatchAppRequest(app, {
       method: "POST",
       path: "/activities/activity-001/join"
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "AUTH_REQUIRED"
+      }
+    });
+  });
+
+  it("requires student auth for POST /profiles", async () => {
+    const app = createApp();
+
+    const response = await dispatchAppRequest(app, {
+      method: "POST",
+      path: "/profiles",
+      body: {
+        displayName: "Ada",
+        major: "Computer Science"
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "AUTH_REQUIRED"
+      }
+    });
+  });
+
+  it("requires student auth for GET /profiles/me", async () => {
+    const app = createApp();
+
+    const response = await dispatchAppRequest(app, {
+      method: "GET",
+      path: "/profiles/me"
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "AUTH_REQUIRED"
+      }
+    });
+  });
+
+  it("requires student auth for PATCH /profiles/me", async () => {
+    const app = createApp();
+
+    const response = await dispatchAppRequest(app, {
+      method: "PATCH",
+      path: "/profiles/me",
+      body: {
+        shortBio: "Updated bio"
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "AUTH_REQUIRED"
+      }
+    });
+  });
+
+  it("requires student auth for PATCH /accounts/me/consent", async () => {
+    const app = createApp();
+
+    const response = await dispatchAppRequest(app, {
+      method: "PATCH",
+      path: "/accounts/me/consent",
+      body: {
+        campusInsightSharingConsent: true
+      }
     });
 
     expect(response.statusCode).toBe(401);

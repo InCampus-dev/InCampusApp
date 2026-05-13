@@ -76,6 +76,13 @@ export enum GenderPreference {
   FemaleOnly = "female_only"
 }
 
+export enum StudentProfileGender {
+  Male = "male",
+  Female = "female",
+  Other = "other",
+  PreferNotToSay = "prefer_not_to_say"
+}
+
 export enum ParticipationMode {
   Open = "open",
   ApprovalBased = "approval_based"

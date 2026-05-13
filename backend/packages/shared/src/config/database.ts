@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { DataSource, type DataSourceOptions } from "typeorm";
 
 import { StudentAccount } from "../../../access-profile/src/entities/StudentAccount";
+import { StudentProfile } from "../../../access-profile/src/entities/StudentProfile";
 import { UniversityIdentityRule } from "../../../access-profile/src/entities/UniversityIdentityRule";
 import { Campus } from "../../../campus-administration/src/entities/Campus";
 import { CampusStructuredOption } from "../../../campus-administration/src/entities/CampusStructuredOption";
@@ -28,6 +29,7 @@ export const databaseConfig: DataSourceOptions = {
   logging: process.env.TYPEORM_LOGGING === "true",
   entities: [
     StudentAccount,
+    StudentProfile,
     UniversityIdentityRule,
     Campus,
     CampusStructuredOption,

@@ -44,7 +44,10 @@ describe("CampusInsightConsentService", () => {
     const studentAccountStore = [createStudentAccount({ studentAccountId: "student-001" })];
     const studentAccountRepo = createStudentAccountRepo(studentAccountStore);
     const consentService = new CampusInsightConsentService(studentAccountRepo);
-    const campusAssociationService = new CampusAssociationService(studentAccountRepo);
+    const campusAssociationService = new CampusAssociationService(
+      studentAccountRepo,
+      createCampusRepo([{ campusId: "campus-001", activationStatus: true }])
+    );
 
     await consentService.updateOwnConsent("student-001", false);
     await campusAssociationService.selectCampus("student-001", "campus-001");
@@ -53,6 +56,24 @@ describe("CampusInsightConsentService", () => {
     expect(studentAccountStore[0]?.selectedCampusId).toBe("campus-001");
   });
 });
+
+function createCampusRepo(campuses: Array<{ campusId: string; activationStatus: boolean }>) {
+  return {
+    async findOne(options: any): Promise<{ campusId: string; activationStatus: boolean } | null> {
+      const where = options?.where ?? {};
+      return (
+        campuses.find(
+          (c) =>
+            (where.campusId === undefined || c.campusId === where.campusId) &&
+            (where.activationStatus === undefined || c.activationStatus === where.activationStatus)
+        ) ?? null
+      );
+    },
+    async find(): Promise<typeof campuses> {
+      return campuses.filter((c) => c.activationStatus);
+    }
+  } as any;
+}
 
 function createStudentAccountRepo(studentAccountStore: StudentAccount[]): StudentAccountRepo {
   return {

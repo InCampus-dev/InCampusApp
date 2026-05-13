@@ -309,7 +309,7 @@ describe("GET /health", () => {
 
     createApp({ eventBus: eventBus as any });
 
-    expect(eventBus.subscribe).toHaveBeenCalledTimes(6);
+    expect(eventBus.subscribe).toHaveBeenCalledTimes(7);
     expect(eventBus.subscribe).toHaveBeenCalledWith(
       "DirectJoinCompleted",
       expect.any(Function)
@@ -332,6 +332,10 @@ describe("GET /health", () => {
     );
     expect(eventBus.subscribe).toHaveBeenCalledWith(
       "JoinedParticipantLeft",
+      expect.any(Function)
+    );
+    expect(eventBus.subscribe).toHaveBeenCalledWith(
+      "ActivityReminderDue",
       expect.any(Function)
     );
   });

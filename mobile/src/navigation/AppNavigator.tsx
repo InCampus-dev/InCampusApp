@@ -24,7 +24,7 @@ export type RootStackParamList = {
   ConsentSettings: undefined;
   ActivityFeed: undefined;
   Home: undefined;
-  ActivityDetails: { activityId: string };
+  ActivityDetails: { activityId: string; canManageRequests?: boolean };
   CreateActivity: undefined;
   ManageRequests: { activityId?: string } | undefined;
   ManageJoinRequests: { activityId?: string } | undefined;
@@ -59,6 +59,22 @@ function ActivityDetailsHeaderAction({
     <Pressable onPress={() => navigation.navigate('ManageRequests', { activityId })}>
       <Text style={styles.headerActionText}>Requests</Text>
     </Pressable>
+  );
+}
+
+function renderActivityDetailsHeaderRight(
+  route: { params?: RootStackParamList['ActivityDetails'] },
+  navigation: any,
+) {
+  if (route.params?.canManageRequests !== true || !route.params.activityId) {
+    return undefined;
+  }
+
+  return () => (
+    <ActivityDetailsHeaderAction
+      activityId={route.params.activityId}
+      navigation={navigation}
+    />
   );
 }
 
@@ -110,12 +126,7 @@ export default function AppNavigator() {
           component={ActivityDetailsScreen}
           options={({ navigation, route }) => ({
             title: 'Activity Details',
-            headerRight: () => (
-              <ActivityDetailsHeaderAction
-                activityId={route.params.activityId}
-                navigation={navigation}
-              />
-            ),
+            headerRight: renderActivityDetailsHeaderRight(route, navigation),
           })}
         />
         <Stack.Screen

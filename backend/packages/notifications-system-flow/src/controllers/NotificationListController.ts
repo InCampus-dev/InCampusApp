@@ -11,6 +11,7 @@ interface NotificationListItem {
   notificationTitle: string;
   notificationMessage: string;
   relatedActivityId: string | null;
+  triggeringAccountId: string | null;
   targetContextType: string;
   createdAt: string;
 }
@@ -46,6 +47,7 @@ export class NotificationListController {
       notificationTitle: record.notificationTitle,
       notificationMessage: record.notificationMessage,
       relatedActivityId: record.relatedActivityId ?? null,
+      triggeringAccountId: record.triggeringAccountId ?? null,
       targetContextType: record.targetContextType,
       createdAt:
         record.createdAt instanceof Date

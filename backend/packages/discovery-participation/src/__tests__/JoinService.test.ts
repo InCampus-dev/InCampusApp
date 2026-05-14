@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from "vitest";
+import { FindOperator } from "typeorm";
 import type { BlockRelationship } from "../../../safety-moderation/src/entities/BlockRelationship";
 import { JoinService } from "../services/JoinService";
 import { ActivityStatus, ParticipationMode, ParticipationRecordType, ParticipationStatus } from "../../../shared/src/domain/enums";
@@ -146,10 +147,89 @@ describe("JoinService", () => {
     await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("Activity is not open for joining");
   });
 
-  it("should fail if student has already joined or requested", async () => {
-    const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Open };
+  it("allows a new request when only a declined historical request exists for the same activity and student", async () => {
+    const activity = {
+      activityId: "act-1",
+      campusId: "camp-1",
+      hostAccountId: "host-1",
+      status: ActivityStatus.Open,
+      participationMode: ParticipationMode.ApprovalBased,
+      currentRequestCount: 0,
+      maxRequests: 10
+    };
     (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
-    mockManager.findOne.mockResolvedValue({ participationId: "existing-1" }); // Utente ha già joinato
+    mockManager.findOne.mockImplementation(
+      createParticipationFindOneMock([
+        {
+          participationId: "declined-1",
+          activityId: "act-1",
+          studentAccountId: "student-1",
+          recordType: ParticipationRecordType.Request,
+          status: ParticipationStatus.Declined
+        }
+      ])
+    );
+
+    const mockParticipation = { participationId: "part-3" } as any;
+    mockManager.create.mockReturnValue(mockParticipation);
+    mockManager.save.mockImplementation(async (entity: any, instance: any) => instance || mockParticipation);
+
+    const result = await joinService.joinActivity("student-1", "camp-1", "act-1");
+
+    expect(result).toBe(mockParticipation);
+    expect(mockParticipation.recordType).toBe(ParticipationRecordType.Request);
+    expect(mockParticipation.status).toBe(ParticipationStatus.Pending);
+    expect(activity.currentRequestCount).toBe(1);
+  });
+
+  it("should fail if student already has a pending request for the activity", async () => {
+    const activity = {
+      activityId: "act-1",
+      campusId: "camp-1",
+      hostAccountId: "host-1",
+      status: ActivityStatus.Open,
+      participationMode: ParticipationMode.ApprovalBased,
+      currentRequestCount: 1,
+      maxRequests: 10
+    };
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+    mockManager.findOne.mockImplementation(
+      createParticipationFindOneMock([
+        {
+          participationId: "pending-1",
+          activityId: "act-1",
+          studentAccountId: "student-1",
+          recordType: ParticipationRecordType.Request,
+          status: ParticipationStatus.Pending
+        }
+      ])
+    );
+
+    await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("already joined");
+  });
+
+  it("should fail if student already has a confirmed participation for the activity", async () => {
+    const activity = {
+      activityId: "act-1",
+      campusId: "camp-1",
+      hostAccountId: "host-1",
+      status: ActivityStatus.Open,
+      participationMode: ParticipationMode.Open,
+      currentParticipantCount: 1,
+      maxParticipants: 5
+    };
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+    mockManager.findOne.mockImplementation(
+      createParticipationFindOneMock([
+        {
+          participationId: "confirmed-1",
+          activityId: "act-1",
+          studentAccountId: "student-1",
+          recordType: ParticipationRecordType.Participation,
+          status: ParticipationStatus.Confirmed
+        }
+      ])
+    );
 
     await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("already joined");
   });
@@ -177,4 +257,31 @@ function createBlockRelationship(
     createdAt: new Date("2026-05-10T00:00:00.000Z"),
     ...overrides
   } as BlockRelationship;
+}
+
+function createParticipationFindOneMock(records: Array<Record<string, unknown>>) {
+  return async (_entity: unknown, options: { where: Record<string, unknown> | Record<string, unknown>[] }) => {
+    const whereClauses = Array.isArray(options.where) ? options.where : [options.where];
+
+    return (
+      records.find((record) =>
+        whereClauses.some((whereClause) =>
+          Object.entries(whereClause).every(([field, expectedValue]) =>
+            matchesWhereValue(record[field], expectedValue)
+          )
+        )
+      ) ?? null
+    );
+  };
+}
+
+function matchesWhereValue(actualValue: unknown, expectedValue: unknown): boolean {
+  if (expectedValue instanceof FindOperator) {
+    if (expectedValue.type === "not") {
+      return actualValue !== expectedValue.value;
+    }
+    return false;
+  }
+
+  return actualValue === expectedValue;
 }

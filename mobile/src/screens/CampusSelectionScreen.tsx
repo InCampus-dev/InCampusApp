@@ -40,7 +40,7 @@ export default function CampusSelectionScreen({ navigation }: { navigation: any 
 
   async function fetchCampuses() {
     try {
-      const response = await api.get('/campuses');
+      const response = await api.get<Campus[]>('/campuses');
       const list: Campus[] = response.data;
       // A.1 fix: client-side defensive filter — only show campuses confirmed active
       const activeCampuses = list.filter((c) => c.activationStatus === true);

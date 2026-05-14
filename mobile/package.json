@@ -2,8 +2,30 @@
   "name": "@incampus/mobile",
   "version": "0.1.0",
   "private": true,
-  "description": "Folder-only React Native/Expo shell for the InCampus alpha sprint.",
+  "main": "index.js",
+  "description": "Expo-based mobile shell for the InCampus MVP screens.",
   "scripts": {
-    "setup:expo": "echo \"Run npx create-expo-app@latest mobile when the team is ready to initialize Expo dependencies.\""
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-navigation/native": "^6.1.18",
+    "@react-navigation/native-stack": "^6.11.0",
+    "expo": "~51.0.39",
+    "expo-status-bar": "~1.12.1",
+    "react": "18.2.0",
+    "react-native": "0.74.5",
+    "react-native-gesture-handler": "~2.16.1",
+    "react-native-safe-area-context": "4.10.5",
+    "react-native-screens": "3.31.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@types/react": "~18.2.79",
+    "babel-preset-expo": "~11.0.10",
+    "typescript": "^5.7.3"
   }
 }

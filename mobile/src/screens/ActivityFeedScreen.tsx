@@ -2,8 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import api from '../services/api';
 
+interface ActivityFeedItem {
+  activityId: string;
+  title: string;
+  scheduledDateTime: string;
+  categoryLabel: string;
+  meetingPointLabel: string;
+  currentParticipantCount: number;
+  maxParticipants: number;
+}
+
 export const ActivityFeedScreen = ({ navigation }: any) => {
-  const [activities, setActivities] = useState<any[]>([]);
+  const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,7 +24,9 @@ export const ActivityFeedScreen = ({ navigation }: any) => {
     try {
       // Note: Backend requires campusId to filter activities correctly. 
       // Using 'campus-abc' as default for testing until the real auth context is connected.
-      const response = await api.get('/activities', { params: { campusId: 'campus-abc' } });
+      const response = await api.get<ActivityFeedItem[]>('/activities', {
+        params: { campusId: 'campus-abc' },
+      });
       setActivities(response.data);
     } catch (error) {
       console.error('Error fetching activities:', error);

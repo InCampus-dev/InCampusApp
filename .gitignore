@@ -27,3 +27,4 @@ dist/
 build/
 coverage/
 .tsbuildinfo
+.expo/

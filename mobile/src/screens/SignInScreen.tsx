@@ -15,6 +15,11 @@ import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../services/api";
 
+interface SignInResponse {
+  accessToken: string;
+  selectedCampusId: string | null;
+}
+
 const SignInScreen: React.FC = () => {
   const navigation = useNavigation<any>();
 
@@ -33,7 +38,7 @@ const SignInScreen: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await api.post("/auth/signin", {
+      const response = await api.post<SignInResponse>("/auth/signin", {
         universityEmail: email.trim(),
         password
       });

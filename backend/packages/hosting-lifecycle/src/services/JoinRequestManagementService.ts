@@ -8,6 +8,7 @@ import {
   type JoinRequestDeclinedEvent
 } from "../../../shared/src/events/EventBus";
 import { executeTransaction, findWithPessimisticWriteLock } from "../../../shared/src/db/transaction";
+import { findOtherActiveByActivityAndStudent } from "../repositories/ParticipationRepo";
 
 export interface JoinRequestEventDispatcherPort {
   dispatch(eventName: string, payload: any): Promise<void>;
@@ -32,6 +33,7 @@ export class JoinRequestManagementService {
     return participationRepo.find({
       where: {
         activityId,
+        recordType: ParticipationRecordType.Request,
         status: ParticipationStatus.Pending
       }
     });
@@ -59,13 +61,29 @@ export class JoinRequestManagementService {
           where: { participationId, activityId }
         });
         if (!participation) throw new Error("Join request not found");
-        if (participation.status !== ParticipationStatus.Pending) {
+        if (
+          participation.recordType !== ParticipationRecordType.Request ||
+          participation.status !== ParticipationStatus.Pending
+        ) {
           throw new Error("This request is not pending");
         }
         let eventName: "JoinRequestApproved" | "JoinRequestDeclined";
 
         // 3. Process decision
         if (decision === "approve") {
+          const duplicateActiveParticipation = await findOtherActiveByActivityAndStudent(
+            {
+              findOne: (options) => manager.findOne(Participation, options)
+            },
+            activityId,
+            participation.studentAccountId,
+            participation.participationId
+          );
+
+          if (duplicateActiveParticipation) {
+            throw new Error("Cannot approve request: Student already has an active participation record");
+          }
+
           if (activity.currentParticipantCount >= activity.maxParticipants) {
             throw new Error("Cannot approve request: Activity is already full");
           }

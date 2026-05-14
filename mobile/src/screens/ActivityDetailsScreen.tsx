@@ -2,15 +2,31 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Button, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import api from '../services/api';
 
+interface ActivityDetailsViewModel {
+  activityId: string;
+  title: string;
+  description: string;
+  meetingPointLabel: string;
+  categoryLabel: string;
+  currentParticipantCount: number;
+  maxParticipants: number;
+  hostDisplayName?: string;
+  hostShortBio?: string;
+  genderPreference: 'all' | 'male_only' | 'female_only';
+  participationMode: 'open' | 'approval_based';
+}
+
 export const ActivityDetailsScreen = ({ route, navigation }: any) => {
   const { activityId } = route.params;
-  const [activity, setActivity] = useState<any>(null);
+  const [activity, setActivity] = useState<ActivityDetailsViewModel | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchActivityDetails = async () => {
       try {
-        const response = await api.get(`/activities/${activityId}`, { params: { campusId: 'campus-abc' } });
+        const response = await api.get<ActivityDetailsViewModel>(`/activities/${activityId}`, {
+          params: { campusId: 'campus-abc' },
+        });
         setActivity(response.data);
       } catch (error) {
         console.error('Error fetching activity details:', error);
@@ -42,6 +58,14 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
     );
   }
 
+  if (!activity) {
+    return (
+      <View style={styles.centered}>
+        <Text>Activity unavailable.</Text>
+      </View>
+    );
+  }
+
   const isFull = activity.currentParticipantCount >= activity.maxParticipants;
 
   return (
@@ -58,7 +82,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
           <Text style={styles.hostBio}>"{activity.hostShortBio}"</Text>
         )}
         <Text style={styles.infoText}>⚧️ Gender Pref: {activity.genderPreference === 'all' ? 'All' : (activity.genderPreference === 'male_only' ? 'Male Only' : 'Female Only')}</Text>
-        <Text style={styles.infoText}>� Mode: {activity.participationMode === 'open' ? 'Direct Join' : 'Approval Required'}</Text>
+        <Text style={styles.infoText}>Mode: {activity.participationMode === 'open' ? 'Direct Join' : 'Approval Required'}</Text>
       </View>
 
       <View style={styles.buttonContainer}>

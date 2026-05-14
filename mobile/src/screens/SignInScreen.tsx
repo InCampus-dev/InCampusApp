@@ -48,12 +48,14 @@ const SignInScreen: React.FC = () => {
       await AsyncStorage.setItem("authToken", accessToken);
       if (selectedCampusId) {
         await AsyncStorage.setItem("selectedCampusId", selectedCampusId);
+      } else {
+        await AsyncStorage.removeItem("selectedCampusId");
       }
 
       if (!selectedCampusId) {
         navigation.reset({
           index: 0,
-          routes: [{ name: "CampusSelection", params: { email: email.trim(), password } }]
+          routes: [{ name: "CampusSelection" }]
         });
       } else {
         navigation.reset({

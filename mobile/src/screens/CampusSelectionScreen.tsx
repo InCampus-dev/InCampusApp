@@ -19,14 +19,11 @@ interface Campus {
   activationStatus: boolean;
 }
 
-export default function CampusSelectionScreen({ navigation, route }: { navigation: any; route: any }) {
+export default function CampusSelectionScreen({ navigation }: { navigation: any }) {
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
-  const onboardingEmail = route?.params?.email as string | undefined;
-  const onboardingPassword = route?.params?.password as string | undefined;
 
   // A.4 fix: in-screen auth token check — redirect to SignIn if token is missing
   useEffect(() => {
@@ -67,41 +64,14 @@ export default function CampusSelectionScreen({ navigation, route }: { navigatio
     }
   }
 
-  async function refreshTokenAfterCampusSelection(): Promise<boolean> {
-    if (!onboardingEmail || !onboardingPassword) {
-      return false;
-    }
-    try {
-      const reAuthResponse = await api.post<{
-        accessToken: string;
-        selectedCampusId: string | null;
-      }>('/auth/signin', {
-        universityEmail: onboardingEmail,
-        password: onboardingPassword,
-      });
-      const { accessToken, selectedCampusId: newCampusId } = reAuthResponse.data;
-      await AsyncStorage.setItem('authToken', accessToken);
-      if (newCampusId) {
-        await AsyncStorage.setItem('selectedCampusId', newCampusId);
-      }
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   async function handleConfirm() {
     if (!selectedId) return;
     setSubmitting(true);
     try {
       await api.patch('/accounts/me/campus', { campusId: selectedId });
-
-      // T07: re-authenticate to get a fresh JWT with the selected campusId,
-      // so campus-scoped routes don't fail with missing_selected_campus
-      const refreshed = await refreshTokenAfterCampusSelection();
-      if (!refreshed) {
-        await AsyncStorage.setItem('selectedCampusId', selectedId);
-      }
+      await AsyncStorage.setItem('selectedCampusId', selectedId);
+      // TODO: Replace this client-side storage fallback once the backend exposes
+      // a secure way to refresh the authenticated token after campus selection.
 
       try {
         await api.get('/profiles/me');

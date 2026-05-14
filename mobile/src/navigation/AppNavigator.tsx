@@ -19,7 +19,7 @@ import SignUpScreen from '../screens/SignUpScreen';
 export type RootStackParamList = {
   SignIn: undefined;
   SignUp: undefined;
-  CampusSelection: { email?: string; password?: string } | undefined;
+  CampusSelection: undefined;
   ProfileSetup: undefined;
   ConsentSettings: undefined;
   ActivityFeed: undefined;

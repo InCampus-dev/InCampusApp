@@ -1,109 +1,193 @@
-import { Mock, beforeEach, describe, expect, it, vi } from "vitest";
-
-import { ParticipationStatus, ParticipationRecordType } from "../../../shared/src/domain/enums";
+import { JoinRequestManagementService, JoinRequestEventDispatcherPort } from "../services/JoinRequestManagementService";
+import { Activity } from "../entities/Activity";
+import { Participation } from "../entities/Participation";
+import { ActivityStatus, ParticipationRecordType, ParticipationStatus } from "../../../shared/src/domain/enums";
 import { executeTransaction, findWithPessimisticWriteLock } from "../../../shared/src/db/transaction";
-import { JoinRequestManagementService } from "../services/JoinRequestManagementService";
 
-vi.mock("../../../shared/src/db/transaction", () => ({
-  executeTransaction: vi.fn(),
-  findWithPessimisticWriteLock: vi.fn()
+// Mock dei transaction helper
+jest.mock("../../../shared/src/db/transaction", () => ({
+  executeTransaction: jest.fn(),
+  findWithPessimisticWriteLock: jest.fn(),
 }));
 
 describe("JoinRequestManagementService", () => {
   let service: JoinRequestManagementService;
-
-  const mockManager = {
-    findOne: vi.fn(),
-    save: vi.fn()
-  };
-
-  const mockDataSource = {} as any;
-  const mockEventDispatcher = { dispatch: vi.fn() };
+  let mockDataSource: any;
+  let mockEventDispatcher: jest.Mocked<JoinRequestEventDispatcherPort>;
+  let mockManager: any;
+  let mockActivityRepo: any;
+  let mockParticipationRepo: any;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockActivityRepo = {
+      findOne: jest.fn(),
+    };
+    mockParticipationRepo = {
+      find: jest.fn(),
+    };
 
-    (executeTransaction as Mock).mockImplementation(async (_dataSource: any, callback: any) => {
-      return await callback(mockManager);
+    mockManager = {
+      findOne: jest.fn(),
+      save: jest.fn(),
+    };
+
+    // Mocking Data Source to return the respective repository mock
+    mockDataSource = {
+      getRepository: jest.fn((entity) => {
+        if (entity === Activity) return mockActivityRepo;
+        if (entity === Participation) return mockParticipationRepo;
+      }),
+    };
+
+    // Simuliamo l'esecuzione della transazione passandogli subito il nostro mockManager
+    (executeTransaction as jest.Mock).mockImplementation(async (ds, cb) => {
+      return await cb(mockManager);
     });
 
-    service = new JoinRequestManagementService(
-      mockDataSource,
-      mockEventDispatcher as any
-    );
+    mockEventDispatcher = {
+      dispatch: jest.fn().mockResolvedValue(undefined),
+    };
+
+    service = new JoinRequestManagementService(mockDataSource, mockEventDispatcher);
   });
 
-  it("emits JoinRequestApproved after a successful approval", async () => {
-    const activity = {
-      activityId: "activity-001",
-      hostAccountId: "host-001",
-      maxParticipants: 4,
-      currentParticipantCount: 2,
-      currentRequestCount: 1
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe("getPendingRequests", () => {
+    it("should return pending requests if user is host", async () => {
+      mockActivityRepo.findOne.mockResolvedValue({ activityId: "act-1", hostAccountId: "host-1" });
+      const mockRequests = [{ participationId: "req-1" }, { participationId: "req-2" }];
+      mockParticipationRepo.find.mockResolvedValue(mockRequests);
+
+      const result = await service.getPendingRequests("host-1", "act-1");
+
+      expect(result).toEqual(mockRequests);
+      expect(mockParticipationRepo.find).toHaveBeenCalledWith({
+        where: { activityId: "act-1", status: ParticipationStatus.Pending },
+      });
+    });
+
+    it("should throw if activity not found", async () => {
+      mockActivityRepo.findOne.mockResolvedValue(null);
+      await expect(service.getPendingRequests("host-1", "act-1")).rejects.toThrow("Activity not found");
+    });
+
+    it("should throw if user is not host", async () => {
+      mockActivityRepo.findOne.mockResolvedValue({ activityId: "act-1", hostAccountId: "host-2" });
+      await expect(service.getPendingRequests("host-1", "act-1")).rejects.toThrow("Unauthorized");
+    });
+  });
+
+  describe("reviewJoinRequest", () => {
+    const defaultActivity = {
+      activityId: "act-1",
+      hostAccountId: "host-1",
+      currentParticipantCount: 0,
+      maxParticipants: 5,
+      currentRequestCount: 1,
+      status: ActivityStatus.Open,
     };
-    const participation = {
-      participationId: "participation-001",
-      activityId: "activity-001",
-      studentAccountId: "student-001",
+
+    const defaultParticipation = {
+      participationId: "req-1",
+      activityId: "act-1",
       status: ParticipationStatus.Pending,
-      recordType: ParticipationRecordType.Request
+      recordType: ParticipationRecordType.Request,
     };
 
-    (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(activity);
-    mockManager.findOne.mockResolvedValueOnce(participation);
-    mockManager.save.mockResolvedValueOnce(activity);
-    mockManager.save.mockResolvedValueOnce(participation);
+    it("should successfully approve a pending request and update counts", async () => {
+      const activity = { ...defaultActivity };
+      const participation = { ...defaultParticipation };
 
-    await service.reviewJoinRequest("host-001", "activity-001", "participation-001", "approve");
+      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+      mockManager.findOne.mockResolvedValue(participation);
+      mockManager.save.mockImplementation(async (entity: any, instance: any) => instance);
 
-    expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith(
-      "JoinRequestApproved",
-      expect.objectContaining({
-        eventId: expect.any(String),
+      const result = await service.reviewJoinRequest("host-1", "act-1", "req-1", "approve");
+
+      expect(result.status).toBe(ParticipationStatus.Confirmed);
+      expect(result.recordType).toBe(ParticipationRecordType.Participation);
+      expect(activity.currentParticipantCount).toBe(1);
+      expect(activity.currentRequestCount).toBe(0);
+      expect(mockManager.save).toHaveBeenCalledWith(Activity, activity);
+      expect(mockManager.save).toHaveBeenCalledWith(Participation, participation);
+      expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith("JoinRequestApproved", expect.objectContaining({
         eventType: "JoinRequestApproved",
-        occurredAt: expect.any(String),
-        activityId: "activity-001",
-        triggeringAccountId: "host-001",
-        participationId: "participation-001",
-        outcome: "approved"
-      })
-    );
-  });
+        outcome: "approved",
+      }));
+    });
 
-  it("emits JoinRequestDeclined after a successful decline", async () => {
-    const activity = {
-      activityId: "activity-001",
-      hostAccountId: "host-001",
-      maxParticipants: 4,
-      currentParticipantCount: 2,
-      currentRequestCount: 1
-    };
-    const participation = {
-      participationId: "participation-001",
-      activityId: "activity-001",
-      studentAccountId: "student-001",
-      status: ParticipationStatus.Pending,
-      recordType: ParticipationRecordType.Request
-    };
+    it("should update activity status to Full if maxParticipants reached after approval", async () => {
+      const activity = { ...defaultActivity, currentParticipantCount: 4, maxParticipants: 5 };
+      const participation = { ...defaultParticipation };
 
-    (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(activity);
-    mockManager.findOne.mockResolvedValueOnce(participation);
-    mockManager.save.mockResolvedValueOnce(activity);
-    mockManager.save.mockResolvedValueOnce(participation);
+      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+      mockManager.findOne.mockResolvedValue(participation);
+      mockManager.save.mockImplementation(async (entity: any, instance: any) => instance);
 
-    await service.reviewJoinRequest("host-001", "activity-001", "participation-001", "decline");
+      await service.reviewJoinRequest("host-1", "act-1", "req-1", "approve");
 
-    expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith(
-      "JoinRequestDeclined",
-      expect.objectContaining({
-        eventId: expect.any(String),
+      expect(activity.currentParticipantCount).toBe(5);
+      expect(activity.status).toBe(ActivityStatus.Full); // Regola coperta!
+    });
+
+    it("should successfully decline a pending request without changing participant counts", async () => {
+      const activity = { ...defaultActivity };
+      const participation = { ...defaultParticipation };
+
+      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+      mockManager.findOne.mockResolvedValue(participation);
+      mockManager.save.mockImplementation(async (entity: any, instance: any) => instance);
+
+      const result = await service.reviewJoinRequest("host-1", "act-1", "req-1", "decline");
+
+      expect(result.status).toBe(ParticipationStatus.Declined);
+      expect(result.recordType).toBe(ParticipationRecordType.Request); // Rimane request
+      expect(activity.currentParticipantCount).toBe(0); // Nessun nuovo partecipante
+      expect(activity.currentRequestCount).toBe(0); // Ma la coda delle request scende
+      expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith("JoinRequestDeclined", expect.objectContaining({
         eventType: "JoinRequestDeclined",
-        occurredAt: expect.any(String),
-        activityId: "activity-001",
-        triggeringAccountId: "host-001",
-        participationId: "participation-001",
-        outcome: "declined"
-      })
-    );
+        outcome: "declined",
+      }));
+    });
+
+    it("should throw if trying to approve but activity is already full", async () => {
+      const activity = { ...defaultActivity, currentParticipantCount: 5, maxParticipants: 5 };
+      const participation = { ...defaultParticipation };
+
+      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+      mockManager.findOne.mockResolvedValue(participation);
+
+      await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve"))
+        .rejects.toThrow("Cannot approve request: Activity is already full");
+    });
+
+    it("should throw if activity not found", async () => {
+      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(null);
+      await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("Activity not found");
+    });
+
+    it("should throw if user is not host", async () => {
+      const activity = { ...defaultActivity, hostAccountId: "host-2" };
+      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+      await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("Unauthorized");
+    });
+
+    it("should throw if participation request not found", async () => {
+      const activity = { ...defaultActivity };
+      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+      mockManager.findOne.mockResolvedValue(null);
+      await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("Join request not found");
+    });
+
+    it("should throw if request is not pending", async () => {
+      const activity = { ...defaultActivity };
+      const participation = { ...defaultParticipation, status: ParticipationStatus.Declined };
+      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+      mockManager.findOne.mockResolvedValue(participation);
+      await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("This request is not pending");
+    });
   });
 });

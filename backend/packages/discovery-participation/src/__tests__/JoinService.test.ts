@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from "vitest";
+import type { BlockRelationship } from "../../../safety-moderation/src/entities/BlockRelationship";
 import { JoinService } from "../services/JoinService";
 import { ActivityStatus, ParticipationMode, ParticipationRecordType, ParticipationStatus } from "../../../shared/src/domain/enums";
 import { executeTransaction, findWithPessimisticWriteLock } from "../../../shared/src/db/transaction";
+import { SMBlockLookupAdapter } from "../services/SMBlockLookupAdapter";
 
 // Mock dei transaction helper del database
 vi.mock("../../../shared/src/db/transaction", () => ({
@@ -121,6 +123,23 @@ describe("JoinService", () => {
     await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow();
   });
 
+  it("blocks join when the real SM lookup finds a reciprocal block relationship", async () => {
+    const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1" };
+    const realBlockLookup = new SMBlockLookupAdapter({
+      find: vi.fn().mockResolvedValue([
+        createBlockRelationship({
+          initiatorAccountId: "host-1",
+          blockedAccountId: "student-1"
+        })
+      ])
+    } as any);
+    const service = new JoinService(mockDataSource, realBlockLookup, mockEventDispatcher);
+
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+
+    await expect(service.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow();
+  });
+
   it("should fail if activity is not Open", async () => {
     const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Full };
     (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
@@ -147,3 +166,15 @@ describe("JoinService", () => {
     await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("maximum number of pending requests");
   });
 });
+
+function createBlockRelationship(
+  overrides: Partial<BlockRelationship> = {}
+): BlockRelationship {
+  return {
+    blockId: "block-001",
+    initiatorAccountId: "student-1",
+    blockedAccountId: "host-1",
+    createdAt: new Date("2026-05-10T00:00:00.000Z"),
+    ...overrides
+  } as BlockRelationship;
+}

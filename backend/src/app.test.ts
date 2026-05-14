@@ -54,6 +54,10 @@ describe("GET /health", () => {
       path: "/admin/campuses"
     });
     expect(routes).toContainEqual({
+      method: "get",
+      path: "/admin/campuses/:campusId/student-insights"
+    });
+    expect(routes).toContainEqual({
       method: "post",
       path: "/blocks"
     });
@@ -139,6 +143,22 @@ describe("GET /health", () => {
     const response = await dispatchAppRequest(app, {
       method: "GET",
       path: "/admin/campuses/campus-001/reports"
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "AUTH_REQUIRED"
+      }
+    });
+  });
+
+  it("requires admin auth for campus student insights routes", async () => {
+    const app = createApp();
+
+    const response = await dispatchAppRequest(app, {
+      method: "GET",
+      path: "/admin/campuses/campus-001/student-insights"
     });
 
     expect(response.statusCode).toBe(401);

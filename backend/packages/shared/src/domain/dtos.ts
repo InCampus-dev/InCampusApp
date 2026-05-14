@@ -69,6 +69,41 @@ export interface CampusInsightConsentDto {
   campusInsightSharingConsent: boolean;
 }
 
+export interface ConsentBasedStudentInsightDto {
+  campusId: CampusId;
+  students: ConsentBasedStudentInsightStudentDto[];
+}
+
+export interface ConsentBasedStudentInsightStudentDto {
+  studentAccountId: StudentAccountId;
+  profile: ConsentBasedStudentInsightProfileDto | null;
+  hostedActivities: ConsentBasedStudentHostedActivityDto[];
+  participations: ConsentBasedStudentParticipationDto[];
+}
+
+export interface ConsentBasedStudentInsightProfileDto {
+  displayName: string;
+  major: string;
+  interests: string[];
+}
+
+export interface ConsentBasedStudentHostedActivityDto {
+  activityId: ActivityId;
+  title: string;
+  categoryLabel: string;
+  scheduledDateTime: string;
+  status: ActivityStatus;
+}
+
+export interface ConsentBasedStudentParticipationDto {
+  participationId: ParticipationId;
+  activityId: ActivityId;
+  activityTitle: string;
+  recordType: ParticipationRecordType;
+  status: ParticipationStatus;
+  createdAt: string;
+}
+
 export interface AuthenticatedResponseDto {
   accessToken: string;
   studentAccountId: StudentAccountId;

@@ -5,7 +5,14 @@ import { Repository } from "typeorm";
 import {
   type ActivityReminderDueEvent
 } from "../../../shared/src/events/EventBus";
-import { NotificationType, PlatformAccessStatus, TargetContextType } from "../../../shared/src/domain/enums";
+import {
+  ActivityStatus,
+  NotificationType,
+  ParticipationRecordType,
+  ParticipationStatus,
+  PlatformAccessStatus,
+  TargetContextType
+} from "../../../shared/src/domain/enums";
 import { NotificationComposer, type ComposeInput } from "../services/NotificationComposer";
 import { NotificationDispatcher } from "../services/NotificationDispatcher";
 import type { ActivityContext } from "../services/RecipientResolutionService";
@@ -31,13 +38,16 @@ export class ReminderHandler {
       return;
     }
 
-    const reminderEligibleStatuses = ["open", "full"];
-    if (!reminderEligibleStatuses.includes(activity.status)) {
+    if (activity.status !== ActivityStatus.Open && activity.status !== ActivityStatus.Full) {
       return;
     }
 
     const joinedParticipants = await this.participationRepo.find({
-      where: { activityId: event.activityId, participationStatus: "confirmed" }
+      where: {
+        activityId: event.activityId,
+        recordType: ParticipationRecordType.Participation,
+        status: ParticipationStatus.Confirmed
+      }
     });
     if (joinedParticipants.length === 0) {
       return;

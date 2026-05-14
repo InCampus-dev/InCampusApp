@@ -54,15 +54,18 @@ const SignUpScreen: React.FC = () => {
 
       setStep("verify");
     } catch (err: any) {
-      const serverError = err?.response?.data?.error;
-      switch (serverError) {
-        case "UnsupportedEmailDomain":
+      const errorCode = err?.response?.data?.error?.code;
+      switch (errorCode) {
+        case "UNSUPPORTED_EMAIL_DOMAIN":
           setErrorMessage(
             "This email domain is not supported. Please use your university email."
           );
           break;
-        case "EmailAlreadyRegistered":
+        case "CONFLICT":
           setErrorMessage("An account with this email already exists.");
+          break;
+        case "VALIDATION_ERROR":
+          setErrorMessage("Please check your details and try again.");
           break;
         default:
           setErrorMessage("Registration failed. Please try again.");
@@ -83,20 +86,24 @@ const SignUpScreen: React.FC = () => {
     setLoading(true);
     try {
       await api.post("/auth/verify-email", {
-        verificationToken: verificationToken.trim()
+        email: email.trim(),
+        token: verificationToken.trim()
       });
 
       Alert.alert("Account Verified", "Your account has been activated. Please sign in.", [
         { text: "OK", onPress: () => navigation.navigate("SignIn") }
       ]);
     } catch (err: any) {
-      const serverError = err?.response?.data?.error;
-      switch (serverError) {
-        case "InvalidVerificationToken":
+      const errorCode = err?.response?.data?.error?.code;
+      switch (errorCode) {
+        case "INVALID_VERIFICATION_TOKEN":
           setErrorMessage("Invalid verification code. Please check and try again.");
           break;
-        case "VerificationExpired":
-          setErrorMessage("Verification code has expired. Please request a new one.");
+        case "NOT_FOUND":
+          setErrorMessage("Account not found. Please sign up again.");
+          break;
+        case "VALIDATION_ERROR":
+          setErrorMessage("Please check your verification details and try again.");
           break;
         default:
           setErrorMessage("Verification failed. Please try again.");

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 
 export const ActivityFeedScreen = ({ navigation }: any) => {
@@ -12,9 +13,10 @@ export const ActivityFeedScreen = ({ navigation }: any) => {
 
   const fetchActivities = async () => {
     try {
-      // Note: Backend requires campusId to filter activities correctly. 
-      // Using 'campus-abc' as default for testing until the real auth context is connected.
-      const response = await api.get('/activities', { params: { campusId: 'campus-abc' } });
+      const campusId = await AsyncStorage.getItem('selectedCampusId');
+      const response = await api.get('/activities', {
+        params: campusId ? { campusId } : undefined,
+      });
       setActivities(response.data);
     } catch (error) {
       console.error('Error fetching activities:', error);

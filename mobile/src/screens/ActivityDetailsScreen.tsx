@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Button, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 
 export const ActivityDetailsScreen = ({ route, navigation }: any) => {
@@ -10,7 +11,10 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
   useEffect(() => {
     const fetchActivityDetails = async () => {
       try {
-        const response = await api.get(`/activities/${activityId}`, { params: { campusId: 'campus-abc' } });
+        const campusId = await AsyncStorage.getItem('selectedCampusId');
+        const response = await api.get(`/activities/${activityId}`, {
+          params: campusId ? { campusId } : undefined,
+        });
         setActivity(response.data);
       } catch (error) {
         console.error('Error fetching activity details:', error);
@@ -25,7 +29,8 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
 
   const handleJoin = async () => {
     try {
-      await api.post(`/activities/${activityId}/join`, { campusId: 'campus-abc' });
+      const campusId = await AsyncStorage.getItem('selectedCampusId');
+      await api.post(`/activities/${activityId}/join`, campusId ? { campusId } : {});
       Alert.alert('Success', 'Successfully joined the activity!');
       navigation.goBack();
     } catch (error: any) {

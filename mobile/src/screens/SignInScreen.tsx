@@ -38,11 +38,11 @@ const SignInScreen: React.FC = () => {
         password
       });
 
-      const { token, account } = response.data;
+      const { accessToken, selectedCampusId } = response.data;
 
-      await AsyncStorage.setItem("authToken", token);
+      await AsyncStorage.setItem("authToken", accessToken);
 
-      if (!account.selectedCampusId) {
+      if (!selectedCampusId) {
         navigation.reset({
           index: 0,
           routes: [{ name: "CampusSelection" }]
@@ -54,18 +54,18 @@ const SignInScreen: React.FC = () => {
         });
       }
     } catch (err: any) {
-      const serverError = err?.response?.data?.error;
-      switch (serverError) {
-        case "InvalidCredentials":
+      const errorCode = err?.response?.data?.error?.code;
+      switch (errorCode) {
+        case "INVALID_CREDENTIALS":
           setErrorMessage("Invalid email or password.");
           break;
-        case "AccountNotVerified":
+        case "ACCOUNT_NOT_VERIFIED":
           setErrorMessage("Please verify your email before signing in.");
           break;
-        case "AccountSuspended":
+        case "ACCOUNT_SUSPENDED":
           setErrorMessage("Your account has been suspended. Please contact support.");
           break;
-        case "AccountBanned":
+        case "ACCOUNT_BANNED":
           setErrorMessage("Your account has been banned.");
           break;
         default:

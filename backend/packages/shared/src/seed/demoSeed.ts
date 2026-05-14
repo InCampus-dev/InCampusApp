@@ -42,6 +42,13 @@ export interface DemoStudentAccountSeed {
   verificationStatus: VerificationStatus;
 }
 
+export interface DemoUniversityIdentityRuleSeed {
+  emailDomain: string;
+  universityName: string;
+  studentIdFormatRule: string | null;
+  ruleStatus: string;
+}
+
 export interface DemoStudentProfileSeed {
   profileId: string;
   studentAccountId: StudentAccountId;
@@ -69,6 +76,7 @@ export interface DemoActivitySeed {
 export interface DemoSeedData {
   campuses: DemoCampusSeed[];
   campusStructuredOptions: DemoStructuredOptionSeed[];
+  universityIdentityRules: DemoUniversityIdentityRuleSeed[];
   studentAccounts: DemoStudentAccountSeed[];
   studentProfiles: DemoStudentProfileSeed[];
   activities: DemoActivitySeed[];
@@ -107,6 +115,14 @@ export const phase0DemoSeed: DemoSeedData = {
       name: "Jiading Library",
       description: "Shared library meeting point.",
       isActive: true
+    }
+  ],
+  universityIdentityRules: [
+    {
+      emailDomain: "tongji.edu.cn",
+      universityName: "Tongji University",
+      studentIdFormatRule: null,
+      ruleStatus: "Active"
     }
   ],
   studentAccounts: [
@@ -164,6 +180,7 @@ export const phase0DemoSeed: DemoSeedData = {
 export interface DemoSeedSummary {
   campuses: number;
   campusStructuredOptions: number;
+  universityIdentityRules: number;
   studentAccounts: number;
   studentProfiles: number;
   activities: number;
@@ -173,6 +190,7 @@ export function summarizeDemoSeed(seed: DemoSeedData = phase0DemoSeed): DemoSeed
   return {
     campuses: seed.campuses.length,
     campusStructuredOptions: seed.campusStructuredOptions.length,
+    universityIdentityRules: seed.universityIdentityRules.length,
     studentAccounts: seed.studentAccounts.length,
     studentProfiles: seed.studentProfiles.length,
     activities: seed.activities.length

@@ -10,6 +10,7 @@ import {
 } from "../../../shared/src/events/EventBus";
 import { AppError } from "../../../shared/src/errors/AppError";
 import { executeTransaction, findWithPessimisticWriteLock } from "../../../shared/src/db/transaction";
+import { findActiveByActivityAndStudent } from "../../../hosting-lifecycle/src/repositories/ParticipationRepo";
 
 // Interface to emit events to the shared EventBus without hard coupling
 export interface EventDispatcherPort {
@@ -52,12 +53,13 @@ export class JoinService {
         }
 
         // 4. Check for existing active participation/request
-        const existing = await manager.findOne(Participation, {
-          where: [
-            { activityId, studentAccountId, status: ParticipationStatus.Pending },
-            { activityId, studentAccountId, status: ParticipationStatus.Confirmed }
-          ]
-        });
+        const existing = await findActiveByActivityAndStudent(
+          {
+            findOne: (options) => manager.findOne(Participation, options)
+          },
+          activityId,
+          studentAccountId
+        );
         if (existing) {
           throw AppError.conflict(
             "You have already joined or requested to join this activity",

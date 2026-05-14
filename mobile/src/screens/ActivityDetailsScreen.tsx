@@ -3,16 +3,30 @@ import { View, Text, Button, StyleSheet, ActivityIndicator, Alert } from 'react-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 
+interface ActivityDetailsViewModel {
+  activityId: string;
+  title: string;
+  description: string;
+  meetingPointLabel: string;
+  categoryLabel: string;
+  currentParticipantCount: number;
+  maxParticipants: number;
+  hostDisplayName?: string;
+  hostShortBio?: string;
+  genderPreference: 'all' | 'male_only' | 'female_only';
+  participationMode: 'open' | 'approval_based';
+}
+
 export const ActivityDetailsScreen = ({ route, navigation }: any) => {
   const { activityId } = route.params;
-  const [activity, setActivity] = useState<any>(null);
+  const [activity, setActivity] = useState<ActivityDetailsViewModel | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchActivityDetails = async () => {
       try {
         const campusId = await AsyncStorage.getItem('selectedCampusId');
-        const response = await api.get(`/activities/${activityId}`, {
+        const response = await api.get<ActivityDetailsViewModel>(`/activities/${activityId}`, {
           params: campusId ? { campusId } : undefined,
         });
         setActivity(response.data);
@@ -47,29 +61,37 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
     );
   }
 
+  if (!activity) {
+    return (
+      <View style={styles.centered}>
+        <Text>Activity unavailable.</Text>
+      </View>
+    );
+  }
+
   const isFull = activity.currentParticipantCount >= activity.maxParticipants;
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{activity.title}</Text>
       <Text style={styles.description}>{activity.description}</Text>
-      
+
       <View style={styles.infoBox}>
-        <Text style={styles.infoText}>📍 {activity.meetingPointLabel}</Text>
-        <Text style={styles.infoText}>🏷️ {activity.categoryLabel}</Text>
-        <Text style={styles.infoText}>👥 {activity.currentParticipantCount} / {activity.maxParticipants}</Text>
-        <Text style={styles.infoText}>👤 Host: {activity.hostDisplayName || 'Student'}</Text>
+        <Text style={styles.infoText}>Meeting Point: {activity.meetingPointLabel}</Text>
+        <Text style={styles.infoText}>Category: {activity.categoryLabel}</Text>
+        <Text style={styles.infoText}>Participants: {activity.currentParticipantCount} / {activity.maxParticipants}</Text>
+        <Text style={styles.infoText}>Host: {activity.hostDisplayName || 'Student'}</Text>
         {activity.hostShortBio && (
           <Text style={styles.hostBio}>"{activity.hostShortBio}"</Text>
         )}
-        <Text style={styles.infoText}>⚧️ Gender Pref: {activity.genderPreference === 'all' ? 'All' : (activity.genderPreference === 'male_only' ? 'Male Only' : 'Female Only')}</Text>
-        <Text style={styles.infoText}>� Mode: {activity.participationMode === 'open' ? 'Direct Join' : 'Approval Required'}</Text>
+        <Text style={styles.infoText}>Gender Pref: {activity.genderPreference === 'all' ? 'All' : (activity.genderPreference === 'male_only' ? 'Male Only' : 'Female Only')}</Text>
+        <Text style={styles.infoText}>Mode: {activity.participationMode === 'open' ? 'Direct Join' : 'Approval Required'}</Text>
       </View>
 
       <View style={styles.buttonContainer}>
-        <Button 
-          title={isFull ? "Activity Full" : (activity.participationMode === 'open' ? "Join Activity" : "Request to Join")} 
-          onPress={handleJoin} 
+        <Button
+          title={isFull ? "Activity Full" : (activity.participationMode === 'open' ? "Join Activity" : "Request to Join")}
+          onPress={handleJoin}
           disabled={isFull}
         />
       </View>

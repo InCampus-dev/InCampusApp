@@ -3,8 +3,18 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator }
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 
+interface ActivityFeedItem {
+  activityId: string;
+  title: string;
+  scheduledDateTime: string;
+  categoryLabel: string;
+  meetingPointLabel: string;
+  currentParticipantCount: number;
+  maxParticipants: number;
+}
+
 export const ActivityFeedScreen = ({ navigation }: any) => {
-  const [activities, setActivities] = useState<any[]>([]);
+  const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,7 +24,7 @@ export const ActivityFeedScreen = ({ navigation }: any) => {
   const fetchActivities = async () => {
     try {
       const campusId = await AsyncStorage.getItem('selectedCampusId');
-      const response = await api.get('/activities', {
+      const response = await api.get<ActivityFeedItem[]>('/activities', {
         params: campusId ? { campusId } : undefined,
       });
       setActivities(response.data);
@@ -28,14 +38,14 @@ export const ActivityFeedScreen = ({ navigation }: any) => {
   const renderItem = ({ item }: any) => {
     const dateStr = new Date(item.scheduledDateTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.card}
         onPress={() => navigation.navigate('ActivityDetails', { activityId: item.activityId })}
       >
         <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.details}>📅 {dateStr}</Text>
-        <Text style={styles.details}>🏷️ {item.categoryLabel}  📍 {item.meetingPointLabel}</Text>
-        <Text style={styles.participants}>👥 {item.currentParticipantCount} / {item.maxParticipants} Participants</Text>
+        <Text style={styles.details}>{dateStr}</Text>
+        <Text style={styles.details}>{item.categoryLabel}  {item.meetingPointLabel}</Text>
+        <Text style={styles.participants}>{item.currentParticipantCount} / {item.maxParticipants} Participants</Text>
       </TouchableOpacity>
     );
   };

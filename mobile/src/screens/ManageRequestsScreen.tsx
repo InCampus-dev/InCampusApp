@@ -2,18 +2,29 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import api from '../services/api';
 
+interface RequestItem {
+  participationId: string;
+  studentDisplayName?: string;
+  createdAt: string;
+}
+
 export const ManageRequestsScreen = ({ route, navigation }: any) => {
-  const { activityId } = route.params;
-  const [requests, setRequests] = useState<any[]>([]);
+  const activityId = route?.params?.activityId;
+  const [requests, setRequests] = useState<RequestItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!activityId) {
+      setLoading(false);
+      return;
+    }
+
     fetchRequests();
   }, [activityId]);
 
   const fetchRequests = async () => {
     try {
-      const response = await api.get(`/activities/${activityId}/requests`);
+      const response = await api.get<RequestItem[]>(`/activities/${activityId}/requests`);
       setRequests(response.data);
     } catch (error) {
       console.error('Error fetching requests:', error);
@@ -65,7 +76,9 @@ export const ManageRequestsScreen = ({ route, navigation }: any) => {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Pending Join Requests</Text>
-      {loading ? (
+      {!activityId ? (
+        <Text style={styles.emptyText}>This screen needs an activity context to load requests.</Text>
+      ) : loading ? (
         <ActivityIndicator size="large" color="#0000ff" />
       ) : requests.length === 0 ? (
         <Text style={styles.emptyText}>No pending requests at the moment.</Text>

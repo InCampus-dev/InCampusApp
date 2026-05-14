@@ -66,7 +66,11 @@ describe("JoinRequestManagementService", () => {
 
       expect(result).toEqual(mockRequests);
       expect(mockParticipationRepo.find).toHaveBeenCalledWith({
-        where: { activityId: "act-1", status: ParticipationStatus.Pending },
+        where: {
+          activityId: "act-1",
+          recordType: ParticipationRecordType.Request,
+          status: ParticipationStatus.Pending
+        },
       });
     });
 
@@ -94,6 +98,7 @@ describe("JoinRequestManagementService", () => {
     const defaultParticipation = {
       participationId: "req-1",
       activityId: "act-1",
+      studentAccountId: "student-1",
       status: ParticipationStatus.Pending,
       recordType: ParticipationRecordType.Request,
     };
@@ -103,7 +108,9 @@ describe("JoinRequestManagementService", () => {
       const participation = { ...defaultParticipation };
 
       (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
-      mockManager.findOne.mockResolvedValue(participation);
+      mockManager.findOne
+        .mockResolvedValueOnce(participation)
+        .mockResolvedValueOnce(null);
       mockManager.save.mockImplementation(async (entity: any, instance: any) => instance);
 
       const result = await service.reviewJoinRequest("host-1", "act-1", "req-1", "approve");
@@ -125,7 +132,9 @@ describe("JoinRequestManagementService", () => {
       const participation = { ...defaultParticipation };
 
       (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
-      mockManager.findOne.mockResolvedValue(participation);
+      mockManager.findOne
+        .mockResolvedValueOnce(participation)
+        .mockResolvedValueOnce(null);
       mockManager.save.mockImplementation(async (entity: any, instance: any) => instance);
 
       await service.reviewJoinRequest("host-1", "act-1", "req-1", "approve");
@@ -159,10 +168,34 @@ describe("JoinRequestManagementService", () => {
       const participation = { ...defaultParticipation };
 
       (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
-      mockManager.findOne.mockResolvedValue(participation);
+      mockManager.findOne
+        .mockResolvedValueOnce(participation)
+        .mockResolvedValueOnce(null);
 
       await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve"))
         .rejects.toThrow("Cannot approve request: Activity is already full");
+    });
+
+    it("should throw if approval would create a duplicate active participation", async () => {
+      const activity = { ...defaultActivity };
+      const participation = {
+        ...defaultParticipation,
+        studentAccountId: "student-1"
+      };
+
+      (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+      mockManager.findOne
+        .mockResolvedValueOnce(participation)
+        .mockResolvedValueOnce({
+          participationId: "part-existing",
+          activityId: "act-1",
+          studentAccountId: "student-1",
+          recordType: ParticipationRecordType.Participation,
+          status: ParticipationStatus.Confirmed
+        });
+
+      await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve"))
+        .rejects.toThrow("Student already has an active participation record");
     });
 
     it("should throw if activity not found", async () => {
@@ -186,6 +219,17 @@ describe("JoinRequestManagementService", () => {
     it("should throw if request is not pending", async () => {
       const activity = { ...defaultActivity };
       const participation = { ...defaultParticipation, status: ParticipationStatus.Declined };
+      (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+      mockManager.findOne.mockResolvedValue(participation);
+      await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("This request is not pending");
+    });
+
+    it("should throw if the targeted record is not a join request", async () => {
+      const activity = { ...defaultActivity };
+      const participation = {
+        ...defaultParticipation,
+        recordType: ParticipationRecordType.Participation
+      };
       (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
       mockManager.findOne.mockResolvedValue(participation);
       await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("This request is not pending");

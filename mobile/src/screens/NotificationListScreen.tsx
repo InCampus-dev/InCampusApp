@@ -30,6 +30,8 @@ interface NotificationContext {
   accessible: boolean;
 }
 
+type NotificationListResponse = NotificationItem[] | { notifications?: NotificationItem[] };
+
 // Map TargetContextType values to navigation screen names (DUC-NSF-06)
 const CONTEXT_TYPE_TO_SCREEN: Record<string, string> = {
   ActivityDetails: 'ActivityDetails',
@@ -37,6 +39,8 @@ const CONTEXT_TYPE_TO_SCREEN: Record<string, string> = {
   PersonalActivityContext: 'PersonalActivityList',
   CancelledActivityContext: 'ActivityDetails',
 };
+
+const ROUTES_REQUIRING_ACTIVITY_ID = new Set(['ActivityDetails', 'ManageJoinRequests']);
 
 export default function NotificationListScreen({ navigation }: { navigation: any }) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -60,10 +64,12 @@ export default function NotificationListScreen({ navigation }: { navigation: any
 
   async function fetchNotifications(pageNum: number, append = false) {
     try {
-      const response = await api.get('/notifications', {
+      const response = await api.get<NotificationListResponse>('/notifications', {
         params: { page: pageNum, limit: PAGE_SIZE },
       });
-      const data: NotificationItem[] = response.data.notifications || response.data;
+      const data: NotificationItem[] = Array.isArray(response.data)
+        ? response.data
+        : response.data.notifications || [];
       if (append) {
         setNotifications((prev) => [...prev, ...data]);
       } else {
@@ -99,7 +105,7 @@ export default function NotificationListScreen({ navigation }: { navigation: any
     setTappedId(notificationId);
     try {
       // DUC-NSF-06: GET /notifications/{id}/context — read-only, no state update
-      const response = await api.get(`/notifications/${notificationId}/context`);
+      const response = await api.get<NotificationContext>(`/notifications/${notificationId}/context`);
       const context: NotificationContext = response.data;
 
       if (context.accessible) {
@@ -108,6 +114,8 @@ export default function NotificationListScreen({ navigation }: { navigation: any
           navigation.navigate(screenName, {
             activityId: context.contextId,
           });
+        } else if (screenName && ROUTES_REQUIRING_ACTIVITY_ID.has(screenName)) {
+          navigation.navigate('NotificationFallback');
         } else if (screenName) {
           navigation.navigate(screenName);
         } else {

@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach, vi, Mock } from "vitest";
 import { JoinRequestManagementService, JoinRequestEventDispatcherPort } from "../services/JoinRequestManagementService";
 import { Activity } from "../entities/Activity";
 import { Participation } from "../entities/Participation";
@@ -5,54 +6,54 @@ import { ActivityStatus, ParticipationRecordType, ParticipationStatus } from "..
 import { executeTransaction, findWithPessimisticWriteLock } from "../../../shared/src/db/transaction";
 
 // Mock dei transaction helper
-jest.mock("../../../shared/src/db/transaction", () => ({
-  executeTransaction: jest.fn(),
-  findWithPessimisticWriteLock: jest.fn(),
+vi.mock("../../../shared/src/db/transaction", () => ({
+  executeTransaction: vi.fn(),
+  findWithPessimisticWriteLock: vi.fn(),
 }));
 
 describe("JoinRequestManagementService", () => {
   let service: JoinRequestManagementService;
   let mockDataSource: any;
-  let mockEventDispatcher: jest.Mocked<JoinRequestEventDispatcherPort>;
+  let mockEventDispatcher: any;
   let mockManager: any;
   let mockActivityRepo: any;
   let mockParticipationRepo: any;
 
   beforeEach(() => {
     mockActivityRepo = {
-      findOne: jest.fn(),
+      findOne: vi.fn(),
     };
     mockParticipationRepo = {
-      find: jest.fn(),
+      find: vi.fn(),
     };
 
     mockManager = {
-      findOne: jest.fn(),
-      save: jest.fn(),
+      findOne: vi.fn(),
+      save: vi.fn(),
     };
 
     // Mocking Data Source to return the respective repository mock
     mockDataSource = {
-      getRepository: jest.fn((entity) => {
+      getRepository: vi.fn((entity) => {
         if (entity === Activity) return mockActivityRepo;
         if (entity === Participation) return mockParticipationRepo;
       }),
     };
 
     // Simuliamo l'esecuzione della transazione passandogli subito il nostro mockManager
-    (executeTransaction as jest.Mock).mockImplementation(async (ds, cb) => {
+    (executeTransaction as Mock).mockImplementation(async (ds, cb) => {
       return await cb(mockManager);
     });
 
     mockEventDispatcher = {
-      dispatch: jest.fn().mockResolvedValue(undefined),
+      dispatch: vi.fn().mockResolvedValue(undefined),
     };
 
     service = new JoinRequestManagementService(mockDataSource, mockEventDispatcher);
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("getPendingRequests", () => {
@@ -101,7 +102,7 @@ describe("JoinRequestManagementService", () => {
       const activity = { ...defaultActivity };
       const participation = { ...defaultParticipation };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
       mockManager.findOne.mockResolvedValue(participation);
       mockManager.save.mockImplementation(async (entity: any, instance: any) => instance);
 
@@ -123,7 +124,7 @@ describe("JoinRequestManagementService", () => {
       const activity = { ...defaultActivity, currentParticipantCount: 4, maxParticipants: 5 };
       const participation = { ...defaultParticipation };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
       mockManager.findOne.mockResolvedValue(participation);
       mockManager.save.mockImplementation(async (entity: any, instance: any) => instance);
 
@@ -137,7 +138,7 @@ describe("JoinRequestManagementService", () => {
       const activity = { ...defaultActivity };
       const participation = { ...defaultParticipation };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
       mockManager.findOne.mockResolvedValue(participation);
       mockManager.save.mockImplementation(async (entity: any, instance: any) => instance);
 
@@ -157,7 +158,7 @@ describe("JoinRequestManagementService", () => {
       const activity = { ...defaultActivity, currentParticipantCount: 5, maxParticipants: 5 };
       const participation = { ...defaultParticipation };
 
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
       mockManager.findOne.mockResolvedValue(participation);
 
       await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve"))
@@ -165,19 +166,19 @@ describe("JoinRequestManagementService", () => {
     });
 
     it("should throw if activity not found", async () => {
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(null);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValue(null);
       await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("Activity not found");
     });
 
     it("should throw if user is not host", async () => {
       const activity = { ...defaultActivity, hostAccountId: "host-2" };
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
       await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("Unauthorized");
     });
 
     it("should throw if participation request not found", async () => {
       const activity = { ...defaultActivity };
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
       mockManager.findOne.mockResolvedValue(null);
       await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("Join request not found");
     });
@@ -185,7 +186,7 @@ describe("JoinRequestManagementService", () => {
     it("should throw if request is not pending", async () => {
       const activity = { ...defaultActivity };
       const participation = { ...defaultParticipation, status: ParticipationStatus.Declined };
-      (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+      (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
       mockManager.findOne.mockResolvedValue(participation);
       await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("This request is not pending");
     });

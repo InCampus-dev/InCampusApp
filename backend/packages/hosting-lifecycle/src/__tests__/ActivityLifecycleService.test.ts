@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import { ActivityStatus, CampusStructuredOptionType, GenderPreference, ParticipationMode } from "../../../shared/src/domain/enums";
 import { Activity } from "../entities/Activity";

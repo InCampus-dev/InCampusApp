@@ -1,49 +1,50 @@
+import { describe, it, expect, beforeEach, afterEach, vi, Mock } from "vitest";
 import { JoinService, EventDispatcherPort } from "../services/JoinService";
 import { BlockLookupPort } from "../services/FeedService";
 import { ActivityStatus, ParticipationMode, ParticipationRecordType, ParticipationStatus } from "../../../shared/src/domain/enums";
 import { executeTransaction, findWithPessimisticWriteLock } from "../../../shared/src/db/transaction";
 
 // Mock dei transaction helper del database
-jest.mock("../../../shared/src/db/transaction", () => ({
-  executeTransaction: jest.fn(),
-  findWithPessimisticWriteLock: jest.fn(),
+vi.mock("../../../shared/src/db/transaction", () => ({
+  executeTransaction: vi.fn(),
+  findWithPessimisticWriteLock: vi.fn(),
 }));
 
 describe("JoinService", () => {
   let joinService: JoinService;
   let mockDataSource: any;
-  let mockBlockLookup: jest.Mocked<BlockLookupPort>;
-  let mockEventDispatcher: jest.Mocked<EventDispatcherPort>;
+  let mockBlockLookup: any;
+  let mockEventDispatcher: any;
   let mockManager: any;
 
   beforeEach(() => {
     // Simuliamo il manager di TypeORM all'interno della transazione
     mockManager = {
-      findOne: jest.fn(),
-      create: jest.fn(),
-      save: jest.fn(),
+      findOne: vi.fn(),
+      create: vi.fn(),
+      save: vi.fn(),
     };
 
     mockDataSource = {}; 
 
     // Simuliamo l'esecuzione della transazione passandogli subito il nostro mockManager
-    (executeTransaction as jest.Mock).mockImplementation(async (ds, cb) => {
+    (executeTransaction as Mock).mockImplementation(async (ds, cb) => {
       return await cb(mockManager);
     });
 
     mockBlockLookup = {
-      getBlockedAndBlockerIds: jest.fn().mockResolvedValue([]),
+      getBlockedAndBlockerIds: vi.fn().mockResolvedValue([]),
     };
 
     mockEventDispatcher = {
-      dispatch: jest.fn().mockResolvedValue(undefined),
+      dispatch: vi.fn().mockResolvedValue(undefined),
     };
 
     joinService = new JoinService(mockDataSource, mockBlockLookup, mockEventDispatcher);
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should successfully directly join an open activity", async () => {
@@ -57,7 +58,7 @@ describe("JoinService", () => {
       maxParticipants: 5,
     };
 
-    (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
     mockManager.findOne.mockResolvedValue(null); // Nessuna partecipazione esistente
     
     const mockParticipation = { participationId: "part-1" } as any;
@@ -84,7 +85,7 @@ describe("JoinService", () => {
       maxRequests: 10,
     };
 
-    (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
     mockManager.findOne.mockResolvedValue(null);
     
     const mockParticipation = { participationId: "part-2" } as any;
@@ -100,12 +101,12 @@ describe("JoinService", () => {
   });
 
   it("should fail if activity is not found", async () => {
-    (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(null);
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(null);
     await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow();
   });
 
   it("should fail if campusId does not match (cross-campus isolation)", async () => {
-    (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue({
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue({
       activityId: "act-1",
       campusId: "camp-2", // Campus differente dal 'camp-1' della richiesta
     });
@@ -114,7 +115,7 @@ describe("JoinService", () => {
 
   it("should fail with opaque not-found if host is blocked by the student or vice-versa", async () => {
     const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1" };
-    (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
     mockBlockLookup.getBlockedAndBlockerIds.mockResolvedValue(["host-1"]);
 
     // Il sistema deve ritornare un errore prima di far scoprire all'utente che è bloccato
@@ -123,13 +124,13 @@ describe("JoinService", () => {
 
   it("should fail if activity is not Open", async () => {
     const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Full };
-    (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
     await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("Activity is not open for joining");
   });
 
   it("should fail if student has already joined or requested", async () => {
     const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Open };
-    (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
     mockManager.findOne.mockResolvedValue({ participationId: "existing-1" }); // Utente ha già joinato
 
     await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("already joined");
@@ -137,13 +138,13 @@ describe("JoinService", () => {
 
   it("should fail if open activity is already full", async () => {
     const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Open, participationMode: ParticipationMode.Open, currentParticipantCount: 5, maxParticipants: 5 };
-    (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
     await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("already full");
   });
 
   it("should fail if approval-based activity has reached max requests", async () => {
     const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Open, participationMode: ParticipationMode.ApprovalBased, currentRequestCount: 10, maxRequests: 10 };
-    (findWithPessimisticWriteLock as jest.Mock).mockResolvedValue(activity);
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
     await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("maximum number of pending requests");
   });
 });

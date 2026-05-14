@@ -5,13 +5,14 @@
  * Called during NSF module initialization.
  *
  * Day 3 handlers: JoinEventHandler (NSF02), ApplicationOutcomeHandler (NSF03).
- * Day 4 handler:  ReminderHandler (NSF06) — not registered here yet.
+ * Day 4 handler:  ReminderHandler (NSF06).
  * Francesco's handlers: CancellationHandler (NSF04), LeaveEventHandler (NSF05).
  */
 import { ApplicationOutcomeHandler } from "./ApplicationOutcomeHandler";
 import { CancellationHandler } from "./CancellationHandler";
 import { JoinEventHandler } from "./JoinEventHandler";
 import { LeaveEventHandler } from "./LeaveEventHandler";
+import { ReminderHandler } from "./ReminderHandler";
 import type { EventBus } from "../../../shared/src/events/EventBus";
 
 export function registerNSFHandlers(
@@ -19,7 +20,8 @@ export function registerNSFHandlers(
   joinHandler: JoinEventHandler,
   outcomeHandler: ApplicationOutcomeHandler,
   cancellationHandler: CancellationHandler,
-  leaveEventHandler: LeaveEventHandler
+  leaveEventHandler: LeaveEventHandler,
+  reminderHandler: ReminderHandler
 ): void {
   for (const eventType of joinHandler.getHandledEvents()) {
     eventBus.subscribe(eventType, (event) => joinHandler.handle(event));
@@ -37,8 +39,12 @@ export function registerNSFHandlers(
     eventBus.subscribe(eventType, (event) => leaveEventHandler.handle(event));
   }
 
+  for (const eventType of reminderHandler.getHandledEvents()) {
+    eventBus.subscribe(eventType, (event) => reminderHandler.handle(event));
+  }
+
   console.log(
     "[NSF] Handlers registered: JoinEventHandler (NSF02), ApplicationOutcomeHandler (NSF03), " +
-      "CancellationHandler (NSF04), LeaveEventHandler (NSF05)"
+      "CancellationHandler (NSF04), LeaveEventHandler (NSF05), ReminderHandler (NSF06)"
   );
 }

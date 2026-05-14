@@ -5,12 +5,23 @@ import { ApplicationOutcomeHandler } from "../handlers/ApplicationOutcomeHandler
 import { CancellationHandler } from "../handlers/CancellationHandler";
 import { JoinEventHandler } from "../handlers/JoinEventHandler";
 import { LeaveEventHandler } from "../handlers/LeaveEventHandler";
+import { ReminderHandler } from "../handlers/ReminderHandler";
 import { registerNSFHandlers } from "../handlers/registerNSFHandlers";
+import { NotificationContextController } from "../controllers/NotificationContextController";
+import { NotificationListController } from "../controllers/NotificationListController";
 import { NotificationRepo } from "../repositories/NotificationRepo";
 import { NotificationComposer } from "../services/NotificationComposer";
 import { NotificationDispatcher } from "../services/NotificationDispatcher";
 import { RecipientResolution } from "../services/RecipientResolutionService";
-import { TargetContextType } from "../../../shared/src/domain/enums";
+import {
+  ActivityStatus,
+  NotificationType,
+  ParticipationRecordType,
+  ParticipationStatus,
+  PlatformAccessStatus,
+  TargetContextType,
+  VerificationStatus
+} from "../../../shared/src/domain/enums";
 
 describe("Notification event handlers", () => {
   beforeEach(() => {
@@ -398,17 +409,354 @@ describe("Notification event handlers", () => {
       getHandledEvents: () => ["JoinedParticipantLeft"] as const,
       handle: vi.fn()
     };
+    const reminderHandler = {
+      getHandledEvents: () => ["ActivityReminderDue"] as const,
+      handle: vi.fn()
+    };
 
     registerNSFHandlers(
       eventBus as any,
       joinHandler as any,
       outcomeHandler as any,
       cancellationHandler as any,
-      leaveEventHandler as any
+      leaveEventHandler as any,
+      reminderHandler as any
     );
 
     expect(eventBus.subscribe).toHaveBeenCalledWith("ActivityCancelled", expect.any(Function));
     expect(eventBus.subscribe).toHaveBeenCalledWith("JoinedParticipantLeft", expect.any(Function));
+  });
+
+  it("returns recipient-scoped notifications for the authenticated student", async () => {
+    const notificationRepo = {
+      findByRecipientPaginated: vi.fn().mockResolvedValue({
+        records: [
+          createNotificationRecord({
+            notificationId: "notification-001",
+            recipientAccountId: "student-001"
+          })
+        ],
+        total: 1
+      })
+    } as unknown as NotificationRepo;
+    const controller = new NotificationListController(notificationRepo);
+    const response = createMockResponse();
+
+    await controller.list(
+      createMockRequest({
+        studentAccountId: "student-001"
+      }),
+      response as any
+    );
+
+    expect(notificationRepo.findByRecipientPaginated).toHaveBeenCalledWith("student-001", {
+      limit: 20,
+      offset: 0
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.jsonPayload).toMatchObject({
+      notifications: [
+        {
+          notificationId: "notification-001",
+          notificationType: NotificationType.JoinEvent
+        }
+      ],
+      total: 1
+    });
+  });
+
+  it("supports page and limit for notification listing", async () => {
+    const notificationRepo = {
+      findByRecipientPaginated: vi.fn().mockResolvedValue({
+        records: [],
+        total: 0
+      })
+    } as unknown as NotificationRepo;
+    const controller = new NotificationListController(notificationRepo);
+    const response = createMockResponse();
+
+    await controller.list(
+      createMockRequest({
+        studentAccountId: "student-001",
+        query: { page: "2", limit: "10" }
+      }),
+      response as any
+    );
+
+    expect(notificationRepo.findByRecipientPaginated).toHaveBeenCalledWith("student-001", {
+      limit: 10,
+      offset: 10
+    });
+    expect(response.jsonPayload).toMatchObject({
+      page: 2,
+      limit: 10,
+      total: 0
+    });
+  });
+
+  it("caps notification list limit safely", async () => {
+    const notificationRepo = {
+      findByRecipientPaginated: vi.fn().mockResolvedValue({
+        records: [],
+        total: 0
+      })
+    } as unknown as NotificationRepo;
+    const controller = new NotificationListController(notificationRepo);
+
+    await controller.list(
+      createMockRequest({
+        studentAccountId: "student-001",
+        query: { limit: "999" }
+      }),
+      createMockResponse() as any
+    );
+
+    expect(notificationRepo.findByRecipientPaginated).toHaveBeenCalledWith("student-001", {
+      limit: 50,
+      offset: 0
+    });
+  });
+
+  it("returns not found when notification context is missing", async () => {
+    const controller = createNotificationContextController({
+      notification: null
+    });
+
+    await expect(
+      controller.getContext(
+        createMockRequest({
+          studentAccountId: "student-001",
+          params: { notificationId: "missing-notification" }
+        }),
+        createMockResponse() as any
+      )
+    ).rejects.toMatchObject({
+      code: "NOT_FOUND"
+    });
+  });
+
+  it("returns forbidden when notification belongs to another student", async () => {
+    const controller = createNotificationContextController({
+      notification: createNotificationRecord({
+        notificationId: "notification-001",
+        recipientAccountId: "student-002"
+      })
+    });
+
+    await expect(
+      controller.getContext(
+        createMockRequest({
+          studentAccountId: "student-001",
+          params: { notificationId: "notification-001" }
+        }),
+        createMockResponse() as any
+      )
+    ).rejects.toMatchObject({
+      code: "AUTH_FORBIDDEN"
+    });
+  });
+
+  it("returns fallback when the related activity no longer exists", async () => {
+    const controller = createNotificationContextController({
+      notification: createNotificationRecord({
+        notificationId: "notification-001",
+        relatedActivityId: "activity-001",
+        targetContextType: TargetContextType.ActivityDetails,
+        targetContextId: "activity-001",
+        triggeringAccountId: "host-001"
+      }),
+      activity: null
+    });
+    const response = createMockResponse();
+
+    await controller.getContext(
+      createMockRequest({
+        studentAccountId: "student-001",
+        params: { notificationId: "notification-001" }
+      }),
+      response as any
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.jsonPayload).toEqual({
+      notificationId: "notification-001",
+      contextType: TargetContextType.NotificationFallbackView,
+      contextId: null,
+      accessible: false,
+      fallbackReason: "TargetActivityUnavailable"
+    });
+  });
+
+  it("returns fallback when a reciprocal block exists for notification context", async () => {
+    const controller = createNotificationContextController({
+      notification: createNotificationRecord({
+        notificationId: "notification-001",
+        relatedActivityId: "activity-001",
+        targetContextType: TargetContextType.ActivityDetails,
+        targetContextId: "activity-001",
+        triggeringAccountId: "host-001"
+      }),
+      blocked: true
+    });
+    const response = createMockResponse();
+
+    await controller.getContext(
+      createMockRequest({
+        studentAccountId: "student-001",
+        params: { notificationId: "notification-001" }
+      }),
+      response as any
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.jsonPayload).toEqual({
+      notificationId: "notification-001",
+      contextType: TargetContextType.NotificationFallbackView,
+      contextId: null,
+      accessible: false,
+      fallbackReason: "BlockRelationshipExists"
+    });
+  });
+
+  it("returns accessible context when notification belongs to the student and no block exists", async () => {
+    const controller = createNotificationContextController({
+      notification: createNotificationRecord({
+        notificationId: "notification-001",
+        relatedActivityId: "activity-001",
+        targetContextType: TargetContextType.ActivityDetails,
+        targetContextId: "activity-001",
+        triggeringAccountId: "host-001"
+      })
+    });
+    const response = createMockResponse();
+
+    await controller.getContext(
+      createMockRequest({
+        studentAccountId: "student-001",
+        params: { notificationId: "notification-001" }
+      }),
+      response as any
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.jsonPayload).toEqual({
+      notificationId: "notification-001",
+      contextType: TargetContextType.ActivityDetails,
+      contextId: "activity-001",
+      accessible: true
+    });
+  });
+
+  it("creates reminder notifications only for confirmed joined participations", async () => {
+    const { notifications, dispatcher, handler, participationRepo } = createReminderHandlerHarness({
+      activityStatus: ActivityStatus.Open,
+      participations: [
+        createReminderParticipation({
+          participationId: "participation-001",
+          studentAccountId: "student-001",
+          recordType: ParticipationRecordType.Participation,
+          status: ParticipationStatus.Confirmed
+        }),
+        createReminderParticipation({
+          participationId: "participation-002",
+          studentAccountId: "student-002",
+          recordType: ParticipationRecordType.Request,
+          status: ParticipationStatus.Pending
+        })
+      ]
+    });
+
+    await handler.handle(createReminderEvent());
+
+    expect(participationRepo.find).toHaveBeenCalledWith({
+      where: {
+        activityId: "activity-001",
+        recordType: ParticipationRecordType.Participation,
+        status: ParticipationStatus.Confirmed
+      }
+    });
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]).toMatchObject({
+      notificationType: NotificationType.ActivityReminder,
+      recipientAccountId: "student-001",
+      targetContextType: TargetContextType.ActivityDetails,
+      notificationTitle: "Activity starting soon"
+    });
+    expect(dispatcher.dispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not notify pending requests for reminders", async () => {
+    const { notifications, dispatcher, handler } = createReminderHandlerHarness({
+      participations: [
+        createReminderParticipation({
+          participationId: "participation-001",
+          studentAccountId: "student-001",
+          recordType: ParticipationRecordType.Request,
+          status: ParticipationStatus.Pending
+        })
+      ]
+    });
+
+    await handler.handle(createReminderEvent());
+
+    expect(notifications).toHaveLength(0);
+    expect(dispatcher.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("does not notify declined participations for reminders", async () => {
+    const { notifications, dispatcher, handler } = createReminderHandlerHarness({
+      participations: [
+        createReminderParticipation({
+          participationId: "participation-001",
+          studentAccountId: "student-001",
+          recordType: ParticipationRecordType.Participation,
+          status: ParticipationStatus.Declined
+        })
+      ]
+    });
+
+    await handler.handle(createReminderEvent());
+
+    expect(notifications).toHaveLength(0);
+    expect(dispatcher.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("does not notify inactive accounts for reminders", async () => {
+    const { notifications, dispatcher, handler } = createReminderHandlerHarness({
+      participations: [
+        createReminderParticipation({
+          participationId: "participation-001",
+          studentAccountId: "student-001",
+          recordType: ParticipationRecordType.Participation,
+          status: ParticipationStatus.Confirmed
+        })
+      ],
+      accounts: {
+        "student-001": createInactiveAccount("student-001")
+      }
+    });
+
+    await handler.handle(createReminderEvent());
+
+    expect(notifications).toHaveLength(0);
+    expect(dispatcher.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("does not notify when the activity is completed or cancelled", async () => {
+    const completedHarness = createReminderHandlerHarness({
+      activityStatus: ActivityStatus.Completed
+    });
+    const cancelledHarness = createReminderHandlerHarness({
+      activityStatus: ActivityStatus.Cancelled
+    });
+
+    await completedHarness.handler.handle(createReminderEvent());
+    await cancelledHarness.handler.handle(createReminderEvent());
+
+    expect(completedHarness.participationRepo.find).not.toHaveBeenCalled();
+    expect(cancelledHarness.participationRepo.find).not.toHaveBeenCalled();
+    expect(completedHarness.notifications).toHaveLength(0);
+    expect(cancelledHarness.notifications).toHaveLength(0);
   });
 });
 
@@ -466,7 +814,8 @@ function createActivity() {
     hostAccountId: "host-001",
     title: "Lunch near the library",
     scheduledDateTime: new Date("2026-05-15T12:00:00.000Z"),
-    participationMode: "approval_based"
+    participationMode: "approval_based",
+    status: ActivityStatus.Open
   };
 }
 
@@ -478,21 +827,21 @@ function createParticipation(overrides: {
     participationId: overrides.participationId,
     activityId: "activity-001",
     studentAccountId: overrides.studentAccountId,
-    status: "confirmed"
+    status: ParticipationStatus.Confirmed
   };
 }
 
 function createActiveAccount(studentAccountId: string) {
   return {
     studentAccountId,
-    platformAccessStatus: "Active"
+    platformAccessStatus: PlatformAccessStatus.Active
   };
 }
 
 function createInactiveAccount(studentAccountId: string) {
   return {
     studentAccountId,
-    platformAccessStatus: "Suspended"
+    platformAccessStatus: PlatformAccessStatus.Suspended
   };
 }
 
@@ -528,4 +877,144 @@ function createLeaveHandlerHarness(input: { blocked?: boolean } = {}) {
   );
 
   return { notifications, dispatcher, handler };
+}
+
+function createNotificationRecord(
+  overrides: Partial<NotificationRecord> = {}
+): NotificationRecord {
+  return {
+    notificationId: overrides.notificationId ?? "notification-001",
+    recipientAccountId: overrides.recipientAccountId ?? "student-001",
+    notificationType: overrides.notificationType ?? NotificationType.JoinEvent,
+    notificationChannels: overrides.notificationChannels ?? "PushAndInApp",
+    notificationTitle: overrides.notificationTitle ?? "Notification title",
+    notificationMessage: overrides.notificationMessage ?? "Notification message",
+    relatedActivityId: overrides.relatedActivityId ?? null,
+    relatedParticipationId: overrides.relatedParticipationId ?? null,
+    targetContextType: overrides.targetContextType ?? TargetContextType.ActivityDetails,
+    targetContextId: overrides.targetContextId ?? "activity-001",
+    triggeringAccountId: overrides.triggeringAccountId ?? null,
+    createdAt: overrides.createdAt ?? new Date("2026-05-13T09:00:00.000Z")
+  };
+}
+
+function createMockRequest(input: {
+  studentAccountId: string;
+  params?: Record<string, string>;
+  query?: Record<string, string>;
+}) {
+  return {
+    params: input.params ?? {},
+    query: input.query ?? {},
+    studentContext: {
+      studentAccountId: input.studentAccountId,
+      universityEmail: "student@tongji.edu.cn",
+      selectedCampusId: "campus-001",
+      platformAccessStatus: PlatformAccessStatus.Active,
+      verificationStatus: VerificationStatus.Verified
+    }
+  } as any;
+}
+
+function createMockResponse() {
+  return {
+    statusCode: 200,
+    jsonPayload: undefined as unknown,
+    status(code: number) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload: unknown) {
+      this.jsonPayload = payload;
+      return this;
+    }
+  };
+}
+
+function createNotificationContextController(input: {
+  notification: NotificationRecord | null;
+  activity?: ReturnType<typeof createActivity> | null;
+  blocked?: boolean;
+}) {
+  return new NotificationContextController(
+    {
+      findById: vi.fn().mockResolvedValue(input.notification)
+    } as unknown as NotificationRepo,
+    {
+      findOne: vi.fn().mockResolvedValue(
+        input.activity === undefined ? createActivity() : input.activity
+      )
+    } as any,
+    {
+      shouldSuppress: vi.fn().mockResolvedValue(input.blocked ?? false)
+    } as any
+  );
+}
+
+function createReminderEvent() {
+  return {
+    eventId: "event-014",
+    eventType: "ActivityReminderDue" as const,
+    occurredAt: "2026-05-14T08:00:00.000Z",
+    activityId: "activity-001",
+    scheduledStartAt: "2026-05-14T08:30:00.000Z",
+    reminderThresholdMinutes: 30
+  };
+}
+
+function createReminderParticipation(input: {
+  participationId: string;
+  studentAccountId: string;
+  recordType: ParticipationRecordType;
+  status: ParticipationStatus;
+}) {
+  return {
+    participationId: input.participationId,
+    activityId: "activity-001",
+    studentAccountId: input.studentAccountId,
+    recordType: input.recordType,
+    status: input.status
+  };
+}
+
+function createReminderHandlerHarness(input: {
+  activityStatus?: ActivityStatus;
+  participations?: Array<ReturnType<typeof createReminderParticipation>>;
+  accounts?: Record<string, ReturnType<typeof createActiveAccount> | ReturnType<typeof createInactiveAccount> | null>;
+} = {}) {
+  const { notifications, composer, dispatcher } = createNotificationHarness();
+  const activity = {
+    ...createActivity(),
+    status: input.activityStatus ?? ActivityStatus.Open
+  };
+  const participations = input.participations ?? [];
+  const accounts = input.accounts ?? Object.fromEntries(
+    participations.map((participation) => [
+      participation.studentAccountId,
+      createActiveAccount(participation.studentAccountId)
+    ])
+  );
+  const participationRepo = {
+    find: vi.fn().mockImplementation(async (options: { where: Record<string, unknown> }) => {
+      return participations.filter(
+        (participation) =>
+          participation.activityId === options.where.activityId &&
+          participation.recordType === options.where.recordType &&
+          participation.status === options.where.status
+      );
+    })
+  };
+  const handler = new ReminderHandler(
+    {
+      findOne: vi.fn().mockResolvedValue(activity)
+    } as any,
+    participationRepo as any,
+    {
+      findOne: vi.fn(async (query: any) => accounts[query.where.studentAccountId] ?? null)
+    } as any,
+    composer,
+    dispatcher
+  );
+
+  return { notifications, dispatcher, handler, participationRepo };
 }

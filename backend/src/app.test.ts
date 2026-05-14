@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 import { describe, expect, it, vi } from "vitest";
 
+import { NotificationRepo } from "../packages/notifications-system-flow/src/repositories/NotificationRepo";
+import { PlatformAccessStatus, VerificationStatus } from "../packages/shared/src/domain/enums";
 import { createApp } from "./app";
 
 describe("GET /health", () => {
@@ -98,6 +100,14 @@ describe("GET /health", () => {
     expect(routes).toContainEqual({
       method: "get",
       path: "/profiles/me/activities"
+    });
+    expect(routes).toContainEqual({
+      method: "get",
+      path: "/notifications"
+    });
+    expect(routes).toContainEqual({
+      method: "get",
+      path: "/notifications/:notificationId/context"
     });
   });
 
@@ -301,6 +311,36 @@ describe("GET /health", () => {
     });
   });
 
+  it("accepts valid student context for GET /notifications", async () => {
+    vi.spyOn(NotificationRepo.prototype, "findByRecipientPaginated").mockResolvedValue({
+      records: [],
+      total: 0
+    });
+
+    const app = createApp({
+      resolveStudentContext: () => ({
+        studentAccountId: "student-001",
+        universityEmail: "student@tongji.edu.cn",
+        selectedCampusId: "campus-001",
+        platformAccessStatus: PlatformAccessStatus.Active,
+        verificationStatus: VerificationStatus.Verified
+      })
+    });
+
+    const response = await dispatchAppRequest(app, {
+      method: "GET",
+      path: "/notifications"
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.jsonPayload).toEqual({
+      notifications: [],
+      page: 1,
+      limit: 20,
+      total: 0
+    });
+  });
+
   it("registers NSF handlers on the shared event bus during app creation", () => {
     const eventBus = {
       publish: vi.fn(),
@@ -309,7 +349,7 @@ describe("GET /health", () => {
 
     createApp({ eventBus: eventBus as any });
 
-    expect(eventBus.subscribe).toHaveBeenCalledTimes(6);
+    expect(eventBus.subscribe).toHaveBeenCalledTimes(7);
     expect(eventBus.subscribe).toHaveBeenCalledWith(
       "DirectJoinCompleted",
       expect.any(Function)
@@ -332,6 +372,10 @@ describe("GET /health", () => {
     );
     expect(eventBus.subscribe).toHaveBeenCalledWith(
       "JoinedParticipantLeft",
+      expect.any(Function)
+    );
+    expect(eventBus.subscribe).toHaveBeenCalledWith(
+      "ActivityReminderDue",
       expect.any(Function)
     );
   });

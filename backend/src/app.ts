@@ -24,9 +24,10 @@ import { ApplicationOutcomeHandler } from "../packages/notifications-system-flow
 import { CancellationHandler } from "../packages/notifications-system-flow/src/handlers/CancellationHandler";
 import { JoinEventHandler } from "../packages/notifications-system-flow/src/handlers/JoinEventHandler";
 import { LeaveEventHandler } from "../packages/notifications-system-flow/src/handlers/LeaveEventHandler";
+import { ReminderHandler } from "../packages/notifications-system-flow/src/handlers/ReminderHandler";
 import { registerNSFHandlers } from "../packages/notifications-system-flow/src/handlers/registerNSFHandlers";
 import { NotificationRepo } from "../packages/notifications-system-flow/src/repositories/NotificationRepo";
-import { notificationsSystemFlowRouter } from "../packages/notifications-system-flow/src/routes";
+import { createNotificationsSystemFlowRoutes } from "../packages/notifications-system-flow/src/routes";
 import { BlockSuppressionService } from "../packages/notifications-system-flow/src/services/BlockSuppressionService";
 import { NotificationComposer } from "../packages/notifications-system-flow/src/services/NotificationComposer";
 import { NotificationDispatcher } from "../packages/notifications-system-flow/src/services/NotificationDispatcher";
@@ -139,13 +140,21 @@ export function createApp(args: CreateAppArgs = {}): Express {
     notificationComposer,
     notificationDispatcher
   );
+  const reminderHandler = new ReminderHandler(
+    activityRepo,
+    participationRepo,
+    studentAccountRepo,
+    notificationComposer,
+    notificationDispatcher
+  );
 
   registerNSFHandlers(
     eventBus,
     joinEventHandler,
     applicationOutcomeHandler,
     cancellationHandler,
-    leaveEventHandler
+    leaveEventHandler,
+    reminderHandler
   );
 
   const moduleRouters: Array<{ basePath: string; router: Router }> = [
@@ -189,7 +198,13 @@ export function createApp(args: CreateAppArgs = {}): Express {
         reportReviewService
       })
     },
-    { basePath: "/", router: notificationsSystemFlowRouter }
+    {
+      basePath: "/",
+      router: createNotificationsSystemFlowRoutes({
+        dataSource,
+        resolveStudentContext
+      })
+    }
   ];
 
   app.use(express.json());

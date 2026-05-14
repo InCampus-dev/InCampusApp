@@ -56,6 +56,8 @@ export class NotificationComposer {
         return "Activity cancelled";
       case NotificationType.LeaveEvent:
         return "Participant left activity";
+      case NotificationType.ActivityReminder:
+        return "Activity starting soon";
       default:
         return "Notification";
     }
@@ -76,6 +78,8 @@ export class NotificationComposer {
         return `The activity "${actTitle}" has been cancelled.`;
       case NotificationType.LeaveEvent:
         return `A participant has left "${actTitle}".`;
+      case NotificationType.ActivityReminder:
+        return `Your activity "${actTitle}" is coming up soon.`;
       default:
         return `Notification about "${actTitle}".`;
     }

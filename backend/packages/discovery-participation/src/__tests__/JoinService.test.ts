@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from "vitest";
-import { JoinService, EventDispatcherPort } from "../services/JoinService";
-import { BlockLookupPort } from "../services/FeedService";
+import { JoinService } from "../services/JoinService";
 import { ActivityStatus, ParticipationMode, ParticipationRecordType, ParticipationStatus } from "../../../shared/src/domain/enums";
 import { executeTransaction, findWithPessimisticWriteLock } from "../../../shared/src/db/transaction";
 

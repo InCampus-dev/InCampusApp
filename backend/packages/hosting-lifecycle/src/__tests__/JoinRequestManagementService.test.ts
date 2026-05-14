@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from "vitest";
-import { JoinRequestManagementService, JoinRequestEventDispatcherPort } from "../services/JoinRequestManagementService";
+import { JoinRequestManagementService } from "../services/JoinRequestManagementService";
 import { Activity } from "../entities/Activity";
 import { Participation } from "../entities/Participation";
 import { ActivityStatus, ParticipationRecordType, ParticipationStatus } from "../../../shared/src/domain/enums";

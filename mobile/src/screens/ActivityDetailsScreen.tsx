@@ -53,7 +53,12 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
         <Text style={styles.infoText}>📍 {activity.meetingPointLabel}</Text>
         <Text style={styles.infoText}>🏷️ {activity.categoryLabel}</Text>
         <Text style={styles.infoText}>👥 {activity.currentParticipantCount} / {activity.maxParticipants}</Text>
-        <Text style={styles.infoText}>🔒 Mode: {activity.participationMode === 'open' ? 'Direct Join' : 'Approval Required'}</Text>
+        <Text style={styles.infoText}>👤 Host: {activity.hostDisplayName || 'Student'}</Text>
+        {activity.hostShortBio && (
+          <Text style={styles.hostBio}>"{activity.hostShortBio}"</Text>
+        )}
+        <Text style={styles.infoText}>⚧️ Gender Pref: {activity.genderPreference === 'all' ? 'All' : (activity.genderPreference === 'male_only' ? 'Male Only' : 'Female Only')}</Text>
+        <Text style={styles.infoText}>� Mode: {activity.participationMode === 'open' ? 'Direct Join' : 'Approval Required'}</Text>
       </View>
 
       <View style={styles.buttonContainer}>
@@ -74,5 +79,6 @@ const styles = StyleSheet.create({
   description: { fontSize: 16, color: '#444', marginBottom: 20 },
   infoBox: { backgroundColor: '#f0f0f0', padding: 16, borderRadius: 8, marginBottom: 20 },
   infoText: { fontSize: 15, marginBottom: 8, color: '#333' },
+  hostBio: { fontSize: 14, fontStyle: 'italic', color: '#666', marginBottom: 8, marginLeft: 24 },
   buttonContainer: { marginTop: 'auto', marginBottom: 20 }
 });

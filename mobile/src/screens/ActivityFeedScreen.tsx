@@ -23,16 +23,20 @@ export const ActivityFeedScreen = ({ navigation }: any) => {
     }
   };
 
-  const renderItem = ({ item }: any) => (
-    <TouchableOpacity 
-      style={styles.card}
-      onPress={() => navigation.navigate('ActivityDetails', { activityId: item.activityId })}
-    >
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.details}>🏷️ {item.categoryLabel}  📍 {item.meetingPointLabel}</Text>
-      <Text style={styles.participants}>👥 {item.currentParticipantCount} / {item.maxParticipants} Participants</Text>
-    </TouchableOpacity>
-  );
+  const renderItem = ({ item }: any) => {
+    const dateStr = new Date(item.scheduledDateTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+    return (
+      <TouchableOpacity 
+        style={styles.card}
+        onPress={() => navigation.navigate('ActivityDetails', { activityId: item.activityId })}
+      >
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.details}>📅 {dateStr}</Text>
+        <Text style={styles.details}>🏷️ {item.categoryLabel}  📍 {item.meetingPointLabel}</Text>
+        <Text style={styles.participants}>👥 {item.currentParticipantCount} / {item.maxParticipants} Participants</Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>

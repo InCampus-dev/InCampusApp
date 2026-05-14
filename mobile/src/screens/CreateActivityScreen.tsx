@@ -8,6 +8,8 @@ export const CreateActivityScreen = ({ navigation }: any) => {
   const [meetingPointId, setMeetingPointId] = useState('loc-1');
   const [maxParticipants, setMaxParticipants] = useState('5');
   const [participationMode, setParticipationMode] = useState('open'); // 'open' | 'approval_based'
+  const [maxRequests, setMaxRequests] = useState(''); // Optional, for approval_based
+  const [genderPreference, setGenderPreference] = useState('all'); // 'all' | 'male_only' | 'female_only'
 
   // Mock options (simulating Campus Structured Options - DS-CA-002)
   const categories = [
@@ -36,6 +38,8 @@ export const CreateActivityScreen = ({ navigation }: any) => {
       meetingPointId,
       maxParticipants: parseInt(maxParticipants, 10),
       participationMode,
+      maxRequests: maxRequests ? parseInt(maxRequests, 10) : undefined,
+      genderPreference,
       // For the mockup we set the start date to "tomorrow"
       scheduledDateTime: new Date(Date.now() + 86400000).toISOString()
     };
@@ -84,6 +88,13 @@ export const CreateActivityScreen = ({ navigation }: any) => {
       <Text style={styles.label}>Maximum Participants</Text>
       <TextInput style={styles.input} value={maxParticipants} onChangeText={setMaxParticipants} keyboardType="numeric" />
 
+      {participationMode === 'approval_based' && (
+        <>
+          <Text style={styles.label}>Max Pending Requests (Optional)</Text>
+          <TextInput style={styles.input} value={maxRequests} onChangeText={setMaxRequests} keyboardType="numeric" placeholder="e.g. 10" />
+        </>
+      )}
+
       <Text style={styles.label}>Participation Mode</Text>
       <View style={styles.optionsContainer}>
         <TouchableOpacity style={[styles.optionBtn, participationMode === 'open' && styles.optionBtnSelected]} onPress={() => setParticipationMode('open')}>
@@ -91,6 +102,19 @@ export const CreateActivityScreen = ({ navigation }: any) => {
         </TouchableOpacity>
         <TouchableOpacity style={[styles.optionBtn, participationMode === 'approval_based' && styles.optionBtnSelected]} onPress={() => setParticipationMode('approval_based')}>
           <Text style={participationMode === 'approval_based' ? styles.optionTextSelected : styles.optionText}>Requires Approval</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.label}>Gender Preference</Text>
+      <View style={styles.optionsContainer}>
+        <TouchableOpacity style={[styles.optionBtn, genderPreference === 'all' && styles.optionBtnSelected]} onPress={() => setGenderPreference('all')}>
+          <Text style={genderPreference === 'all' ? styles.optionTextSelected : styles.optionText}>All</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.optionBtn, genderPreference === 'male_only' && styles.optionBtnSelected]} onPress={() => setGenderPreference('male_only')}>
+          <Text style={genderPreference === 'male_only' ? styles.optionTextSelected : styles.optionText}>Male Only</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.optionBtn, genderPreference === 'female_only' && styles.optionBtnSelected]} onPress={() => setGenderPreference('female_only')}>
+          <Text style={genderPreference === 'female_only' ? styles.optionTextSelected : styles.optionText}>Female Only</Text>
         </TouchableOpacity>
       </View>
 

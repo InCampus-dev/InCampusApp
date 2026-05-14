@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../services/api';
+import api, { getApiErrorCode, getApiErrorDetails } from '../services/api';
 
 const GENDER_OPTIONS = [
   { value: 'male', label: 'Male' },
@@ -81,14 +81,18 @@ export default function ProfileSetupScreen({ navigation }: { navigation: any }) 
         { text: 'Continue', onPress: () => navigation.navigate('ConsentSettings') },
       ]);
     } catch (error: any) {
-      const code = error?.response?.data?.error;
-      if (code === 'ProfileAlreadyExists') {
+      const code = getApiErrorCode(error);
+      const details = getApiErrorDetails(error);
+      if (
+        (code === 'CONFLICT' && details?.conflictResource === 'StudentProfile') ||
+        code === 'ProfileAlreadyExists'
+      ) {
         // B.4 fix: user already has a profile — navigate to main app, not ConsentSettings
         Alert.alert('Profile Exists', 'A profile already exists for your account.');
         navigation.reset({ index: 0, routes: [{ name: 'ActivityFeed' }] });
       } else if (code === 'MissingMandatoryFields') {
         Alert.alert('Missing Fields', 'Please fill in all required fields.');
-      } else if (code === 'InvalidFieldValues') {
+      } else if (code === 'VALIDATION_ERROR' || code === 'InvalidFieldValues') {
         Alert.alert('Invalid Input', 'Some field values are not valid. Please check and try again.');
       } else {
         Alert.alert('Error', 'Could not create profile. Please try again.');

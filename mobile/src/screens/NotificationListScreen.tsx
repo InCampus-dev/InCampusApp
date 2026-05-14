@@ -12,7 +12,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../services/api';
+import api, { getApiErrorCode } from '../services/api';
 
 interface NotificationItem {
   notificationId: string;
@@ -118,8 +118,9 @@ export default function NotificationListScreen({ navigation }: { navigation: any
         navigation.navigate('NotificationFallback');
       }
     } catch (error: any) {
-      const code = error?.response?.data?.error;
+      const code = getApiErrorCode(error);
       if (
+        code === 'NOT_FOUND' ||
         code === 'TargetActivityUnavailable' ||
         code === 'BlockRelationshipExists' ||
         code === 'NotificationNotFound'

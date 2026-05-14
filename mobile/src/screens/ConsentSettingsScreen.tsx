@@ -10,7 +10,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import api from '../services/api';
+import api, { getApiErrorCode } from '../services/api';
 
 export default function ConsentSettingsScreen({ navigation }: { navigation: any }) {
   // Default consent is false (Entities & Attributes v1.2: StudentAccount.CampusInsightSharingConsent default=false)
@@ -30,8 +30,8 @@ export default function ConsentSettingsScreen({ navigation }: { navigation: any 
         routes: [{ name: 'ActivityFeed' }],
       });
     } catch (error: any) {
-      const code = error?.response?.data?.error;
-      if (code === 'AccountNotFound') {
+      const code = getApiErrorCode(error);
+      if (code === 'NOT_FOUND' || code === 'AccountNotFound') {
         Alert.alert('Error', 'Account not found. Please sign in again.');
       } else {
         Alert.alert('Error', 'Could not save consent preference. Please try again.');

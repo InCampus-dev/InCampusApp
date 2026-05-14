@@ -11,12 +11,12 @@ import {
   Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../services/api';
+import api, { getApiErrorCode } from '../services/api';
 
 interface Campus {
   campusId: string;
   campusName: string;
-  isActive?: boolean;
+  activationStatus: boolean;
 }
 
 export default function CampusSelectionScreen({ navigation }: { navigation: any }) {
@@ -43,15 +43,15 @@ export default function CampusSelectionScreen({ navigation }: { navigation: any 
       const response = await api.get('/campuses');
       const list: Campus[] = response.data;
       // A.1 fix: client-side defensive filter — only show campuses confirmed active
-      const activeCampuses = list.filter((c) => c.isActive !== false);
+      const activeCampuses = list.filter((c) => c.activationStatus === true);
       setCampuses(activeCampuses);
       // DUC-AP-03 alternate scenario: if only one campus, pre-select it
       if (activeCampuses.length === 1) {
         setSelectedId(activeCampuses[0].campusId);
       }
     } catch (error: any) {
-      const code = error?.response?.data?.error;
-      if (code === 'NoCampusesConfigured') {
+      const code = getApiErrorCode(error);
+      if (code === 'NOT_FOUND' || code === 'NoCampusesConfigured') {
         Alert.alert(
           'No Campuses Available',
           'No campuses are configured for your university yet. Please contact your university.',
@@ -81,8 +81,8 @@ export default function CampusSelectionScreen({ navigation }: { navigation: any 
         navigation.navigate('ProfileSetup');
       }
     } catch (error: any) {
-      const code = error?.response?.data?.error;
-      if (code === 'CampusNotFound' || code === 'CampusNotActive') {
+      const code = getApiErrorCode(error);
+      if (code === 'NOT_FOUND' || code === 'CampusNotFound' || code === 'CampusNotActive') {
         Alert.alert('Campus Unavailable', 'This campus is no longer available. Please select another.');
         fetchCampuses();
       } else {

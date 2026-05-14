@@ -10,10 +10,12 @@ import type { DataSource } from "typeorm";
 
 import { createAccessProfileRoutes } from "../packages/access-profile/src/routes";
 import { StudentAccountRepo } from "../packages/access-profile/src/repositories/StudentAccountRepo";
+import { StudentProfileRepo } from "../packages/access-profile/src/repositories/StudentProfileRepo";
 import { AccountModerationCommandHandler } from "../packages/access-profile/src/services/AccountModerationCommandHandler";
 import { createCampusAdministrationRoutes } from "../packages/campus-administration/src/routes";
 import { CampusRepo } from "../packages/campus-administration/src/repositories/CampusRepo";
 import { CampusOptionsRepo } from "../packages/campus-administration/src/repositories/CampusOptionsRepo";
+import { AdminInsightService } from "../packages/campus-administration/src/services/AdminInsightService";
 import { CampusAuthorizationService } from "../packages/campus-administration/src/services/CampusAuthorizationService";
 import { CampusConfigurationService } from "../packages/campus-administration/src/services/CampusConfigurationService";
 import { CampusOptionsService } from "../packages/campus-administration/src/services/CampusOptionsService";
@@ -73,6 +75,7 @@ export function createApp(args: CreateAppArgs = {}): Express {
   const blockRepo = new BlockRepo(dataSource);
   const reportRepo = new ReportRepo(dataSource);
   const studentAccountRepo = new StudentAccountRepo(dataSource);
+  const studentProfileRepo = new StudentProfileRepo(dataSource);
   const activityRepo = new ActivityRepo(dataSource);
   const participationRepo = new ParticipationRepo(dataSource);
   const notificationRepo = new NotificationRepo(dataSource);
@@ -85,6 +88,13 @@ export function createApp(args: CreateAppArgs = {}): Express {
   const campusOptionsService = new CampusOptionsService(
     campusRepo,
     campusOptionsRepo,
+    campusAuthorizationService
+  );
+  const adminInsightService = new AdminInsightService(
+    studentAccountRepo,
+    studentProfileRepo,
+    activityRepo,
+    participationRepo,
     campusAuthorizationService
   );
   const studentAccountExistenceLookup: StudentAccountExistenceLookup = {
@@ -173,6 +183,7 @@ export function createApp(args: CreateAppArgs = {}): Express {
       basePath: "/",
       router: createCampusAdministrationRoutes({
         resolveAdminContext,
+        adminInsightService,
         campusConfigurationService,
         campusOptionsService
       })

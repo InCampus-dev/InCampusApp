@@ -341,6 +341,46 @@ describe("GET /health", () => {
     });
   });
 
+  it("wires native moderation handlers into the dispatcher during app creation", async () => {
+    const dispatcherConstructor = vi.fn();
+    const dispatcherModulePath =
+      "../packages/safety-moderation/src/services/ModerationActionDispatcher";
+
+    vi.resetModules();
+
+    try {
+      vi.doMock(dispatcherModulePath, () => ({
+        ModerationActionDispatcher: class {
+          constructor(accountHandler?: unknown, activityHandler?: unknown) {
+            dispatcherConstructor(accountHandler, activityHandler);
+          }
+
+          public async dispatch() {
+            return { commandDispatchPending: false };
+          }
+        }
+      }));
+
+      const { createApp: createAppWithMockedDispatcher } = await import("./app");
+      createAppWithMockedDispatcher();
+
+      expect(dispatcherConstructor).toHaveBeenCalledTimes(1);
+      const [accountHandler, activityHandler] = dispatcherConstructor.mock.calls[0] ?? [];
+
+      expect(accountHandler).toBeDefined();
+      expect(activityHandler).toBeDefined();
+      expect((accountHandler as { constructor?: { name?: string } }).constructor?.name).toBe(
+        "AccountModerationCommandHandler"
+      );
+      expect((activityHandler as { constructor?: { name?: string } }).constructor?.name).toBe(
+        "ActivityModerationCommandHandler"
+      );
+    } finally {
+      vi.doUnmock(dispatcherModulePath);
+      vi.resetModules();
+    }
+  });
+
   it("registers NSF handlers on the shared event bus during app creation", () => {
     const eventBus = {
       publish: vi.fn(),

@@ -2,8 +2,9 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+import type { StudentAccountRepo } from "../repositories/StudentAccountRepo";
 import { AccountModerationCommandHandler } from "../services/AccountModerationCommandHandler";
-import { ModerationAction } from "../../../shared/src/domain/enums";
+import { ModerationAction, ReviewOutcome } from "../../../shared/src/domain/enums";
 
 const mockAccountRepo = {
   findById: vi.fn(),
@@ -15,7 +16,7 @@ describe("AccountModerationCommandHandler", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    handler = new AccountModerationCommandHandler(mockAccountRepo as any);
+    handler = new AccountModerationCommandHandler(mockAccountRepo as unknown as StudentAccountRepo);
   });
 
   it("should suspend a user account when action is suspend_user", async () => {
@@ -24,14 +25,17 @@ describe("AccountModerationCommandHandler", () => {
       platformAccessStatus: "Active"
     };
     mockAccountRepo.findById.mockResolvedValue(account);
-    mockAccountRepo.save.mockImplementation(async (entity: any) => entity);
+    mockAccountRepo.save.mockImplementation(async <T>(entity: T) => entity);
 
     await handler.handle({
+      commandId: "cmd-1",
       targetAccountId: "acc-target",
       actionType: ModerationAction.SuspendUser,
       reportId: "rpt-1",
       campusId: "campus-1",
-      reviewOutcomeId: "ro-1"
+      reviewOutcomeId: ReviewOutcome.ActionTaken,
+      requestedByAdminId: "admin-1",
+      requestedAt: "2026-05-14T00:00:00.000Z"
     });
 
     expect(mockAccountRepo.save).toHaveBeenCalledWith(
@@ -47,14 +51,17 @@ describe("AccountModerationCommandHandler", () => {
       platformAccessStatus: "Active"
     };
     mockAccountRepo.findById.mockResolvedValue(account);
-    mockAccountRepo.save.mockImplementation(async (entity: any) => entity);
+    mockAccountRepo.save.mockImplementation(async <T>(entity: T) => entity);
 
     await handler.handle({
+      commandId: "cmd-2",
       targetAccountId: "acc-target",
       actionType: ModerationAction.BanUser,
       reportId: "rpt-2",
       campusId: "campus-1",
-      reviewOutcomeId: "ro-2"
+      reviewOutcomeId: ReviewOutcome.ActionTaken,
+      requestedByAdminId: "admin-1",
+      requestedAt: "2026-05-14T00:00:00.000Z"
     });
 
     expect(mockAccountRepo.save).toHaveBeenCalledWith(
@@ -69,11 +76,14 @@ describe("AccountModerationCommandHandler", () => {
 
     await expect(
       handler.handle({
+        commandId: "cmd-3",
         targetAccountId: "nonexistent",
         actionType: ModerationAction.SuspendUser,
         reportId: "rpt-3",
         campusId: "campus-1",
-        reviewOutcomeId: "ro-3"
+        reviewOutcomeId: ReviewOutcome.ActionTaken,
+        requestedByAdminId: "admin-1",
+        requestedAt: "2026-05-14T00:00:00.000Z"
       })
     ).rejects.toThrow();
   });

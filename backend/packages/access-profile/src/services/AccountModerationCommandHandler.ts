@@ -1,5 +1,9 @@
 // Task: AP12 | Path: backend/packages/access-profile/src/services/AccountModerationCommandHandler.ts
 
+import type {
+  AccountModerationCommandHandler as AccountModerationCommandHandlerPort,
+  RequestAccountModerationAction
+} from "../../../safety-moderation/src/services/ModerationActionDispatcher";
 import { AppError } from "../../../shared/src/errors/AppError";
 import { ModerationAction, PlatformAccessStatus } from "../../../shared/src/domain/enums";
 import { StudentAccountRepo } from "../repositories/StudentAccountRepo";
@@ -9,20 +13,12 @@ import { StudentAccountRepo } from "../repositories/StudentAccountRepo";
  * Defined in docs/internal-command-contract.md.
  * Source: UCR - A&P v1.2 Internal Interfaces; UCR - S&M v1.3 DUC-SM-03.
  */
-export interface RequestAccountModerationAction {
-  reportId: string;
-  targetAccountId: string;
-  actionType: ModerationAction.SuspendUser | ModerationAction.BanUser;
-  campusId: string;
-  reviewOutcomeId: string;
-}
-
 const ACTION_TO_STATUS: Partial<Record<ModerationAction, PlatformAccessStatus>> = {
   [ModerationAction.SuspendUser]: PlatformAccessStatus.Suspended,
   [ModerationAction.BanUser]: PlatformAccessStatus.Banned,
 };
 
-export class AccountModerationCommandHandler {
+export class AccountModerationCommandHandler implements AccountModerationCommandHandlerPort {
   constructor(private readonly studentAccountRepo: StudentAccountRepo) {}
 
   /**

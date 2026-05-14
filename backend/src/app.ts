@@ -10,6 +10,7 @@ import type { DataSource } from "typeorm";
 
 import { createAccessProfileRoutes } from "../packages/access-profile/src/routes";
 import { StudentAccountRepo } from "../packages/access-profile/src/repositories/StudentAccountRepo";
+import { AccountModerationCommandHandler } from "../packages/access-profile/src/services/AccountModerationCommandHandler";
 import { createCampusAdministrationRoutes } from "../packages/campus-administration/src/routes";
 import { CampusRepo } from "../packages/campus-administration/src/repositories/CampusRepo";
 import { CampusOptionsRepo } from "../packages/campus-administration/src/repositories/CampusOptionsRepo";
@@ -20,6 +21,7 @@ import { createDiscoveryParticipationRoutes } from "../packages/discovery-partic
 import { ActivityRepo } from "../packages/hosting-lifecycle/src/repositories/ActivityRepo";
 import { ParticipationRepo } from "../packages/hosting-lifecycle/src/repositories/ParticipationRepo";
 import { createHostingLifecycleRoutes } from "../packages/hosting-lifecycle/src/routes";
+import { ActivityModerationCommandHandler } from "../packages/hosting-lifecycle/src/services/ActivityModerationCommandHandler";
 import { ApplicationOutcomeHandler } from "../packages/notifications-system-flow/src/handlers/ApplicationOutcomeHandler";
 import { CancellationHandler } from "../packages/notifications-system-flow/src/handlers/CancellationHandler";
 import { JoinEventHandler } from "../packages/notifications-system-flow/src/handlers/JoinEventHandler";
@@ -97,7 +99,12 @@ export function createApp(args: CreateAppArgs = {}): Express {
   );
   const communityRulesContentProvider = new CommunityRulesContentProvider();
   const reportSubmissionService = new ReportSubmissionService(reportRepo, studentAccountRepo);
-  const moderationActionDispatcher = new ModerationActionDispatcher();
+  const accountModerationCommandHandler = new AccountModerationCommandHandler(studentAccountRepo);
+  const activityModerationCommandHandler = new ActivityModerationCommandHandler(dataSource);
+  const moderationActionDispatcher = new ModerationActionDispatcher(
+    accountModerationCommandHandler,
+    activityModerationCommandHandler
+  );
   const reportReviewService = new ReportReviewService(
     reportRepo,
     studentAccountRepo,

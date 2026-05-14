@@ -69,15 +69,14 @@ export default function CampusSelectionScreen({ navigation }: { navigation: any 
     setSubmitting(true);
     try {
       await api.patch('/accounts/me/campus', { campusId: selectedId });
+      await AsyncStorage.setItem('selectedCampusId', selectedId);
+      // TODO: Replace this client-side storage fallback once the backend exposes
+      // a secure way to refresh the authenticated token after campus selection.
 
-      // A.2 fix: check if profile exists — navigate to main app if already onboarded,
-      // otherwise continue to ProfileSetup for new users
       try {
         await api.get('/profiles/me');
-        // Profile exists → user is already onboarded, go to main app
         navigation.reset({ index: 0, routes: [{ name: 'ActivityFeed' }] });
       } catch {
-        // Profile does not exist → continue onboarding flow
         navigation.navigate('ProfileSetup');
       }
     } catch (error: any) {

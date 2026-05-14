@@ -35,7 +35,7 @@ type NotificationListResponse = NotificationItem[] | { notifications?: Notificat
 // Map TargetContextType values to navigation screen names (DUC-NSF-06)
 const CONTEXT_TYPE_TO_SCREEN: Record<string, string> = {
   ActivityDetails: 'ActivityDetails',
-  JoinRequestReview: 'ManageJoinRequests',
+  JoinRequestReview: 'ManageRequests',
   PersonalActivityContext: 'PersonalActivityList',
   CancelledActivityContext: 'ActivityDetails',
 };

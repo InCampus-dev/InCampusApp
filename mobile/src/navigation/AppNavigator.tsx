@@ -23,11 +23,9 @@ export type RootStackParamList = {
   ProfileSetup: undefined;
   ConsentSettings: undefined;
   ActivityFeed: undefined;
-  Home: undefined;
   ActivityDetails: { activityId: string; canManageRequests?: boolean };
   CreateActivity: undefined;
   ManageRequests: { activityId?: string } | undefined;
-  ManageJoinRequests: { activityId?: string } | undefined;
   NotificationList: undefined;
   NotificationFallback: undefined;
   PersonalActivityList: { activityId?: string } | undefined;
@@ -114,14 +112,6 @@ export default function AppNavigator() {
           })}
         />
         <Stack.Screen
-          name="Home"
-          component={ActivityFeedScreen}
-          options={({ navigation }) => ({
-            title: 'Activity Feed',
-            headerRight: () => <FeedHeaderActions navigation={navigation} />,
-          })}
-        />
-        <Stack.Screen
           name="ActivityDetails"
           component={ActivityDetailsScreen}
           options={({ navigation, route }) => ({
@@ -136,11 +126,6 @@ export default function AppNavigator() {
         />
         <Stack.Screen
           name="ManageRequests"
-          component={ManageRequestsScreen}
-          options={{ title: 'Pending Join Requests' }}
-        />
-        <Stack.Screen
-          name="ManageJoinRequests"
           component={ManageRequestsScreen}
           options={{ title: 'Pending Join Requests' }}
         />

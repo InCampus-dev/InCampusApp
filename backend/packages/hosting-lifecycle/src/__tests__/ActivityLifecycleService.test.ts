@@ -146,7 +146,7 @@ describe("ActivityLifecycleService", () => {
       const service = new ActivityLifecycleService(createActivityRepo(activityStore), createStructuredOptionLookup([]), mockEventDispatcher);
       
       await expect(service.updateActivityStatus("host-1", "camp-1", "act-1", ActivityStatus.Full))
-        .rejects.toThrow("Can only update to completed or cancelled");
+        .rejects.toThrow("Invalid status update");
     });
   });
 

@@ -5,6 +5,7 @@ import { Repository } from "typeorm";
 import { Campus } from "../../../campus-administration/src/entities/Campus";
 import { CampusSummaryDto } from "../../../shared/src/domain/dtos";
 import { AppError } from "../../../shared/src/errors/AppError";
+import { StudentAccount } from "../entities/StudentAccount";
 import { IdentityRuleRepo } from "../repositories/IdentityRuleRepo";
 import { StudentAccountRepo } from "../repositories/StudentAccountRepo";
 
@@ -46,7 +47,7 @@ export class CampusAssociationService {
    * Validates campus exists and is active in DS-CA-001, then updates DS-AP-001.SelectedCampusID.
    * FR-1601: CampusID becomes the tenant boundary for all downstream content.
    */
-  public async selectCampus(accountId: string, campusId: string): Promise<void> {
+  public async selectCampus(accountId: string, campusId: string): Promise<StudentAccount> {
     const account = await this.studentAccountRepo.findById(accountId);
     if (!account) {
       throw AppError.notFound("StudentAccount", accountId);
@@ -65,7 +66,7 @@ export class CampusAssociationService {
     }
 
     account.selectedCampusId = campusId;
-    await this.studentAccountRepo.save(account);
+    return await this.studentAccountRepo.save(account);
   }
 
   private async resolveUniversityName(universityEmail: string): Promise<string> {

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  PlatformAccessStatus,
+  VerificationStatus
+} from "../../../shared/src/domain/enums";
 import { StudentAccount } from "../entities/StudentAccount";
 import { IdentityRuleRepo } from "../repositories/IdentityRuleRepo";
 import { StudentAccountRepo } from "../repositories/StudentAccountRepo";
@@ -51,6 +55,37 @@ describe("CampusAssociationService", () => {
         activationStatus: true
       }
     ]);
+  });
+
+  it("updates the selected campus and returns the saved account", async () => {
+    const studentAccount = createStudentAccount({
+      studentAccountId: "student-001",
+      universityEmail: "student@tongji.edu.cn",
+      selectedCampusId: null
+    });
+    const service = new CampusAssociationService(
+      createStudentAccountRepo([studentAccount]),
+      createCampusRepo([
+        {
+          campusId: "campus-tongji-1",
+          universityName: "Tongji University",
+          campusName: "Jiading Campus",
+          activationStatus: true
+        }
+      ]),
+      createIdentityRuleRepo([
+        {
+          emailDomain: "tongji.edu.cn",
+          universityName: "Tongji University",
+          ruleStatus: "Active"
+        }
+      ])
+    );
+
+    const updatedAccount = await service.selectCampus("student-001", "campus-tongji-1");
+
+    expect(updatedAccount.selectedCampusId).toBe("campus-tongji-1");
+    expect(studentAccount.selectedCampusId).toBe("campus-tongji-1");
   });
 });
 
@@ -112,4 +147,19 @@ function createStudentAccountRepo(studentAccountStore: StudentAccount[]): Studen
       return studentAccount;
     }
   } as unknown as StudentAccountRepo;
+}
+
+function createStudentAccount(overrides?: Partial<StudentAccount>): StudentAccount {
+  return {
+    studentAccountId: overrides?.studentAccountId ?? "student-001",
+    passwordHash: overrides?.passwordHash ?? "hashed-password",
+    universityStudentId: overrides?.universityStudentId ?? "u1234567",
+    universityEmail: overrides?.universityEmail ?? "student@tongji.edu.cn",
+    verificationStatus: overrides?.verificationStatus ?? VerificationStatus.Verified,
+    platformAccessStatus: overrides?.platformAccessStatus ?? PlatformAccessStatus.Active,
+    selectedCampusId: overrides?.selectedCampusId ?? null,
+    campusInsightSharingConsent: overrides?.campusInsightSharingConsent ?? false,
+    verificationToken: overrides?.verificationToken ?? null,
+    createdAt: overrides?.createdAt ?? new Date("2026-05-15T00:00:00.000Z")
+  } as StudentAccount;
 }

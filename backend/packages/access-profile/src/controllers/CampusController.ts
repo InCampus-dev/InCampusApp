@@ -6,6 +6,7 @@ import type { NextFunction, Request, Response } from "express";
 import { AppError } from "../../../shared/src/errors/AppError";
 import { requireStudentContext } from "../../../shared/src/middleware/auth";
 import { CampusAssociationService } from "../services/CampusAssociationService";
+import { buildAuthenticatedResponse } from "../services/authSession";
 
 export class CampusController {
   constructor(private readonly campusAssociationService: CampusAssociationService) {}
@@ -43,8 +44,14 @@ export class CampusController {
         ]);
       }
 
-      await this.campusAssociationService.selectCampus(studentContext.studentAccountId, campusId);
-      response.json({ message: "Campus selected successfully" });
+      const updatedAccount = await this.campusAssociationService.selectCampus(
+        studentContext.studentAccountId,
+        campusId
+      );
+      response.json({
+        message: "Campus selected successfully",
+        ...buildAuthenticatedResponse(updatedAccount)
+      });
     } catch (error) {
       next(error);
     }

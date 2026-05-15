@@ -11,8 +11,10 @@ interface ActivityDetailsViewModel {
   categoryLabel: string;
   currentParticipantCount: number;
   maxParticipants: number;
-  hostDisplayName?: string;
-  hostShortBio?: string;
+  hostProfile?: {
+    displayName: string;
+    shortBio?: string | null;
+  };
   genderPreference: 'all' | 'male_only' | 'female_only';
   participationMode: 'open' | 'approval_based';
 }
@@ -80,9 +82,9 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
         <Text style={styles.infoText}>Meeting Point: {activity.meetingPointLabel}</Text>
         <Text style={styles.infoText}>Category: {activity.categoryLabel}</Text>
         <Text style={styles.infoText}>Participants: {activity.currentParticipantCount} / {activity.maxParticipants}</Text>
-        <Text style={styles.infoText}>Host: {activity.hostDisplayName || 'Student'}</Text>
-        {activity.hostShortBio && (
-          <Text style={styles.hostBio}>"{activity.hostShortBio}"</Text>
+        <Text style={styles.infoText}>Host: {activity.hostProfile?.displayName || 'Student'}</Text>
+        {activity.hostProfile?.shortBio && (
+          <Text style={styles.hostBio}>"{activity.hostProfile.shortBio}"</Text>
         )}
         <Text style={styles.infoText}>Gender Pref: {activity.genderPreference === 'all' ? 'All' : (activity.genderPreference === 'male_only' ? 'Male Only' : 'Female Only')}</Text>
         <Text style={styles.infoText}>Mode: {activity.participationMode === 'open' ? 'Direct Join' : 'Approval Required'}</Text>

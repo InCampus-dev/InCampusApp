@@ -94,7 +94,7 @@ class ApiClient {
     }
 
     return {
-      data: responseData as T,
+      data: unwrapSuccessfulResponse(responseData) as T,
       status: response.status
     };
   }
@@ -148,6 +148,22 @@ async function parseResponse(response: Response): Promise<unknown> {
   } catch {
     return rawText;
   }
+}
+
+function unwrapSuccessfulResponse(responseData: unknown): unknown {
+  if (hasOwnDataProperty(responseData)) {
+    return responseData.data;
+  }
+
+  return responseData;
+}
+
+function hasOwnDataProperty(value: unknown): value is { data: unknown } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  return Object.prototype.hasOwnProperty.call(value, "data");
 }
 
 export function getApiErrorCode(error: unknown): string | undefined {

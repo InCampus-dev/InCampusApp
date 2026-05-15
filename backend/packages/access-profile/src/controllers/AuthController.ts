@@ -2,17 +2,14 @@
 
 import type { NextFunction, Request, Response } from "express";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 
 import { AppError } from "../../../shared/src/errors/AppError";
 import { PlatformAccessStatus, VerificationStatus } from "../../../shared/src/domain/enums";
-import type { AuthenticatedResponseDto } from "../../../shared/src/domain/dtos";
 import { AccountActivationService } from "../services/AccountActivationService";
+import { buildAuthenticatedResponse } from "../services/authSession";
 import { DomainValidationService } from "../services/DomainValidationService";
 import { EmailVerificationService } from "../services/EmailVerificationService";
 import { StudentAccountRepo } from "../repositories/StudentAccountRepo";
-
-const JWT_SECRET = process.env.JWT_SECRET ?? "inCampus-mvp-dev-secret";
 
 export class AuthController {
   constructor(
@@ -115,22 +112,7 @@ export class AuthController {
         throw new AppError("ACCOUNT_BANNED", "Account has been banned", 403);
       }
 
-      const tokenPayload = {
-        sub: account.studentAccountId,
-        email: account.universityEmail,
-        campusId: account.selectedCampusId ?? null,
-        platformAccessStatus: account.platformAccessStatus,
-        verificationStatus: account.verificationStatus
-      };
-      const accessToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: "7d" });
-
-      const responseBody: AuthenticatedResponseDto = {
-        accessToken,
-        studentAccountId: account.studentAccountId,
-        selectedCampusId: account.selectedCampusId ?? null,
-        platformAccessStatus: account.platformAccessStatus,
-        verificationStatus: account.verificationStatus
-      };
+      const responseBody = buildAuthenticatedResponse(account);
       response.json(responseBody);
     } catch (error) {
       next(error);

@@ -19,6 +19,15 @@ interface Campus {
   activationStatus: boolean;
 }
 
+interface CampusSelectionResponse {
+  message: string;
+  accessToken: string;
+  studentAccountId: string;
+  selectedCampusId: string | null;
+  platformAccessStatus: string;
+  verificationStatus: string;
+}
+
 export default function CampusSelectionScreen({ navigation }: { navigation: any }) {
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -68,10 +77,17 @@ export default function CampusSelectionScreen({ navigation }: { navigation: any 
     if (!selectedId) return;
     setSubmitting(true);
     try {
-      await api.patch('/accounts/me/campus', { campusId: selectedId });
-      await AsyncStorage.setItem('selectedCampusId', selectedId);
-      // TODO: Replace this client-side storage fallback once the backend exposes
-      // a secure way to refresh the authenticated token after campus selection.
+      const response = await api.patch<CampusSelectionResponse>('/accounts/me/campus', {
+        campusId: selectedId
+      });
+      const { accessToken, selectedCampusId } = response.data;
+
+      if (!accessToken || !selectedCampusId) {
+        throw new Error('Campus selection did not return an updated authenticated session.');
+      }
+
+      await AsyncStorage.setItem('authToken', accessToken);
+      await AsyncStorage.setItem('selectedCampusId', selectedCampusId);
 
       try {
         await api.get('/profiles/me');

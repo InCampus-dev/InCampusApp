@@ -25,7 +25,9 @@ export enum PlatformAccessStatus {
 
 export enum VerificationStatus {
   Pending = "Pending",
-  Verified = "Verified"
+  Verified = "Verified",
+  Rejected = "Rejected",
+  Expired = "Expired"
 }
 
 export enum NotificationType {
@@ -52,10 +54,33 @@ export enum ModerationAction {
   RemoveActivity = "remove_activity"
 }
 
+export enum ReportTargetType {
+  Student = "student",
+  Activity = "activity"
+}
+
+export enum ReportStatus {
+  PendingReview = "pending_review",
+  Reviewed = "reviewed"
+}
+
+export enum ReviewOutcome {
+  NoAction = "no_action",
+  ActionTaken = "action_taken",
+  Dismissed = "dismissed"
+}
+
 export enum GenderPreference {
   All = "all",
   MaleOnly = "male_only",
   FemaleOnly = "female_only"
+}
+
+export enum StudentProfileGender {
+  Male = "male",
+  Female = "female",
+  Other = "other",
+  PreferNotToSay = "prefer_not_to_say"
 }
 
 export enum ParticipationMode {

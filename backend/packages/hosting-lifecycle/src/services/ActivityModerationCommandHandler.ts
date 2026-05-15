@@ -1,39 +1,54 @@
-import { ModerationAction } from '../../../shared/src/domain/enums';
-// Note: Adjust the import paths for your Repositories and Error classes based on your exact Day 1 setup
-import { ActivityRepo } from '../repositories/ActivityRepo';
-import { ParticipationRepo } from '../repositories/ParticipationRepo';
-import { AppError } from '../../../shared/src/errors/AppError';
+import type {
+  ActivityModerationCommandHandler as ActivityModerationCommandHandlerPort,
+  RequestActivityModerationAction
+} from "../../../safety-moderation/src/services/ModerationActionDispatcher";
+import { DataSource } from "typeorm";
 
-export interface RequestActivityModerationActionPayload {
-  activityId: string;
-  action: ModerationAction;
-  adminId?: string; // Sourced from AuthenticatedAdminContext
-  reason?: string;
-}
+import { executeTransaction, findWithPessimisticWriteLock } from "../../../shared/src/db/transaction";
+import { Activity } from "../entities/Activity";
 
-export class ActivityModerationCommandHandler {
-  constructor(
-    private activityRepo: ActivityRepo,
-    private participationRepo: ParticipationRepo
-  ) {}
+export class ActivityModerationCommandHandler implements ActivityModerationCommandHandlerPort {
+  constructor(private readonly dataSource: DataSource) {}
 
   /**
-   * Handles moderation actions delegated from Safety & Moderation (SM).
-   * Executes the native hard-delete workflow on DS-HL-001 and DS-HL-002 under H&L ownership.
+   * Gestisce il comando di moderazione proveniente da SM.
+   * Esegue l'hard-delete nativo su DS-HL-001 (che casca su DS-HL-002).
    */
-  async handle(payload: RequestActivityModerationActionPayload): Promise<void> {
-    // H&L only processes activity removal. User bans are handled by AP.
-    if (payload.action !== 'remove_activity') {
+  public async handle(command: RequestActivityModerationAction): Promise<void> {
+    // 1. Validazione del comando
+    if (command.actionType !== "remove_activity") {
+      console.warn(`[HL07] Ignored unsupported moderation action: ${command.actionType}`);
       return;
     }
 
-    const activity = await this.activityRepo.findById(payload.activityId);
-    if (!activity) {
-      throw new AppError('NOT_FOUND', 'Activity not found for moderation removal');
-    }
+    console.log(
+      `[HL07] Executing moderation removal for activity: ${command.activityId} (Report: ${command.reportId})`
+    );
 
-    // Hard-delete cascade (System Invariant Rule 1)
-    await this.participationRepo.deleteByActivityId(payload.activityId);
-    await this.activityRepo.delete(payload.activityId);
+    // 2. Operazione atomica con lock pessimistico per evitare conflitti di concorrenza
+    await executeTransaction(this.dataSource, async (manager) => {
+      const activity = await findWithPessimisticWriteLock(manager, Activity, {
+        activityId: command.activityId
+      });
+
+      if (!activity) {
+        console.log(`[HL07] Activity ${command.activityId} already deleted or not found. Skipping.`);
+        return;
+      }
+
+      // 3. Verifica di isolamento per tenant (Campus)
+      if (activity.campusId !== command.campusId) {
+        throw new Error(
+          `[HL07] Campus mismatch during moderation removal. Expected ${command.campusId}, found ${activity.campusId}.`
+        );
+      }
+
+      // 4. Hard-Delete fisico (DS-HL-001).
+      // Nota: Le partecipazioni (DS-HL-002) verranno rimosse in automatico dal database
+      // grazie a `{ onDelete: "CASCADE" }` definito nell'entità Participation.
+      await manager.remove(Activity, activity);
+
+      console.log(`[HL07] Activity ${command.activityId} successfully hard-deleted by moderation.`);
+    });
   }
 }

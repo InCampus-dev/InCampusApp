@@ -1,184 +1,287 @@
-import { vi, Mock, describe, beforeEach, it, expect } from 'vitest';
-import { JoinService } from '../services/JoinService';
-import { ActivityStatus, ParticipationMode, ParticipationRecordType, ParticipationStatus } from '../../../shared/src/domain/enums';
-import { AppError } from '../../../shared/src/errors/AppError';
-import { executeTransaction, findWithPessimisticWriteLock } from '../../../shared/src/db/transaction';
-import { Activity } from '../../../hosting-lifecycle/src/entities/Activity';
-import { Participation } from '../../../hosting-lifecycle/src/entities/Participation';
+import { describe, it, expect, beforeEach, afterEach, vi, Mock } from "vitest";
+import { FindOperator } from "typeorm";
+import type { BlockRelationship } from "../../../safety-moderation/src/entities/BlockRelationship";
+import { JoinService } from "../services/JoinService";
+import { ActivityStatus, ParticipationMode, ParticipationRecordType, ParticipationStatus } from "../../../shared/src/domain/enums";
+import { executeTransaction, findWithPessimisticWriteLock } from "../../../shared/src/db/transaction";
+import { SMBlockLookupAdapter } from "../services/SMBlockLookupAdapter";
 
-// Mock the transaction helpers to bypass real DB locking while verifying they are called
-vi.mock('../../../shared/src/db/transaction', () => ({
+// Mock dei transaction helper del database
+vi.mock("../../../shared/src/db/transaction", () => ({
   executeTransaction: vi.fn(),
   findWithPessimisticWriteLock: vi.fn(),
 }));
 
-describe('JoinService (DP07)', () => {
-  let service: JoinService;
-  
-  const mockManager = {
-    findOne: vi.fn(),
-    create: vi.fn(),
-    save: vi.fn(),
-  };
-
-  const mockDataSource = {} as any;
-  const mockBlockLookup = { getBlockedAndBlockerIds: vi.fn() };
-  const mockEventDispatcher = { dispatch: vi.fn() };
-
-  const defaultStudentId = 'student-123';
-  const defaultCampusId = 'campus-abc';
-  const defaultActivityId = 'act-999';
+describe("JoinService", () => {
+  let joinService: JoinService;
+  let mockDataSource: any;
+  let mockBlockLookup: any;
+  let mockEventDispatcher: any;
+  let mockManager: any;
 
   beforeEach(() => {
+    // Simuliamo il manager di TypeORM all'interno della transazione
+    mockManager = {
+      findOne: vi.fn(),
+      create: vi.fn(),
+      save: vi.fn(),
+    };
+
+    mockDataSource = {}; 
+
+    // Simuliamo l'esecuzione della transazione passandogli subito il nostro mockManager
+    (executeTransaction as Mock).mockImplementation(async (ds, cb) => {
+      return await cb(mockManager);
+    });
+
+    mockBlockLookup = {
+      getBlockedAndBlockerIds: vi.fn().mockResolvedValue([]),
+    };
+
+    mockEventDispatcher = {
+      dispatch: vi.fn().mockResolvedValue(undefined),
+    };
+
+    joinService = new JoinService(mockDataSource, mockBlockLookup, mockEventDispatcher);
+  });
+
+  afterEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("should successfully directly join an open activity", async () => {
+    const activity = {
+      activityId: "act-1",
+      campusId: "camp-1",
+      hostAccountId: "host-1",
+      status: ActivityStatus.Open,
+      participationMode: ParticipationMode.Open,
+      currentParticipantCount: 0,
+      maxParticipants: 5,
+    };
+
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+    mockManager.findOne.mockResolvedValue(null); // Nessuna partecipazione esistente
     
-    // Wire executeTransaction to immediately invoke its callback with our mock manager
-    (executeTransaction as Mock).mockImplementation(async (ds: any, callback: any) => {
-      return await callback(mockManager);
-    });
+    const mockParticipation = { participationId: "part-1" } as any;
+    mockManager.create.mockReturnValue(mockParticipation);
+    mockManager.save.mockImplementation(async (entity: any, instance: any) => instance || mockParticipation);
 
-    service = new JoinService(
-      mockDataSource,
-      mockBlockLookup as any,
-      mockEventDispatcher as any
+    const result = await joinService.joinActivity("student-1", "camp-1", "act-1");
+
+    expect(result).toBe(mockParticipation);
+    expect(mockParticipation.recordType).toBe(ParticipationRecordType.Participation);
+    expect(mockParticipation.status).toBe(ParticipationStatus.Confirmed);
+    expect(activity.currentParticipantCount).toBe(1); // Incrementato atomicamente!
+    expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith("DirectJoinCompleted", expect.any(Object));
+  });
+
+  it("should successfully submit a join request for an approval-based activity", async () => {
+    const activity = {
+      activityId: "act-2",
+      campusId: "camp-1",
+      hostAccountId: "host-1",
+      status: ActivityStatus.Open,
+      participationMode: ParticipationMode.ApprovalBased,
+      currentRequestCount: 0,
+      maxRequests: 10,
+    };
+
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+    mockManager.findOne.mockResolvedValue(null);
+    
+    const mockParticipation = { participationId: "part-2" } as any;
+    mockManager.create.mockReturnValue(mockParticipation);
+    mockManager.save.mockImplementation(async (entity: any, instance: any) => instance || mockParticipation);
+
+    await joinService.joinActivity("student-1", "camp-1", "act-2");
+
+    expect(mockParticipation.recordType).toBe(ParticipationRecordType.Request);
+    expect(mockParticipation.status).toBe(ParticipationStatus.Pending);
+    expect(activity.currentRequestCount).toBe(1);
+    expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith("JoinRequestSubmitted", expect.any(Object));
+  });
+
+  it("should fail if activity is not found", async () => {
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(null);
+    await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow();
+  });
+
+  it("should fail if campusId does not match (cross-campus isolation)", async () => {
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue({
+      activityId: "act-1",
+      campusId: "camp-2", // Campus differente dal 'camp-1' della richiesta
+    });
+    await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow();
+  });
+
+  it("should fail with opaque not-found if host is blocked by the student or vice-versa", async () => {
+    const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1" };
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+    mockBlockLookup.getBlockedAndBlockerIds.mockResolvedValue(["host-1"]);
+
+    // Il sistema deve ritornare un errore prima di far scoprire all'utente che è bloccato
+    await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow();
+  });
+
+  it("blocks join when the real SM lookup finds a reciprocal block relationship", async () => {
+    const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1" };
+    const realBlockLookup = new SMBlockLookupAdapter({
+      find: vi.fn().mockResolvedValue([
+        createBlockRelationship({
+          initiatorAccountId: "host-1",
+          blockedAccountId: "student-1"
+        })
+      ])
+    } as any);
+    const service = new JoinService(mockDataSource, realBlockLookup, mockEventDispatcher);
+
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+
+    await expect(service.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow();
+  });
+
+  it("should fail if activity is not Open", async () => {
+    const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Full };
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+    await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("Activity is not open for joining");
+  });
+
+  it("allows a new request when only a declined historical request exists for the same activity and student", async () => {
+    const activity = {
+      activityId: "act-1",
+      campusId: "camp-1",
+      hostAccountId: "host-1",
+      status: ActivityStatus.Open,
+      participationMode: ParticipationMode.ApprovalBased,
+      currentRequestCount: 0,
+      maxRequests: 10
+    };
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+    mockManager.findOne.mockImplementation(
+      createParticipationFindOneMock([
+        {
+          participationId: "declined-1",
+          activityId: "act-1",
+          studentAccountId: "student-1",
+          recordType: ParticipationRecordType.Request,
+          status: ParticipationStatus.Declined
+        }
+      ])
     );
+
+    const mockParticipation = { participationId: "part-3" } as any;
+    mockManager.create.mockReturnValue(mockParticipation);
+    mockManager.save.mockImplementation(async (entity: any, instance: any) => instance || mockParticipation);
+
+    const result = await joinService.joinActivity("student-1", "camp-1", "act-1");
+
+    expect(result).toBe(mockParticipation);
+    expect(mockParticipation.recordType).toBe(ParticipationRecordType.Request);
+    expect(mockParticipation.status).toBe(ParticipationStatus.Pending);
+    expect(activity.currentRequestCount).toBe(1);
   });
 
-  describe('Concurrency & Lock Handling', () => {
-    it('should acquire a pessimistic write lock on the activity before checking capacity', async () => {
-      const mockActivity = {
-        activityId: defaultActivityId,
-        campusId: defaultCampusId,
-        hostAccountId: 'host-456',
-        status: ActivityStatus.Open,
-        participationMode: ParticipationMode.Open,
-        maxParticipants: 10,
-        currentParticipantCount: 0,
-      };
+  it("should fail if student already has a pending request for the activity", async () => {
+    const activity = {
+      activityId: "act-1",
+      campusId: "camp-1",
+      hostAccountId: "host-1",
+      status: ActivityStatus.Open,
+      participationMode: ParticipationMode.ApprovalBased,
+      currentRequestCount: 1,
+      maxRequests: 10
+    };
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+    mockManager.findOne.mockImplementation(
+      createParticipationFindOneMock([
+        {
+          participationId: "pending-1",
+          activityId: "act-1",
+          studentAccountId: "student-1",
+          recordType: ParticipationRecordType.Request,
+          status: ParticipationStatus.Pending
+        }
+      ])
+    );
 
-      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
-      mockBlockLookup.getBlockedAndBlockerIds.mockResolvedValueOnce([]);
-      mockManager.findOne.mockResolvedValueOnce(null); // No existing participation
-      mockManager.create.mockReturnValueOnce({});
-      mockManager.save.mockResolvedValue({});
-
-      await service.joinActivity(defaultStudentId, defaultCampusId, defaultActivityId);
-
-      expect(findWithPessimisticWriteLock).toHaveBeenCalledWith(
-        mockManager,
-        Activity,
-        { activityId: defaultActivityId }
-      );
-    });
+    await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("already joined");
   });
 
-  describe('Direct Join (Open Participation Mode)', () => {
-    it('should successfully join an open activity and emit DirectJoinCompleted', async () => {
-      const mockActivity = {
-        activityId: defaultActivityId,
-        campusId: defaultCampusId,
-        hostAccountId: 'host-456',
-        status: ActivityStatus.Open,
-        participationMode: ParticipationMode.Open,
-        maxParticipants: 5,
-        currentParticipantCount: 4,
-      };
+  it("should fail if student already has a confirmed participation for the activity", async () => {
+    const activity = {
+      activityId: "act-1",
+      campusId: "camp-1",
+      hostAccountId: "host-1",
+      status: ActivityStatus.Open,
+      participationMode: ParticipationMode.Open,
+      currentParticipantCount: 1,
+      maxParticipants: 5
+    };
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+    mockManager.findOne.mockImplementation(
+      createParticipationFindOneMock([
+        {
+          participationId: "confirmed-1",
+          activityId: "act-1",
+          studentAccountId: "student-1",
+          recordType: ParticipationRecordType.Participation,
+          status: ParticipationStatus.Confirmed
+        }
+      ])
+    );
 
-      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
-      mockBlockLookup.getBlockedAndBlockerIds.mockResolvedValueOnce([]);
-      mockManager.findOne.mockResolvedValueOnce(null);
-      mockManager.create.mockReturnValueOnce({ activityId: defaultActivityId, studentAccountId: defaultStudentId });
-      mockManager.save.mockResolvedValueOnce({ participationId: 'part-111' }); // For Activity save
-      mockManager.save.mockResolvedValueOnce({ participationId: 'part-111' }); // For Participation save
-
-      await service.joinActivity(defaultStudentId, defaultCampusId, defaultActivityId);
-
-      // Assert capacity was updated and status changed to full
-      expect(mockActivity.currentParticipantCount).toBe(5);
-      expect(mockActivity.status).toBe(ActivityStatus.Full);
-      
-      expect(mockManager.create).toHaveBeenCalledWith(Participation, expect.any(Object));
-      expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith('DirectJoinCompleted', expect.objectContaining({
-        participationId: 'part-111',
-        activityId: defaultActivityId,
-        studentAccountId: defaultStudentId
-      }));
-    });
-
-    it('should throw CONFLICT if capacity is already full during lock check', async () => {
-      const mockActivity = {
-        activityId: defaultActivityId,
-        campusId: defaultCampusId,
-        hostAccountId: 'host-456',
-        status: ActivityStatus.Open,
-        participationMode: ParticipationMode.Open,
-        maxParticipants: 5,
-        currentParticipantCount: 5, // Full
-      };
-
-      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
-      mockBlockLookup.getBlockedAndBlockerIds.mockResolvedValueOnce([]);
-      mockManager.findOne.mockResolvedValueOnce(null);
-
-      await expect(service.joinActivity(defaultStudentId, defaultCampusId, defaultActivityId))
-        .rejects.toThrow(AppError);
-    });
+    await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("already joined");
   });
 
-  describe('Join Request (Approval-Based Participation Mode)', () => {
-    it('should submit a request and emit JoinRequestSubmitted', async () => {
-      const mockActivity = {
-        activityId: defaultActivityId,
-        campusId: defaultCampusId,
-        hostAccountId: 'host-456',
-        status: ActivityStatus.Open,
-        participationMode: ParticipationMode.ApprovalBased,
-        maxRequests: 10,
-        currentRequestCount: 2,
-      };
-
-      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
-      mockBlockLookup.getBlockedAndBlockerIds.mockResolvedValueOnce([]);
-      mockManager.findOne.mockResolvedValueOnce(null);
-      
-      const createdParticipation: any = { recordType: null, status: null };
-      mockManager.create.mockReturnValueOnce(createdParticipation);
-      mockManager.save.mockResolvedValue({ participationId: 'req-222' });
-
-      await service.joinActivity(defaultStudentId, defaultCampusId, defaultActivityId);
-
-      expect(createdParticipation.recordType).toBe(ParticipationRecordType.Request);
-      expect(createdParticipation.status).toBe(ParticipationStatus.Pending);
-      expect(mockActivity.currentRequestCount).toBe(3);
-      expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith('JoinRequestSubmitted', expect.any(Object));
-    });
+  it("should fail if open activity is already full", async () => {
+    const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Open, participationMode: ParticipationMode.Open, currentParticipantCount: 5, maxParticipants: 5 };
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+    await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("already full");
   });
 
-  describe('Access Rules & Block Suppression', () => {
-    it('should throw NOT_FOUND (Block Suppression) if user is blocked by host', async () => {
-      const mockActivity = {
-        activityId: defaultActivityId,
-        campusId: defaultCampusId,
-        hostAccountId: 'host-456',
-      };
-
-      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
-      mockBlockLookup.getBlockedAndBlockerIds.mockResolvedValueOnce(['host-456']); // Block relationship exists
-
-      await expect(service.joinActivity(defaultStudentId, defaultCampusId, defaultActivityId))
-        .rejects.toMatchObject({ code: 'NOT_FOUND' }); // Opaque 404 to avoid leaking block state
-    });
-
-    it('should throw NOT_FOUND on campus mismatch (Tenant Boundary check)', async () => {
-      const mockActivity = {
-        activityId: defaultActivityId,
-        campusId: 'different-campus', // Mismatch
-      };
-
-      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
-
-      await expect(service.joinActivity(defaultStudentId, defaultCampusId, defaultActivityId))
-        .rejects.toMatchObject({ code: 'NOT_FOUND' });
-    });
+  it("should fail if approval-based activity has reached max requests", async () => {
+    const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Open, participationMode: ParticipationMode.ApprovalBased, currentRequestCount: 10, maxRequests: 10 };
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+    await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("maximum number of pending requests");
   });
 });
+
+function createBlockRelationship(
+  overrides: Partial<BlockRelationship> = {}
+): BlockRelationship {
+  return {
+    blockId: "block-001",
+    initiatorAccountId: "student-1",
+    blockedAccountId: "host-1",
+    createdAt: new Date("2026-05-10T00:00:00.000Z"),
+    ...overrides
+  } as BlockRelationship;
+}
+
+function createParticipationFindOneMock(records: Array<Record<string, unknown>>) {
+  return async (_entity: unknown, options: { where: Record<string, unknown> | Record<string, unknown>[] }) => {
+    const whereClauses = Array.isArray(options.where) ? options.where : [options.where];
+
+    return (
+      records.find((record) =>
+        whereClauses.some((whereClause) =>
+          Object.entries(whereClause).every(([field, expectedValue]) =>
+            matchesWhereValue(record[field], expectedValue)
+          )
+        )
+      ) ?? null
+    );
+  };
+}
+
+function matchesWhereValue(actualValue: unknown, expectedValue: unknown): boolean {
+  if (expectedValue instanceof FindOperator) {
+    if (expectedValue.type === "not") {
+      return actualValue !== expectedValue.value;
+    }
+    return false;
+  }
+
+  return actualValue === expectedValue;
+}

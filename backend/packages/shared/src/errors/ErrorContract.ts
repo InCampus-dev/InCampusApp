@@ -4,6 +4,7 @@ export type ErrorCode =
   | "AUTH_FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
+  | "INTERNAL_ERROR"
   | "CONCURRENCY_CONFLICT"
   | "UNSUPPORTED_EMAIL_DOMAIN"
   | "ACCOUNT_NOT_VERIFIED"
@@ -11,7 +12,9 @@ export type ErrorCode =
   | "ACCOUNT_BANNED"
   | "CAMPUS_SCOPE_VIOLATION"
   | "BLOCK_RELATIONSHIP_EXISTS"
-  | "TARGET_UNAVAILABLE";
+  | "TARGET_UNAVAILABLE"
+  | "INVALID_CREDENTIALS"
+  | "INVALID_VERIFICATION_TOKEN";
 
 export interface ValidationIssue {
   field: string;

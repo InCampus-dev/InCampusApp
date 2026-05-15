@@ -43,6 +43,16 @@ GET /health
 
 Do not commit `backend/.env`.
 
+## Seed Demo University Identity Rules
+
+On a fresh development or demo database, seed `DS-AP-003` before testing sign-up:
+
+```bash
+npm run seed:demo:identity-rules --workspace backend
+```
+
+This bootstrap is idempotent and currently seeds the supported demo domain `tongji.edu.cn`.
+
 ## Run Mobile
 
 The mobile folder is a shell only. Expo is intentionally not initialized in Phase 0.

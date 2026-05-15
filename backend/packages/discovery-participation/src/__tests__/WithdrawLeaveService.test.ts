@@ -1,4 +1,4 @@
-import { vi, Mock, describe, beforeEach, it, expect } from 'vitest';
+import { vi, describe, beforeEach, it, expect, Mock } from 'vitest';
 import { WithdrawLeaveService } from '../services/WithdrawLeaveService';
 import { ActivityStatus, ParticipationRecordType, ParticipationStatus } from '../../../shared/src/domain/enums';
 import { executeTransaction, findWithPessimisticWriteLock } from '../../../shared/src/db/transaction';
@@ -58,30 +58,43 @@ describe('WithdrawLeaveService (DP07)', () => {
       };
 
       (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
-      mockManager.findOne.mockResolvedValueOnce(mockParticipation);
+      mockManager.findOne.mockImplementationOnce(createParticipationFindOneMock([mockParticipation]));
       mockManager.remove.mockResolvedValueOnce({});
       mockManager.save.mockResolvedValueOnce({});
 
       await service.withdrawRequest(defaultStudentId, defaultActivityId);
 
+      expect(mockManager.findOne).toHaveBeenCalledWith(Participation, {
+        where: {
+          activityId: defaultActivityId,
+          studentAccountId: defaultStudentId,
+          recordType: ParticipationRecordType.Request,
+          status: ParticipationStatus.Pending
+        }
+      });
       expect(mockManager.remove).toHaveBeenCalledWith(Participation, mockParticipation);
       expect(mockActivity.currentRequestCount).toBe(1); // Decremented
       expect(mockManager.save).toHaveBeenCalledWith(Activity, mockActivity);
       expect(mockEventDispatcher.dispatch).not.toHaveBeenCalled(); // Crucial rule: no notification for withdrawal
     });
 
-    it('should throw BAD_REQUEST if trying to withdraw a request that is not pending', async () => {
+    it('should throw CONFLICT if only a declined historical request exists', async () => {
       const mockActivity = { activityId: defaultActivityId };
-      const mockParticipation = {
+      const historicalDeclinedRequest = {
+        participationId: 'req-222',
+        activityId: defaultActivityId,
+        studentAccountId: defaultStudentId,
         recordType: ParticipationRecordType.Request,
         status: ParticipationStatus.Declined, // Already decided
       };
 
       (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
-      mockManager.findOne.mockResolvedValueOnce(mockParticipation);
+      mockManager.findOne.mockImplementationOnce(
+        createParticipationFindOneMock([historicalDeclinedRequest])
+      );
 
       await expect(service.withdrawRequest(defaultStudentId, defaultActivityId))
-        .rejects.toMatchObject({ code: 'BAD_REQUEST' });
+        .rejects.toMatchObject({ code: 'CONFLICT' });
     });
   });
 
@@ -105,53 +118,74 @@ describe('WithdrawLeaveService (DP07)', () => {
       };
 
       (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
-      mockManager.findOne.mockResolvedValueOnce(mockParticipation);
+      mockManager.findOne.mockImplementationOnce(createParticipationFindOneMock([mockParticipation]));
       mockManager.remove.mockResolvedValueOnce({});
       mockManager.save.mockResolvedValueOnce({});
 
       await service.leaveActivity(defaultStudentId, defaultActivityId);
 
+      expect(mockManager.findOne).toHaveBeenCalledWith(Participation, {
+        where: {
+          activityId: defaultActivityId,
+          studentAccountId: defaultStudentId,
+          recordType: ParticipationRecordType.Participation,
+          status: ParticipationStatus.Confirmed
+        }
+      });
       expect(mockManager.remove).toHaveBeenCalledWith(Participation, mockParticipation);
       expect(mockActivity.currentParticipantCount).toBe(4); // Decremented
       expect(mockActivity.status).toBe(ActivityStatus.Open); // Reopened because it's no longer full
       expect(mockManager.save).toHaveBeenCalledWith(Activity, mockActivity);
       
       expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith('JoinedParticipantLeft', expect.objectContaining({
+        eventId: expect.any(String),
+        eventType: 'JoinedParticipantLeft',
+        occurredAt: expect.any(String),
         activityId: defaultActivityId,
-        studentAccountId: defaultStudentId,
+        triggeringAccountId: defaultStudentId,
         participationId: 'part-222'
       }));
     });
 
-    it('should throw BAD_REQUEST if trying to leave after the activity has started', async () => {
+    it('should throw CONFLICT if trying to leave after the activity has started', async () => {
       const mockActivity = {
         activityId: defaultActivityId,
         scheduledDateTime: new Date(Date.now() - 3600000), // 1 hour ago (already started)
       };
-      const mockParticipation = {
-        recordType: ParticipationRecordType.Participation,
-        status: ParticipationStatus.Confirmed,
-      };
 
       (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
-      mockManager.findOne.mockResolvedValueOnce(mockParticipation);
 
       await expect(service.leaveActivity(defaultStudentId, defaultActivityId))
-        .rejects.toMatchObject({ code: 'BAD_REQUEST' });
+        .rejects.toMatchObject({ code: 'CONFLICT' });
     });
 
-    it('should throw BAD_REQUEST if the user is not a confirmed participant', async () => {
+    it('should throw CONFLICT if the user is not a confirmed participant', async () => {
       const mockActivity = { activityId: defaultActivityId, scheduledDateTime: new Date(Date.now() + 86400000) };
-      const mockParticipation = {
+      const pendingRequest = {
+        participationId: 'req-333',
+        activityId: defaultActivityId,
+        studentAccountId: defaultStudentId,
         recordType: ParticipationRecordType.Request, // Not confirmed participation
         status: ParticipationStatus.Pending,
       };
 
       (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
-      mockManager.findOne.mockResolvedValueOnce(mockParticipation);
+      mockManager.findOne.mockImplementationOnce(createParticipationFindOneMock([pendingRequest]));
 
       await expect(service.leaveActivity(defaultStudentId, defaultActivityId))
-        .rejects.toMatchObject({ code: 'BAD_REQUEST' });
+        .rejects.toMatchObject({ code: 'CONFLICT' });
     });
   });
 });
+
+function createParticipationFindOneMock(records: Array<Record<string, unknown>>) {
+  return async (_entity: unknown, options: { where: Record<string, unknown> }) => {
+    return (
+      records.find((record) =>
+        Object.entries(options.where).every(
+          ([field, expectedValue]) => record[field] === expectedValue
+        )
+      ) ?? null
+    );
+  };
+}

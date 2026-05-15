@@ -1,9 +1,15 @@
-import { DataSource } from 'typeorm';
-import { ActivityStatus, ParticipationRecordType, ParticipationStatus } from '../../../shared/src/domain/enums';
-import { AppError } from '../../../shared/src/errors/AppError';
-import { executeTransaction, findWithPessimisticWriteLock } from '../../../shared/src/db/transaction';
-import { Activity } from '../../../hosting-lifecycle/src/entities/Activity';
-import { Participation } from '../../../hosting-lifecycle/src/entities/Participation';
+import { randomUUID } from "crypto";
+import { DataSource } from "typeorm";
+import { ActivityStatus } from "../../../shared/src/domain/enums";
+import { type JoinedParticipantLeftEvent } from "../../../shared/src/events/EventBus";
+import { AppError } from "../../../shared/src/errors/AppError";
+import { executeTransaction, findWithPessimisticWriteLock } from "../../../shared/src/db/transaction";
+import { Activity } from "../../../hosting-lifecycle/src/entities/Activity";
+import { Participation } from "../../../hosting-lifecycle/src/entities/Participation";
+import {
+  findConfirmedParticipationByActivityAndStudent,
+  findPendingRequestByActivityAndStudent
+} from "../../../hosting-lifecycle/src/repositories/ParticipationRepo";
 
 export class WithdrawLeaveService {
   constructor(
@@ -19,15 +25,15 @@ export class WithdrawLeaveService {
         throw AppError.notFound('Activity', activityId);
       }
 
-      const participation = await manager.findOne(Participation, {
-        where: { activityId, studentAccountId }
-      });
+      const participation = await findPendingRequestByActivityAndStudent(
+        {
+          findOne: (options) => manager.findOne(Participation, options)
+        },
+        activityId,
+        studentAccountId
+      );
 
-      if (
-        !participation ||
-        participation.recordType !== ParticipationRecordType.Request ||
-        participation.status !== ParticipationStatus.Pending
-      ) {
+      if (!participation) {
         throw AppError.conflict('Cannot withdraw a request that is not pending', 'Participation');
       }
 
@@ -49,15 +55,15 @@ export class WithdrawLeaveService {
         throw AppError.conflict('Cannot leave an activity after it has started', 'Activity');
       }
 
-      const participation = await manager.findOne(Participation, {
-        where: { activityId, studentAccountId }
-      });
+      const participation = await findConfirmedParticipationByActivityAndStudent(
+        {
+          findOne: (options) => manager.findOne(Participation, options)
+        },
+        activityId,
+        studentAccountId
+      );
 
-      if (
-        !participation ||
-        participation.recordType !== ParticipationRecordType.Participation ||
-        participation.status !== ParticipationStatus.Confirmed
-      ) {
+      if (!participation) {
         throw AppError.conflict('User is not a confirmed participant', 'Participation');
       }
 
@@ -70,11 +76,16 @@ export class WithdrawLeaveService {
 
       await manager.save(Activity, activity);
 
-      this.eventDispatcher.dispatch('JoinedParticipantLeft', {
+      const eventPayload: JoinedParticipantLeftEvent = {
+        eventId: randomUUID(),
+        eventType: "JoinedParticipantLeft",
+        occurredAt: new Date().toISOString(),
         activityId: activity.activityId,
-        studentAccountId: studentAccountId,
+        triggeringAccountId: studentAccountId,
         participationId: participation.participationId
-      });
+      };
+
+      await this.eventDispatcher.dispatch("JoinedParticipantLeft", eventPayload);
     });
   }
 }

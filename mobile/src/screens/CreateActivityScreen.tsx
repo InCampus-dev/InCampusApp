@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../services/api';
 
 export const CreateActivityScreen = ({ navigation }: any) => {
   const [title, setTitle] = useState('');
@@ -11,7 +13,8 @@ export const CreateActivityScreen = ({ navigation }: any) => {
   const [maxRequests, setMaxRequests] = useState(''); // Optional, for approval_based
   const [genderPreference, setGenderPreference] = useState('all'); // 'all' | 'male_only' | 'female_only'
 
-  // Mock options (simulating Campus Structured Options - DS-CA-002)
+  // Temporary demo options (simulating Campus Structured Options - DS-CA-002)
+  // IMPORTANT: These hardcoded IDs must exactly match the options created by the T19 demo seed!
   const categories = [
     { id: 'cat-1', name: 'Coffee / Break' },
     { id: 'cat-2', name: 'Study Session' },
@@ -24,29 +27,33 @@ export const CreateActivityScreen = ({ navigation }: any) => {
     { id: 'loc-3', name: 'Main Campus Gym' }
   ];
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!title || !description) {
       Alert.alert('Error', 'Please fill in all required fields.');
       return;
     }
 
-    // TODO: Replace with real call to POST /activities
-    const newActivity = {
-      title,
-      description,
-      categoryId,
-      meetingPointId,
-      maxParticipants: parseInt(maxParticipants, 10),
-      participationMode,
-      maxRequests: maxRequests ? parseInt(maxRequests, 10) : undefined,
-      genderPreference,
-      // For the mockup we set the start date to "tomorrow"
-      scheduledDateTime: new Date(Date.now() + 86400000).toISOString()
-    };
+    try {
+      const newActivity = {
+        title,
+        description,
+        categoryId,
+        meetingPointId,
+        maxParticipants: parseInt(maxParticipants, 10),
+        participationMode,
+        maxRequests: maxRequests ? parseInt(maxRequests, 10) : undefined,
+        genderPreference,
+        // For the mockup we set the start date to "tomorrow"
+        scheduledDateTime: new Date(Date.now() + 86400000).toISOString()
+      };
 
-    console.log('Creating activity...', newActivity);
-    Alert.alert('Success', 'Activity published successfully!');
-    navigation.goBack();
+      await api.post('/activities', newActivity);
+      Alert.alert('Success', 'Activity published successfully!');
+      navigation.goBack();
+    } catch (error: any) {
+      console.error('Error creating activity:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to create activity.');
+    }
   };
 
   return (

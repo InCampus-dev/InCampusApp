@@ -13,7 +13,8 @@ export const CreateActivityScreen = ({ navigation }: any) => {
   const [maxRequests, setMaxRequests] = useState(''); // Optional, for approval_based
   const [genderPreference, setGenderPreference] = useState('all'); // 'all' | 'male_only' | 'female_only'
 
-  // Mock options (simulating Campus Structured Options - DS-CA-002)
+  // Temporary demo options (simulating Campus Structured Options - DS-CA-002)
+  // IMPORTANT: These hardcoded IDs must exactly match the options created by the T19 demo seed!
   const categories = [
     { id: 'cat-1', name: 'Coffee / Break' },
     { id: 'cat-2', name: 'Study Session' },
@@ -33,10 +34,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
     }
 
     try {
-      const campusId = await AsyncStorage.getItem('selectedCampusId');
-      
       const newActivity = {
-        campusId,
         title,
         description,
         categoryId,

@@ -1,6 +1,6 @@
 # Demo Scenarios
 
-These scenario-level flows guide alpha planning. They do not require Phase 0 implementation beyond contracts and scaffolding.
+These scenario-level flows guide the local alpha/demo path. Use `docs/demo-seed.md`, `docs/backend-smoke-check.md`, `docs/mobile-run-check.md`, and `docs/demo-readiness-review.md` for the current repeatable demo setup and verification status.
 
 1. Student signs up with a supported university email, verifies the account, selects a campus, creates a Student Profile, and grants or refuses campus insight consent.
 2. Host creates an activity using a campus category and meeting point from `campus_structured_options`.
@@ -13,3 +13,12 @@ These scenario-level flows guide alpha planning. They do not require Phase 0 imp
 9. Host cancels an activity and confirmed participants receive cancellation notifications.
 10. Student submits a report; Campus Admin reviews it and dispatches AP or H&L moderation commands when required.
 11. Campus Admin views consent-based insights only for authorized campus scope and consenting students.
+
+## Current Demo Verification
+
+- Backend demo data: `npm run seed:demo`.
+- Backend smoke check: `npm run smoke:demo`.
+- Mobile run checklist: `docs/mobile-run-check.md`.
+- Integrated readiness review: `docs/demo-readiness-review.md`.
+
+Mobile tasks owned outside Francesco should remain marked partial or blocked here until their branches are merged. Do not replace those gaps with hidden mocks.

@@ -5,7 +5,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ActivityDetailsScreen } from '../screens/ActivityDetailsScreen';
 import { ActivityFeedScreen } from '../screens/ActivityFeedScreen';
+import BlockUserScreen from '../screens/BlockUserScreen';
 import CampusSelectionScreen from '../screens/CampusSelectionScreen';
+import CommunityRulesScreen from '../screens/CommunityRulesScreen';
 import ConsentSettingsScreen from '../screens/ConsentSettingsScreen';
 import { CreateActivityScreen } from '../screens/CreateActivityScreen';
 import { ManageRequestsScreen } from '../screens/ManageRequestsScreen';
@@ -13,6 +15,7 @@ import NotificationFallbackScreen from '../screens/NotificationFallbackScreen';
 import NotificationListScreen from '../screens/NotificationListScreen';
 import PersonalActivityListPlaceholderScreen from '../screens/PersonalActivityListPlaceholderScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen';
+import ReportSubmissionScreen from '../screens/ReportSubmissionScreen';
 import SignInScreen from '../screens/SignInScreen';
 import SignUpScreen from '../screens/SignUpScreen';
 
@@ -22,13 +25,18 @@ export type RootStackParamList = {
   CampusSelection: undefined;
   ProfileSetup: undefined;
   ConsentSettings: undefined;
-  ActivityFeed: undefined;
+  ActivityFeed: { refreshAfterCreate?: number; refreshAfterJoin?: number; createdActivityId?: string } | undefined;
   ActivityDetails: { activityId: string; canManageRequests?: boolean };
   CreateActivity: undefined;
   ManageRequests: { activityId?: string } | undefined;
   NotificationList: undefined;
-  NotificationFallback: undefined;
-  PersonalActivityList: { activityId?: string } | undefined;
+  NotificationFallback: { reason?: string } | undefined;
+  PersonalActivityList: { activityId?: string; source?: string } | undefined;
+  CommunityRules: undefined;
+  ReportSubmission:
+    | { targetType?: 'student' | 'activity'; targetActivityId?: string; targetAccountId?: string }
+    | undefined;
+  BlockUser: { targetAccountId?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -38,6 +46,12 @@ function FeedHeaderActions({ navigation }: { navigation: any }) {
     <View style={styles.headerActions}>
       <Pressable onPress={() => navigation.navigate('NotificationList')}>
         <Text style={styles.headerActionText}>Alerts</Text>
+      </Pressable>
+      <Pressable onPress={() => navigation.navigate('PersonalActivityList')}>
+        <Text style={styles.headerActionText}>Mine</Text>
+      </Pressable>
+      <Pressable onPress={() => navigation.navigate('CommunityRules')}>
+        <Text style={styles.headerActionText}>Rules</Text>
       </Pressable>
       <Pressable onPress={() => navigation.navigate('CreateActivity')}>
         <Text style={styles.headerActionText}>Create</Text>
@@ -143,6 +157,21 @@ export default function AppNavigator() {
           name="PersonalActivityList"
           component={PersonalActivityListPlaceholderScreen}
           options={{ title: 'Personal Activity List' }}
+        />
+        <Stack.Screen
+          name="CommunityRules"
+          component={CommunityRulesScreen}
+          options={{ title: 'Community Rules' }}
+        />
+        <Stack.Screen
+          name="ReportSubmission"
+          component={ReportSubmissionScreen}
+          options={{ title: 'Report' }}
+        />
+        <Stack.Screen
+          name="BlockUser"
+          component={BlockUserScreen}
+          options={{ title: 'Block Student' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

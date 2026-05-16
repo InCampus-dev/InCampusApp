@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -8,26 +8,35 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import api, { getApiErrorMessage } from '../services/api';
+
+type PersonalActivityStatus = 'host' | 'pending_request' | 'confirmed_participant';
+type ActivityLifecycleStatus = 'open' | 'full' | 'completed' | 'cancelled';
 
 interface PersonalActivityItem {
   activityId: string;
   title: string;
-  scheduledDateTime?: string;
-  status?: 'open' | 'full' | 'completed' | 'cancelled';
-  personalActivityStatus?: string;
-  participationStatus?: string;
   categoryLabel?: string;
   meetingPointLabel?: string;
+  scheduledDateTime?: string;
+  status?: ActivityLifecycleStatus | string;
+  personalActivityStatus?: PersonalActivityStatus | string;
+  participationStatus?: string;
+  currentParticipantCount?: number;
+  maxParticipants?: number;
 }
 
-interface PersonalActivityResponse {
-  upcoming?: PersonalActivityItem[];
-  history?: PersonalActivityItem[];
-  past?: PersonalActivityItem[];
-}
+type PersonalActivityResponse =
+  | PersonalActivityItem[]
+  | {
+      activities?: PersonalActivityItem[];
+      upcoming?: PersonalActivityItem[];
+      history?: PersonalActivityItem[];
+      past?: PersonalActivityItem[];
+    };
 
-export default function PersonalActivityListPlaceholderScreen({
+export default function PersonalActivityListScreen({
   navigation,
   route,
 }: {
@@ -50,9 +59,7 @@ export default function PersonalActivityListPlaceholderScreen({
     setErrorMessage(null);
 
     try {
-      const response = await api.get<PersonalActivityItem[] | PersonalActivityResponse>(
-        '/profiles/me/activities',
-      );
+      const response = await api.get<PersonalActivityResponse>('/profiles/me/activities');
       const split = splitPersonalActivities(response.data);
       setUpcoming(split.upcoming);
       setHistory(split.history);
@@ -67,9 +74,11 @@ export default function PersonalActivityListPlaceholderScreen({
     }
   }, []);
 
-  useEffect(() => {
-    fetchPersonalActivities();
-  }, [fetchPersonalActivities]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchPersonalActivities();
+    }, [fetchPersonalActivities]),
+  );
 
   if (loading) {
     return (
@@ -149,16 +158,27 @@ function ActivitySection({
             style={styles.card}
             onPress={() => navigation.navigate('ActivityDetails', { activityId: activity.activityId })}
           >
-            <Text style={styles.cardTitle}>{activity.title}</Text>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>{activity.title}</Text>
+              <Text style={styles.badge}>{formatPersonalStatus(activity.personalActivityStatus)}</Text>
+            </View>
             {activity.scheduledDateTime ? (
               <Text style={styles.cardMeta}>{formatDateTime(activity.scheduledDateTime)}</Text>
             ) : null}
             <Text style={styles.cardMeta}>
               {activity.categoryLabel ?? 'Activity'} · {activity.meetingPointLabel ?? 'Campus'}
             </Text>
-            <Text style={styles.cardStatus}>
-              {activity.personalActivityStatus ?? activity.participationStatus ?? activity.status ?? 'active'}
-            </Text>
+            <View style={styles.footerRow}>
+              <Text style={styles.cardStatus}>
+                {formatActivityStatus(activity.status ?? activity.participationStatus ?? 'active')}
+              </Text>
+              {typeof activity.currentParticipantCount === 'number' &&
+              typeof activity.maxParticipants === 'number' ? (
+                <Text style={styles.participants}>
+                  {activity.currentParticipantCount} / {activity.maxParticipants}
+                </Text>
+              ) : null}
+            </View>
           </TouchableOpacity>
         ))
       )}
@@ -167,16 +187,20 @@ function ActivitySection({
 }
 
 function splitPersonalActivities(
-  response: PersonalActivityItem[] | PersonalActivityResponse,
+  response: PersonalActivityResponse,
 ): { upcoming: PersonalActivityItem[]; history: PersonalActivityItem[] } {
   if (Array.isArray(response)) {
     return splitFlatList(response);
   }
 
-  return {
-    upcoming: response.upcoming ?? [],
-    history: response.history ?? response.past ?? [],
-  };
+  if (response.upcoming || response.history || response.past) {
+    return {
+      upcoming: response.upcoming ?? [],
+      history: response.history ?? response.past ?? [],
+    };
+  }
+
+  return splitFlatList(response.activities ?? []);
 }
 
 function splitFlatList(
@@ -210,6 +234,23 @@ function formatDateTime(value: string): string {
   }
 
   return date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function formatPersonalStatus(value?: string): string {
+  switch (value) {
+    case 'host':
+      return 'Host';
+    case 'pending_request':
+      return 'Pending';
+    case 'confirmed_participant':
+      return 'Joined';
+    default:
+      return 'Activity';
+  }
+}
+
+function formatActivityStatus(value: string): string {
+  return value.replace(/_/g, ' ').replace(/^\w/, (char) => char.toUpperCase());
 }
 
 const styles = StyleSheet.create({
@@ -254,7 +295,31 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
   },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#222', marginBottom: 6 },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 8,
+  },
+  cardTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: '#222' },
+  badge: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1976d2',
+    backgroundColor: '#e8f2ff',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    overflow: 'hidden',
+  },
   cardMeta: { fontSize: 13, color: '#666', marginBottom: 4 },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
   cardStatus: { fontSize: 12, color: '#1976d2', fontWeight: '700', textTransform: 'capitalize' },
+  participants: { fontSize: 13, color: '#0066cc', fontWeight: '600' },
 });

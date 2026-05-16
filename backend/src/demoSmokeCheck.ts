@@ -56,6 +56,20 @@ interface ParticipationDto {
   status: string;
 }
 
+interface JoinRequestListItemDto {
+  requestId: string;
+  activityId: string;
+  applicantId: string;
+  status: string;
+  createdAt: string;
+  applicant: {
+    applicantId: string;
+    displayName: string;
+    major: string;
+    shortBio: string | null;
+  };
+}
+
 interface NotificationListResponse {
   notifications: NotificationListItem[];
   total: number;
@@ -264,16 +278,19 @@ async function runDemoChecks(): Promise<void> {
       {},
       guestAuth!.accessToken
     );
-    const pendingRequests = await getJson<ParticipationDto[]>(
+    const pendingRequests = await getJson<JoinRequestListItemDto[]>(
       `/activities/${approvalActivityId}/requests`,
       hostAuth!.accessToken
     );
+    const pendingRequest = pendingRequests.find(
+      (item) => item.requestId === request.participationId
+    );
     assert(
-      pendingRequests.some((item) => item.participationId === request.participationId),
+      Boolean(pendingRequest),
       "Pending request not returned to host"
     );
     const approved = await patchJson<ParticipationDto>(
-      `/activities/${approvalActivityId}/requests/${request.participationId}`,
+      `/activities/${approvalActivityId}/requests/${pendingRequest!.requestId}`,
       { decision: "approve" },
       hostAuth!.accessToken
     );

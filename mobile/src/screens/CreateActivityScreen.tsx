@@ -20,20 +20,24 @@ interface StructuredOptionChoice {
   name: string;
 }
 
-const DEMO_CATEGORIES: StructuredOptionChoice[] = [
+// Demo-seed fallback only. Replace with dynamic campus structured-option loading.
+const FALLBACK_CATEGORIES: StructuredOptionChoice[] = [
   { id: '87fe4ec4-0d68-45c1-b7c2-0abef2e3ef70', name: 'Lunch' },
   { id: 'd5f86aa2-7d8a-4c83-8426-d6f6b7b0ad7a', name: 'Study' },
 ];
 
-const DEMO_LOCATIONS: StructuredOptionChoice[] = [
+const FALLBACK_LOCATIONS: StructuredOptionChoice[] = [
   { id: 'f2af15aa-d347-4037-8f1e-f6b4e8616d06', name: 'Jiading Library' },
 ];
 
 export const CreateActivityScreen = ({ navigation }: any) => {
+  const categories = FALLBACK_CATEGORIES;
+  const locations = FALLBACK_LOCATIONS;
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [categoryId, setCategoryId] = useState(DEMO_CATEGORIES[0]?.id ?? '');
-  const [meetingPointId, setMeetingPointId] = useState(DEMO_LOCATIONS[0]?.id ?? '');
+  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '');
+  const [meetingPointId, setMeetingPointId] = useState(locations[0]?.id ?? '');
   const [scheduledDateTime, setScheduledDateTime] = useState(defaultScheduledDateTime());
   const [maxParticipants, setMaxParticipants] = useState('5');
   const [participationMode, setParticipationMode] = useState<ParticipationMode>('open');
@@ -127,7 +131,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
 
       <Text style={styles.label}>Category</Text>
       <View style={styles.optionsContainer}>
-        {DEMO_CATEGORIES.map((category) => (
+        {categories.map((category) => (
           <TouchableOpacity
             key={category.id}
             style={[styles.optionBtn, categoryId === category.id && styles.optionBtnSelected]}
@@ -143,7 +147,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
 
       <Text style={styles.label}>Meeting Point</Text>
       <View style={styles.optionsContainer}>
-        {DEMO_LOCATIONS.map((location) => (
+        {locations.map((location) => (
           <TouchableOpacity
             key={location.id}
             style={[styles.optionBtn, meetingPointId === location.id && styles.optionBtnSelected]}

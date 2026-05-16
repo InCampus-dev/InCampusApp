@@ -84,6 +84,7 @@ function normalizeJoinRequestError(
     case "This request is not pending":
       return AppError.conflict(error.message, "Participation");
     case "Cannot approve request: Activity is already full":
+    case "Cannot approve request: Student already has an active participation record":
       return AppError.conflict(error.message, "Activity");
     default:
       return new AppError("INTERNAL_ERROR", error.message, 500);

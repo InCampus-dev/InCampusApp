@@ -26,6 +26,7 @@ export function createHostingLifecycleRoutes(
 ): Router {
   const router = Router();
   const activityRepo = new ActivityRepo(args.dataSource);
+  const studentProfileRepo = new StudentProfileRepo(args.dataSource);
   const studentAuthMiddleware = createStudentAuthMiddleware(args.resolveStudentContext);
   
   const activityLifecycleService = new ActivityLifecycleService(
@@ -36,7 +37,7 @@ export function createHostingLifecycleRoutes(
   const activityController = new ActivityController(activityLifecycleService);
   
   const applicantProfileLookup = new APApplicantProfileLookupAdapter(
-    new StudentProfileRepo(args.dataSource)
+    studentProfileRepo
   );
   const joinRequestService = new JoinRequestManagementService(
     args.dataSource,

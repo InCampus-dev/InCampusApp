@@ -62,7 +62,7 @@ describe('WithdrawLeaveService (DP07)', () => {
       mockManager.remove.mockResolvedValueOnce({});
       mockManager.save.mockResolvedValueOnce({});
 
-      await service.withdrawRequest(defaultStudentId, defaultActivityId);
+      await service.withdrawRequest(defaultStudentId, defaultCampusId, defaultActivityId);
 
       expect(mockManager.findOne).toHaveBeenCalledWith(Participation, {
         where: {
@@ -79,7 +79,7 @@ describe('WithdrawLeaveService (DP07)', () => {
     });
 
     it('should throw CONFLICT if only a declined historical request exists', async () => {
-      const mockActivity = { activityId: defaultActivityId };
+      const mockActivity = { activityId: defaultActivityId, campusId: defaultCampusId };
       const historicalDeclinedRequest = {
         participationId: 'req-222',
         activityId: defaultActivityId,
@@ -93,8 +93,29 @@ describe('WithdrawLeaveService (DP07)', () => {
         createParticipationFindOneMock([historicalDeclinedRequest])
       );
 
-      await expect(service.withdrawRequest(defaultStudentId, defaultActivityId))
+      await expect(service.withdrawRequest(defaultStudentId, defaultCampusId, defaultActivityId))
         .rejects.toMatchObject({ code: 'CONFLICT' });
+    });
+
+    it('should return opaque NOT_FOUND when withdrawing from another campus activity', async () => {
+      const mockActivity = {
+        activityId: defaultActivityId,
+        campusId: 'campus-other',
+        currentRequestCount: 1,
+      };
+
+      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
+
+      await expect(service.withdrawRequest(defaultStudentId, defaultCampusId, defaultActivityId))
+        .rejects.toMatchObject({
+          code: 'NOT_FOUND',
+          details: {
+            resourceType: 'Activity',
+            resourceId: defaultActivityId,
+          },
+        });
+      expect(mockManager.findOne).not.toHaveBeenCalled();
+      expect(mockEventDispatcher.dispatch).not.toHaveBeenCalled();
     });
   });
 
@@ -122,7 +143,7 @@ describe('WithdrawLeaveService (DP07)', () => {
       mockManager.remove.mockResolvedValueOnce({});
       mockManager.save.mockResolvedValueOnce({});
 
-      await service.leaveActivity(defaultStudentId, defaultActivityId);
+      await service.leaveActivity(defaultStudentId, defaultCampusId, defaultActivityId);
 
       expect(mockManager.findOne).toHaveBeenCalledWith(Participation, {
         where: {
@@ -150,17 +171,22 @@ describe('WithdrawLeaveService (DP07)', () => {
     it('should throw CONFLICT if trying to leave after the activity has started', async () => {
       const mockActivity = {
         activityId: defaultActivityId,
+        campusId: defaultCampusId,
         scheduledDateTime: new Date(Date.now() - 3600000), // 1 hour ago (already started)
       };
 
       (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
 
-      await expect(service.leaveActivity(defaultStudentId, defaultActivityId))
+      await expect(service.leaveActivity(defaultStudentId, defaultCampusId, defaultActivityId))
         .rejects.toMatchObject({ code: 'CONFLICT' });
     });
 
     it('should throw CONFLICT if the user is not a confirmed participant', async () => {
-      const mockActivity = { activityId: defaultActivityId, scheduledDateTime: new Date(Date.now() + 86400000) };
+      const mockActivity = {
+        activityId: defaultActivityId,
+        campusId: defaultCampusId,
+        scheduledDateTime: new Date(Date.now() + 86400000)
+      };
       const pendingRequest = {
         participationId: 'req-333',
         activityId: defaultActivityId,
@@ -172,8 +198,29 @@ describe('WithdrawLeaveService (DP07)', () => {
       (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
       mockManager.findOne.mockImplementationOnce(createParticipationFindOneMock([pendingRequest]));
 
-      await expect(service.leaveActivity(defaultStudentId, defaultActivityId))
+      await expect(service.leaveActivity(defaultStudentId, defaultCampusId, defaultActivityId))
         .rejects.toMatchObject({ code: 'CONFLICT' });
+    });
+
+    it('should return opaque NOT_FOUND when leaving another campus activity', async () => {
+      const mockActivity = {
+        activityId: defaultActivityId,
+        campusId: 'campus-other',
+        scheduledDateTime: new Date(Date.now() + 86400000),
+      };
+
+      (findWithPessimisticWriteLock as Mock).mockResolvedValueOnce(mockActivity);
+
+      await expect(service.leaveActivity(defaultStudentId, defaultCampusId, defaultActivityId))
+        .rejects.toMatchObject({
+          code: 'NOT_FOUND',
+          details: {
+            resourceType: 'Activity',
+            resourceId: defaultActivityId,
+          },
+        });
+      expect(mockManager.findOne).not.toHaveBeenCalled();
+      expect(mockEventDispatcher.dispatch).not.toHaveBeenCalled();
     });
   });
 });

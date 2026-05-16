@@ -6,11 +6,16 @@ import type {
   JoinRequestApplicantProfileDto,
   JoinRequestListItemDto
 } from "../../../shared/src/domain/dtos";
-import { ActivityStatus, ParticipationRecordType, ParticipationStatus } from "../../../shared/src/domain/enums";
+import {
+  ActivityStatus,
+  ParticipationRecordType,
+  ParticipationStatus
+} from "../../../shared/src/domain/enums";
 import {
   type JoinRequestApprovedEvent,
   type JoinRequestDeclinedEvent
 } from "../../../shared/src/events/EventBus";
+import { AppError } from "../../../shared/src/errors/AppError";
 import { executeTransaction, findWithPessimisticWriteLock } from "../../../shared/src/db/transaction";
 import { findOtherActiveByActivityAndStudent } from "../repositories/ParticipationRepo";
 
@@ -26,7 +31,7 @@ export class JoinRequestManagementService {
   constructor(
     private dataSource: DataSource,
     private eventDispatcher: JoinRequestEventDispatcherPort,
-    private applicantProfileLookup?: JoinRequestApplicantProfileLookupPort
+    private applicantProfileLookup: JoinRequestApplicantProfileLookupPort
   ) {}
 
   async getPendingRequests(
@@ -37,9 +42,11 @@ export class JoinRequestManagementService {
     const activityRepo = this.dataSource.getRepository(Activity);
 
     const activity = await activityRepo.findOne({ where: { activityId } });
-    if (!activity) throw new Error("Activity not found");
+    if (!activity) throw AppError.notFound("Activity", activityId);
     if (activity.hostAccountId !== hostAccountId) {
-      throw new Error("Unauthorized: Only the host can view requests");
+      throw new AppError("AUTH_FORBIDDEN", "Unauthorized: Only the host can view requests", 403, {
+        authReason: "not_activity_host"
+      });
     }
 
     const pendingRequests = await participationRepo.find({
@@ -157,7 +164,7 @@ export class JoinRequestManagementService {
   private async toJoinRequestListItem(
     request: Participation
   ): Promise<JoinRequestListItemDto> {
-    const applicantProfile = await this.applicantProfileLookup?.getApplicantProfile(
+    const applicantProfile = await this.applicantProfileLookup.getApplicantProfile(
       request.studentAccountId
     );
 

@@ -13,7 +13,7 @@ import { CreateActivityScreen } from '../screens/CreateActivityScreen';
 import { ManageRequestsScreen } from '../screens/ManageRequestsScreen';
 import NotificationFallbackScreen from '../screens/NotificationFallbackScreen';
 import NotificationListScreen from '../screens/NotificationListScreen';
-import PersonalActivityListPlaceholderScreen from '../screens/PersonalActivityListPlaceholderScreen';
+import PersonalActivityListScreen from '../screens/PersonalActivityListPlaceholderScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import ReportSubmissionScreen from '../screens/ReportSubmissionScreen';
 import SignInScreen from '../screens/SignInScreen';
@@ -60,36 +60,6 @@ function FeedHeaderActions({ navigation }: { navigation: any }) {
   );
 }
 
-function ActivityDetailsHeaderAction({
-  activityId,
-  navigation,
-}: {
-  activityId: string;
-  navigation: any;
-}) {
-  return (
-    <Pressable onPress={() => navigation.navigate('ManageRequests', { activityId })}>
-      <Text style={styles.headerActionText}>Requests</Text>
-    </Pressable>
-  );
-}
-
-function renderActivityDetailsHeaderRight(
-  route: { params?: RootStackParamList['ActivityDetails'] },
-  navigation: any,
-) {
-  if (route.params?.canManageRequests !== true || !route.params.activityId) {
-    return undefined;
-  }
-
-  return () => (
-    <ActivityDetailsHeaderAction
-      activityId={route.params.activityId}
-      navigation={navigation}
-    />
-  );
-}
-
 export default function AppNavigator() {
   return (
     <NavigationContainer>
@@ -128,9 +98,8 @@ export default function AppNavigator() {
         <Stack.Screen
           name="ActivityDetails"
           component={ActivityDetailsScreen}
-          options={({ navigation, route }) => ({
+          options={() => ({
             title: 'Activity Details',
-            headerRight: renderActivityDetailsHeaderRight(route, navigation),
           })}
         />
         <Stack.Screen
@@ -155,7 +124,7 @@ export default function AppNavigator() {
         />
         <Stack.Screen
           name="PersonalActivityList"
-          component={PersonalActivityListPlaceholderScreen}
+          component={PersonalActivityListScreen}
           options={{ title: 'Personal Activity List' }}
         />
         <Stack.Screen

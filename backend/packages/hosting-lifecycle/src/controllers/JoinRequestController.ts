@@ -74,6 +74,8 @@ function normalizeJoinRequestError(
       return AppError.notFound("Activity", activityId);
     case "Join request not found":
       return AppError.notFound("Participation", requestId ?? "unknown");
+    case "Applicant profile not found":
+      return AppError.notFound("StudentProfile", "applicant");
     case "Unauthorized: Only the host can view requests":
     case "Unauthorized: Only the host can review requests":
       return new AppError("AUTH_FORBIDDEN", error.message, 403, {

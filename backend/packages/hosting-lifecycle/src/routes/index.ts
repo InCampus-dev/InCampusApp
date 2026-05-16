@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { DataSource } from "typeorm";
+import { StudentProfileRepo } from "../../../access-profile/src/repositories/StudentProfileRepo";
 import { CampusStructuredOptionLookup } from "../../../campus-administration/src/services/CampusOptionsService";
 import {
   createStudentAuthMiddleware,
@@ -11,6 +12,7 @@ import { ActivityLifecycleService } from "../services/ActivityLifecycleService";
 import { ActivityController } from "../controllers/ActivityController";
 import { JoinRequestManagementService } from "../services/JoinRequestManagementService";
 import { JoinRequestController } from "../controllers/JoinRequestController";
+import { APApplicantProfileLookupAdapter } from "../services/APApplicantProfileLookupAdapter";
 
 export interface CreateHostingLifecycleRoutesArgs {
   dataSource: DataSource;
@@ -33,9 +35,13 @@ export function createHostingLifecycleRoutes(
   );
   const activityController = new ActivityController(activityLifecycleService);
   
+  const applicantProfileLookup = new APApplicantProfileLookupAdapter(
+    new StudentProfileRepo(args.dataSource)
+  );
   const joinRequestService = new JoinRequestManagementService(
     args.dataSource,
-    args.eventDispatcher
+    args.eventDispatcher,
+    applicantProfileLookup
   );
   const joinRequestController = new JoinRequestController(joinRequestService);
 

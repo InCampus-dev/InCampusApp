@@ -319,6 +319,24 @@ export interface ParticipationDto {
   createdAt: string;
 }
 
+export interface JoinRequestApplicantProfileDto {
+  applicantId: StudentAccountId;
+  displayName: string;
+  major: string;
+  shortBio: string | null;
+}
+
+export interface JoinRequestListItemDto {
+  requestId: ParticipationId;
+  activityId: ActivityId;
+  applicantId: StudentAccountId;
+  status: ParticipationStatus;
+  createdAt: string;
+  applicant: JoinRequestApplicantProfileDto;
+}
+
+export type JoinRequestListDto = JoinRequestListItemDto[];
+
 export interface NotificationRecordDto {
   notificationId: NotificationId;
   recipientAccountId: StudentAccountId;

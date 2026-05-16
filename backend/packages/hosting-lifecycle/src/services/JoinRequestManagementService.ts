@@ -2,6 +2,10 @@ import { randomUUID } from "crypto";
 import { DataSource } from "typeorm";
 import { Activity } from "../entities/Activity";
 import { Participation } from "../entities/Participation";
+import type {
+  JoinRequestApplicantProfileDto,
+  JoinRequestListItemDto
+} from "../../../shared/src/domain/dtos";
 import { ActivityStatus, ParticipationRecordType, ParticipationStatus } from "../../../shared/src/domain/enums";
 import {
   type JoinRequestApprovedEvent,
@@ -14,13 +18,21 @@ export interface JoinRequestEventDispatcherPort {
   dispatch(eventName: string, payload: any): Promise<void>;
 }
 
+export interface JoinRequestApplicantProfileLookupPort {
+  getApplicantProfile(applicantId: string): Promise<JoinRequestApplicantProfileDto | null>;
+}
+
 export class JoinRequestManagementService {
   constructor(
     private dataSource: DataSource,
-    private eventDispatcher: JoinRequestEventDispatcherPort
+    private eventDispatcher: JoinRequestEventDispatcherPort,
+    private applicantProfileLookup?: JoinRequestApplicantProfileLookupPort
   ) {}
 
-  async getPendingRequests(hostAccountId: string, activityId: string): Promise<Participation[]> {
+  async getPendingRequests(
+    hostAccountId: string,
+    activityId: string
+  ): Promise<JoinRequestListItemDto[]> {
     const participationRepo = this.dataSource.getRepository(Participation);
     const activityRepo = this.dataSource.getRepository(Activity);
 
@@ -30,13 +42,17 @@ export class JoinRequestManagementService {
       throw new Error("Unauthorized: Only the host can view requests");
     }
 
-    return participationRepo.find({
+    const pendingRequests = await participationRepo.find({
       where: {
         activityId,
         recordType: ParticipationRecordType.Request,
         status: ParticipationStatus.Pending
       }
     });
+
+    return Promise.all(
+      pendingRequests.map((request) => this.toJoinRequestListItem(request))
+    );
   }
 
   async reviewJoinRequest(
@@ -136,5 +152,29 @@ export class JoinRequestManagementService {
 
     await this.eventDispatcher.dispatch(eventName, eventPayload);
     return savedParticipation;
+  }
+
+  private async toJoinRequestListItem(
+    request: Participation
+  ): Promise<JoinRequestListItemDto> {
+    const applicantProfile = await this.applicantProfileLookup?.getApplicantProfile(
+      request.studentAccountId
+    );
+
+    if (!applicantProfile) {
+      throw new Error("Applicant profile not found");
+    }
+
+    return {
+      requestId: request.participationId,
+      activityId: request.activityId,
+      applicantId: request.studentAccountId,
+      status: request.status,
+      createdAt:
+        request.createdAt instanceof Date
+          ? request.createdAt.toISOString()
+          : request.createdAt,
+      applicant: applicantProfile
+    };
   }
 }

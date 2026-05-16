@@ -15,6 +15,7 @@ describe("JoinRequestManagementService", () => {
   let service: JoinRequestManagementService;
   let mockDataSource: any;
   let mockEventDispatcher: any;
+  let mockApplicantProfileLookup: any;
   let mockManager: any;
   let mockActivityRepo: any;
   let mockParticipationRepo: any;
@@ -48,8 +49,15 @@ describe("JoinRequestManagementService", () => {
     mockEventDispatcher = {
       dispatch: vi.fn().mockResolvedValue(undefined),
     };
+    mockApplicantProfileLookup = {
+      getApplicantProfile: vi.fn(),
+    };
 
-    service = new JoinRequestManagementService(mockDataSource, mockEventDispatcher);
+    service = new JoinRequestManagementService(
+      mockDataSource,
+      mockEventDispatcher,
+      mockApplicantProfileLookup
+    );
   });
 
   afterEach(() => {
@@ -59,12 +67,67 @@ describe("JoinRequestManagementService", () => {
   describe("getPendingRequests", () => {
     it("should return pending requests if user is host", async () => {
       mockActivityRepo.findOne.mockResolvedValue({ activityId: "act-1", hostAccountId: "host-1" });
-      const mockRequests = [{ participationId: "req-1" }, { participationId: "req-2" }];
+      const mockRequests = [
+        {
+          participationId: "req-1",
+          activityId: "act-1",
+          studentAccountId: "student-1",
+          status: ParticipationStatus.Pending,
+          createdAt: new Date("2026-05-16T08:00:00.000Z")
+        },
+        {
+          participationId: "req-2",
+          activityId: "act-1",
+          studentAccountId: "student-2",
+          status: ParticipationStatus.Pending,
+          createdAt: new Date("2026-05-16T09:00:00.000Z")
+        }
+      ];
       mockParticipationRepo.find.mockResolvedValue(mockRequests);
+      mockApplicantProfileLookup.getApplicantProfile
+        .mockResolvedValueOnce({
+          applicantId: "student-1",
+          displayName: "Ada Lovelace",
+          major: "Computer Science",
+          shortBio: "I like study groups."
+        })
+        .mockResolvedValueOnce({
+          applicantId: "student-2",
+          displayName: "Grace Hopper",
+          major: "Software Engineering",
+          shortBio: null
+        });
 
       const result = await service.getPendingRequests("host-1", "act-1");
 
-      expect(result).toEqual(mockRequests);
+      expect(result).toEqual([
+        {
+          requestId: "req-1",
+          activityId: "act-1",
+          applicantId: "student-1",
+          status: ParticipationStatus.Pending,
+          createdAt: "2026-05-16T08:00:00.000Z",
+          applicant: {
+            applicantId: "student-1",
+            displayName: "Ada Lovelace",
+            major: "Computer Science",
+            shortBio: "I like study groups."
+          }
+        },
+        {
+          requestId: "req-2",
+          activityId: "act-1",
+          applicantId: "student-2",
+          status: ParticipationStatus.Pending,
+          createdAt: "2026-05-16T09:00:00.000Z",
+          applicant: {
+            applicantId: "student-2",
+            displayName: "Grace Hopper",
+            major: "Software Engineering",
+            shortBio: null
+          }
+        }
+      ]);
       expect(mockParticipationRepo.find).toHaveBeenCalledWith({
         where: {
           activityId: "act-1",
@@ -72,6 +135,26 @@ describe("JoinRequestManagementService", () => {
           status: ParticipationStatus.Pending
         },
       });
+      expect(mockApplicantProfileLookup.getApplicantProfile).toHaveBeenCalledWith("student-1");
+      expect(mockApplicantProfileLookup.getApplicantProfile).toHaveBeenCalledWith("student-2");
+    });
+
+    it("should throw if an applicant profile is missing", async () => {
+      mockActivityRepo.findOne.mockResolvedValue({ activityId: "act-1", hostAccountId: "host-1" });
+      mockParticipationRepo.find.mockResolvedValue([
+        {
+          participationId: "req-1",
+          activityId: "act-1",
+          studentAccountId: "student-1",
+          status: ParticipationStatus.Pending,
+          createdAt: new Date("2026-05-16T08:00:00.000Z")
+        }
+      ]);
+      mockApplicantProfileLookup.getApplicantProfile.mockResolvedValue(null);
+
+      await expect(service.getPendingRequests("host-1", "act-1")).rejects.toThrow(
+        "Applicant profile not found"
+      );
     });
 
     it("should throw if activity not found", async () => {

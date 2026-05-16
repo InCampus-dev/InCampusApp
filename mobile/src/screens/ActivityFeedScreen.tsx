@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 
@@ -17,23 +18,25 @@ export const ActivityFeedScreen = ({ navigation }: any) => {
   const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchActivities();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      const fetchActivities = async () => {
+        try {
+          const campusId = await AsyncStorage.getItem('selectedCampusId');
+          const response = await api.get<ActivityFeedItem[]>('/activities', {
+            params: campusId ? { campusId } : undefined,
+          });
+          setActivities(response.data);
+        } catch (error) {
+          console.error('Error fetching activities:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
 
-  const fetchActivities = async () => {
-    try {
-      const campusId = await AsyncStorage.getItem('selectedCampusId');
-      const response = await api.get<ActivityFeedItem[]>('/activities', {
-        params: campusId ? { campusId } : undefined,
-      });
-      setActivities(response.data);
-    } catch (error) {
-      console.error('Error fetching activities:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      fetchActivities();
+    }, [])
+  );
 
   const renderItem = ({ item }: any) => {
     const dateStr = new Date(item.scheduledDateTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });

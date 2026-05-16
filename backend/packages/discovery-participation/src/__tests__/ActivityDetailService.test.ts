@@ -98,14 +98,15 @@ describe("ActivityDetailService", () => {
     expect(result.hostProfile).toBeUndefined();
   });
 
-  it("marks activity details as manageable when the requester is the host", async () => {
+  it("marks approval-based activity details as manageable when the requester is the host", async () => {
     const service = createActivityDetailService({
       activityRepository: {
         findOne: vi.fn().mockResolvedValue(
           createActivity({
             activityId: "activity-001",
             campusId: "campus-001",
-            hostAccountId: "student-001"
+            hostAccountId: "student-001",
+            participationMode: ParticipationMode.ApprovalBased
           })
         )
       },
@@ -120,6 +121,31 @@ describe("ActivityDetailService", () => {
     );
 
     expect(result.canManageRequests).toBe(true);
+  });
+
+  it("does not mark open activity details as request-manageable for the host", async () => {
+    const service = createActivityDetailService({
+      activityRepository: {
+        findOne: vi.fn().mockResolvedValue(
+          createActivity({
+            activityId: "activity-001",
+            campusId: "campus-001",
+            hostAccountId: "student-001",
+            participationMode: ParticipationMode.Open
+          })
+        )
+      },
+      blockRelationships: [],
+      profiles: []
+    });
+
+    const result = await service.getActivityDetails(
+      "student-001",
+      "campus-001",
+      "activity-001"
+    );
+
+    expect(result.canManageRequests).toBe(false);
   });
 });
 

@@ -4,11 +4,11 @@ import { ActivityStatus, CampusStructuredOptionType, GenderPreference, Participa
 import { Activity } from "../entities/Activity";
 import { ActivityLifecycleService } from "../services/ActivityLifecycleService";
 
-describe("ActivityLifecycleService", () => {
-  const mockEventDispatcher = {
-    dispatch: vi.fn()
-  };
+const mockEventDispatcher = {
+  dispatch: vi.fn()
+};
 
+describe("ActivityLifecycleService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -41,7 +41,7 @@ describe("ActivityLifecycleService", () => {
         title: "Lunch near the library",
         categoryId: "7eb3c60c-f4c2-43b4-97d3-48ee28d97a1c",
         description: "Bring your own lunch",
-        scheduledDateTime: new Date("2026-05-11T12:00:00Z"),
+        scheduledDateTime: futureDate(24),
         meetingPointId: "22383836-9f17-4cf7-8e57-07d6b10b96ec",
         participationMode: ParticipationMode.Open,
         maxParticipants: 4,
@@ -65,7 +65,7 @@ describe("ActivityLifecycleService", () => {
       service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
         title: "Lunch near the library",
         categoryId: "7eb3c60c-f4c2-43b4-97d3-48ee28d97a1c",
-        scheduledDateTime: new Date("2026-05-11T12:00:00Z"),
+        scheduledDateTime: futureDate(24),
         meetingPointId: "22383836-9f17-4cf7-8e57-07d6b10b96ec",
         participationMode: ParticipationMode.Open,
         maxParticipants: 4,
@@ -86,7 +86,7 @@ describe("ActivityLifecycleService", () => {
     await expect(
       service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
         title: "Lunch near the library",
-        scheduledDateTime: new Date("2026-05-11T12:00:00Z"),
+        scheduledDateTime: futureDate(24),
         meetingPointId: "22383836-9f17-4cf7-8e57-07d6b10b96ec",
         participationMode: ParticipationMode.Open,
         maxParticipants: 4,
@@ -118,7 +118,7 @@ describe("ActivityLifecycleService", () => {
       service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
         title: "Lunch near the library",
         categoryId: "7eb3c60c-f4c2-43b4-97d3-48ee28d97a1c",
-        scheduledDateTime: new Date("2026-05-11T12:00:00Z"),
+        scheduledDateTime: futureDate(24),
         participationMode: ParticipationMode.Open,
         maxParticipants: 4,
         genderPreference: GenderPreference.All
@@ -149,7 +149,7 @@ describe("ActivityLifecycleService", () => {
       service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
         title: "Lunch near the library",
         categoryId: "7eb3c60c-f4c2-43b4-97d3-48ee28d97a1c",
-        scheduledDateTime: new Date("2026-05-11T12:00:00Z"),
+        scheduledDateTime: futureDate(24),
         meetingPointId: "7eb3c60c-f4c2-43b4-97d3-48ee28d97a1c",
         participationMode: ParticipationMode.Open,
         maxParticipants: 4,
@@ -157,6 +157,162 @@ describe("ActivityLifecycleService", () => {
       })
     ).rejects.toMatchObject({
       code: "VALIDATION_ERROR"
+    });
+  });
+
+  it("rejects creation when title is missing", async () => {
+    const service = createServiceWithSelectableOptions([]);
+
+    await expect(
+      service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
+        ...createValidActivityPayload(),
+        title: " "
+      })
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        validation: [expect.objectContaining({ field: "title", code: "required" })]
+      }
+    });
+  });
+
+  it("rejects creation when scheduledDateTime is invalid", async () => {
+    const service = createServiceWithSelectableOptions([]);
+
+    await expect(
+      service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
+        ...createValidActivityPayload(),
+        scheduledDateTime: new Date("not-a-date")
+      })
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        validation: [expect.objectContaining({ field: "scheduledDateTime", code: "invalid_date" })]
+      }
+    });
+  });
+
+  it("rejects creation when scheduledDateTime is not in the future", async () => {
+    const service = createServiceWithSelectableOptions([]);
+
+    await expect(
+      service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
+        ...createValidActivityPayload(),
+        scheduledDateTime: new Date(Date.now() - 60 * 1000)
+      })
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        validation: [expect.objectContaining({ field: "scheduledDateTime", code: "must_be_future" })]
+      }
+    });
+  });
+
+  it("rejects creation when scheduledEndDateTime is invalid", async () => {
+    const service = createServiceWithSelectableOptions([]);
+
+    await expect(
+      service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
+        ...createValidActivityPayload(),
+        scheduledEndDateTime: new Date("not-a-date")
+      })
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        validation: [expect.objectContaining({ field: "scheduledEndDateTime", code: "invalid_date" })]
+      }
+    });
+  });
+
+  it("rejects creation when scheduledEndDateTime is not after scheduledDateTime", async () => {
+    const service = createServiceWithSelectableOptions([]);
+    const scheduledDateTime = futureDate(24);
+
+    await expect(
+      service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
+        ...createValidActivityPayload(),
+        scheduledDateTime,
+        scheduledEndDateTime: new Date(scheduledDateTime.getTime())
+      })
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        validation: [
+          expect.objectContaining({ field: "scheduledEndDateTime", code: "must_be_after_start" })
+        ]
+      }
+    });
+  });
+
+  it("rejects creation when maxParticipants is not a positive integer", async () => {
+    const service = createServiceWithSelectableOptions([]);
+
+    await expect(
+      service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
+        ...createValidActivityPayload(),
+        maxParticipants: 0
+      })
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        validation: [
+          expect.objectContaining({ field: "maxParticipants", code: "positive_integer_required" })
+        ]
+      }
+    });
+  });
+
+  it("rejects creation when maxRequests is present but invalid", async () => {
+    const service = createServiceWithSelectableOptions([]);
+
+    await expect(
+      service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
+        ...createValidActivityPayload(),
+        maxRequests: 1.5
+      })
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        validation: [
+          expect.objectContaining({ field: "maxRequests", code: "positive_integer_required" })
+        ]
+      }
+    });
+  });
+
+  it("rejects creation when participationMode is invalid", async () => {
+    const service = createServiceWithSelectableOptions([]);
+
+    await expect(
+      service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
+        ...createValidActivityPayload(),
+        participationMode: "invite_only" as ParticipationMode
+      })
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        validation: [
+          expect.objectContaining({ field: "participationMode", code: "invalid_participation_mode" })
+        ]
+      }
+    });
+  });
+
+  it("rejects creation when genderPreference is invalid", async () => {
+    const service = createServiceWithSelectableOptions([]);
+
+    await expect(
+      service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
+        ...createValidActivityPayload(),
+        genderPreference: "mixed" as GenderPreference
+      })
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        validation: [
+          expect.objectContaining({ field: "genderPreference", code: "invalid_gender_preference" })
+        ]
+      }
     });
   });
 
@@ -179,6 +335,33 @@ describe("ActivityLifecycleService", () => {
       const service = new ActivityLifecycleService(createActivityRepo(activityStore), createStructuredOptionLookup([]), mockEventDispatcher);
       
       const updated = await service.updateActivityStatus("host-1", "camp-1", "act-1", ActivityStatus.Cancelled);
+      expect(updated.status).toBe(ActivityStatus.Cancelled);
+      expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith("ActivityCancelled", expect.objectContaining({
+        activityId: "act-1",
+        outcome: "cancelled"
+      }));
+    });
+
+    it("successfully updates full activity status to completed", async () => {
+      const activityStore: Activity[] = [
+        { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Full } as Activity
+      ];
+      const service = new ActivityLifecycleService(createActivityRepo(activityStore), createStructuredOptionLookup([]), mockEventDispatcher);
+
+      const updated = await service.updateActivityStatus("host-1", "camp-1", "act-1", ActivityStatus.Completed);
+
+      expect(updated.status).toBe(ActivityStatus.Completed);
+      expect(mockEventDispatcher.dispatch).not.toHaveBeenCalled();
+    });
+
+    it("successfully updates full activity status to cancelled and emits event", async () => {
+      const activityStore: Activity[] = [
+        { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Full } as Activity
+      ];
+      const service = new ActivityLifecycleService(createActivityRepo(activityStore), createStructuredOptionLookup([]), mockEventDispatcher);
+
+      const updated = await service.updateActivityStatus("host-1", "camp-1", "act-1", ActivityStatus.Cancelled);
+
       expect(updated.status).toBe(ActivityStatus.Cancelled);
       expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith("ActivityCancelled", expect.objectContaining({
         activityId: "act-1",
@@ -233,6 +416,28 @@ describe("ActivityLifecycleService", () => {
       
       await expect(service.updateActivityStatus("host-1", "camp-1", "act-1", ActivityStatus.Full))
         .rejects.toThrow("Invalid status update");
+    });
+
+    it.each([
+      [ActivityStatus.Completed, ActivityStatus.Cancelled],
+      [ActivityStatus.Completed, ActivityStatus.Completed],
+      [ActivityStatus.Cancelled, ActivityStatus.Completed],
+      [ActivityStatus.Cancelled, ActivityStatus.Cancelled]
+    ])("fails when updating final status from %s to %s", async (currentStatus, nextStatus) => {
+      const activityStore: Activity[] = [
+        { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: currentStatus } as Activity
+      ];
+      const service = new ActivityLifecycleService(createActivityRepo(activityStore), createStructuredOptionLookup([]), mockEventDispatcher);
+
+      await expect(service.updateActivityStatus("host-1", "camp-1", "act-1", nextStatus))
+        .rejects.toMatchObject({
+          code: "CONFLICT",
+          details: {
+            conflictResource: "Activity"
+          }
+        });
+      expect(activityStore[0].status).toBe(currentStatus);
+      expect(mockEventDispatcher.dispatch).not.toHaveBeenCalled();
     });
   });
 
@@ -342,6 +547,43 @@ function createActivityRepo(activityStore: Activity[]) {
       return activity;
     }
   };
+}
+
+function createServiceWithSelectableOptions(activityStore: Activity[]) {
+  return new ActivityLifecycleService(
+    createActivityRepo(activityStore),
+    createStructuredOptionLookup([
+      {
+        optionId: "7eb3c60c-f4c2-43b4-97d3-48ee28d97a1c",
+        campusId: "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81",
+        optionType: CampusStructuredOptionType.ActivityCategory,
+        name: "Lunch"
+      },
+      {
+        optionId: "22383836-9f17-4cf7-8e57-07d6b10b96ec",
+        campusId: "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81",
+        optionType: CampusStructuredOptionType.CampusLocation,
+        name: "Jiading Library"
+      }
+    ]),
+    mockEventDispatcher
+  );
+}
+
+function createValidActivityPayload(): Partial<Activity> {
+  return {
+    title: "Lunch near the library",
+    categoryId: "7eb3c60c-f4c2-43b4-97d3-48ee28d97a1c",
+    scheduledDateTime: futureDate(24),
+    meetingPointId: "22383836-9f17-4cf7-8e57-07d6b10b96ec",
+    participationMode: ParticipationMode.Open,
+    maxParticipants: 4,
+    genderPreference: GenderPreference.All
+  };
+}
+
+function futureDate(hoursFromNow: number): Date {
+  return new Date(Date.now() + hoursFromNow * 60 * 60 * 1000);
 }
 
 function createStructuredOptionLookup(

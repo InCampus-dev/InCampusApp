@@ -2,7 +2,12 @@ import { randomUUID } from "crypto";
 import { Activity } from "../entities/Activity";
 import { CampusStructuredOptionLookup } from "../../../campus-administration/src/services/CampusOptionsService";
 import { AppError } from "../../../shared/src/errors/AppError";
-import { ActivityStatus, CampusStructuredOptionType } from "../../../shared/src/domain/enums";
+import {
+  ActivityStatus,
+  CampusStructuredOptionType,
+  GenderPreference,
+  ParticipationMode
+} from "../../../shared/src/domain/enums";
 import { type ActivityCancelledEvent } from "../../../shared/src/events/EventBus";
 
 export interface ActivityRepositoryPort {
@@ -30,25 +35,26 @@ export class ActivityLifecycleService {
   ): Promise<Activity> {
     const categoryId = data.categoryId;
     const meetingPointId = data.meetingPointId;
+    const validationIssues = validateCreateActivityData(data);
 
     if (!categoryId) {
-      throw AppError.validation("Request validation failed", [
-        {
-          field: "categoryId",
-          message: "is required",
-          code: "required"
-        }
-      ]);
+      validationIssues.push({
+        field: "categoryId",
+        message: "is required",
+        code: "required"
+      });
     }
 
     if (!meetingPointId) {
-      throw AppError.validation("Request validation failed", [
-        {
-          field: "meetingPointId",
-          message: "is required",
-          code: "required"
-        }
-      ]);
+      validationIssues.push({
+        field: "meetingPointId",
+        message: "is required",
+        code: "required"
+      });
+    }
+
+    if (validationIssues.length > 0) {
+      throw AppError.validation("Request validation failed", validationIssues);
     }
 
     const category = await this.campusStructuredOptionLookup.findSelectableOption(
@@ -119,6 +125,13 @@ export class ActivityLifecycleService {
       ]);
     }
 
+    if (activity.status === ActivityStatus.Completed || activity.status === ActivityStatus.Cancelled) {
+      throw AppError.conflict(
+        `Cannot update activity status from ${activity.status} to ${newStatus}`,
+        "Activity"
+      );
+    }
+
     activity.status = newStatus;
     const savedActivity = await this.activityRepo.save(activity);
 
@@ -155,4 +168,107 @@ export class ActivityLifecycleService {
 
     await this.activityRepo.remove(activity);
   }
+}
+
+function validateCreateActivityData(
+  data: Partial<Activity>
+): Array<{ field: string; message: string; code: string }> {
+  const validationIssues: Array<{ field: string; message: string; code: string }> = [];
+
+  if (typeof data.title !== "string" || data.title.trim().length === 0) {
+    validationIssues.push({
+      field: "title",
+      message: "is required",
+      code: "required"
+    });
+  }
+
+  if (!isValidDate(data.scheduledDateTime)) {
+    validationIssues.push({
+      field: "scheduledDateTime",
+      message: "must be a valid date",
+      code: "invalid_date"
+    });
+  } else if (data.scheduledDateTime.getTime() <= Date.now()) {
+    validationIssues.push({
+      field: "scheduledDateTime",
+      message: "must be in the future",
+      code: "must_be_future"
+    });
+  }
+
+  if (
+    data.scheduledEndDateTime !== undefined &&
+    data.scheduledEndDateTime !== null
+  ) {
+    if (!isValidDate(data.scheduledEndDateTime)) {
+      validationIssues.push({
+        field: "scheduledEndDateTime",
+        message: "must be a valid date",
+        code: "invalid_date"
+      });
+    } else if (
+      isValidDate(data.scheduledDateTime) &&
+      data.scheduledEndDateTime.getTime() <= data.scheduledDateTime.getTime()
+    ) {
+      validationIssues.push({
+        field: "scheduledEndDateTime",
+        message: "must be after scheduledDateTime",
+        code: "must_be_after_start"
+      });
+    }
+  }
+
+  if (!isPositiveInteger(data.maxParticipants)) {
+    validationIssues.push({
+      field: "maxParticipants",
+      message: "must be a positive integer",
+      code: "positive_integer_required"
+    });
+  }
+
+  if (
+    data.maxRequests !== undefined &&
+    data.maxRequests !== null &&
+    !isPositiveInteger(data.maxRequests)
+  ) {
+    validationIssues.push({
+      field: "maxRequests",
+      message: "must be a positive integer when provided",
+      code: "positive_integer_required"
+    });
+  }
+
+  if (!isEnumValue(ParticipationMode, data.participationMode)) {
+    validationIssues.push({
+      field: "participationMode",
+      message: "must be a valid participation mode",
+      code: "invalid_participation_mode"
+    });
+  }
+
+  if (!isEnumValue(GenderPreference, data.genderPreference)) {
+    validationIssues.push({
+      field: "genderPreference",
+      message: "must be a valid gender preference",
+      code: "invalid_gender_preference"
+    });
+  }
+
+  return validationIssues;
+}
+
+function isValidDate(value: unknown): value is Date {
+  return value instanceof Date && !Number.isNaN(value.getTime());
+}
+
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0;
+}
+
+function isEnumValue<T extends Record<string, string>>(
+  enumObject: T,
+  value: unknown
+): value is T[keyof T] {
+  return typeof value === "string" && Object.values(enumObject).includes(value);
 }

@@ -20,6 +20,7 @@ interface StructuredOptionChoice {
   name: string;
 }
 
+// Demo-seed fallback only. Replace with dynamic campus structured-option loading.
 const FALLBACK_CATEGORIES: StructuredOptionChoice[] = [
   { id: '87fe4ec4-0d68-45c1-b7c2-0abef2e3ef70', name: 'Lunch' },
   { id: 'd5f86aa2-7d8a-4c83-8426-d6f6b7b0ad7a', name: 'Study' },

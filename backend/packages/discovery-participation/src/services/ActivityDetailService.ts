@@ -3,6 +3,7 @@ import { Activity } from "../../../hosting-lifecycle/src/entities/Activity";
 import { BlockLookupPort } from "./FeedService";
 import { StudentProfileDto } from "../../../shared/src/domain/dtos";
 import { AppError } from "../../../shared/src/errors/AppError";
+import { ParticipationMode } from "../../../shared/src/domain/enums";
 
 // Interface to fetch the host's minimal profile from the Access & Profile (AP) module
 export interface HostProfileLookupPort {
@@ -39,7 +40,9 @@ export class ActivityDetailService {
     return {
       ...activity,
       hostProfile: hostProfile || undefined,
-      canManageRequests: activity.hostAccountId === studentAccountId
+      canManageRequests:
+        activity.hostAccountId === studentAccountId &&
+        activity.participationMode === ParticipationMode.ApprovalBased
     };
   }
 }

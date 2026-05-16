@@ -1,57 +1,91 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import api from '../services/api';
+import {
+  ActivityIndicator,
+  Alert,
+  Button,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import api, { getApiErrorMessage } from '../services/api';
+
+type ParticipationMode = 'open' | 'approval_based';
+type GenderPreference = 'all' | 'male_only' | 'female_only';
+
+interface StructuredOptionChoice {
+  id: string;
+  name: string;
+}
+
+// Demo-seed fallback only. Replace with dynamic campus structured-option loading.
+const FALLBACK_CATEGORIES: StructuredOptionChoice[] = [
+  { id: '87fe4ec4-0d68-45c1-b7c2-0abef2e3ef70', name: 'Lunch' },
+  { id: 'd5f86aa2-7d8a-4c83-8426-d6f6b7b0ad7a', name: 'Study' },
+];
+
+const FALLBACK_LOCATIONS: StructuredOptionChoice[] = [
+  { id: 'f2af15aa-d347-4037-8f1e-f6b4e8616d06', name: 'Jiading Library' },
+];
 
 export const CreateActivityScreen = ({ navigation }: any) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [categoryId, setCategoryId] = useState('cat-1');
-  const [meetingPointId, setMeetingPointId] = useState('loc-1');
+  const [categoryId, setCategoryId] = useState(FALLBACK_CATEGORIES[0]?.id ?? '');
+  const [meetingPointId, setMeetingPointId] = useState(FALLBACK_LOCATIONS[0]?.id ?? '');
+  const [scheduledDateTime, setScheduledDateTime] = useState(defaultScheduledDateTime());
   const [maxParticipants, setMaxParticipants] = useState('5');
-  const [participationMode, setParticipationMode] = useState('open'); // 'open' | 'approval_based'
-  const [maxRequests, setMaxRequests] = useState(''); // Optional, for approval_based
-  const [genderPreference, setGenderPreference] = useState('all'); // 'all' | 'male_only' | 'female_only'
-
-  // Temporary demo options (simulating Campus Structured Options - DS-CA-002)
-  // IMPORTANT: These hardcoded IDs must exactly match the options created by the T19 demo seed!
-  const categories = [
-    { id: 'cat-1', name: 'Coffee / Break' },
-    { id: 'cat-2', name: 'Study Session' },
-    { id: 'cat-3', name: 'Sports' }
-  ];
-
-  const locations = [
-    { id: 'loc-1', name: 'Library Cafe' },
-    { id: 'loc-2', name: 'Study Room B' },
-    { id: 'loc-3', name: 'Main Campus Gym' }
-  ];
+  const [participationMode, setParticipationMode] = useState<ParticipationMode>('open');
+  const [maxRequests, setMaxRequests] = useState('');
+  const [genderPreference, setGenderPreference] = useState<GenderPreference>('all');
+  const [creating, setCreating] = useState(false);
+  const categories = FALLBACK_CATEGORIES;
+  const locations = FALLBACK_LOCATIONS;
 
   const handleCreate = async () => {
-    if (!title || !description) {
-      Alert.alert('Error', 'Please fill in all required fields.');
+    const validationMessage = validateForm({
+      title,
+      categoryId,
+      meetingPointId,
+      scheduledDateTime,
+      maxParticipants,
+      participationMode,
+      maxRequests,
+    });
+
+    if (validationMessage) {
+      Alert.alert('Check activity details', validationMessage);
       return;
     }
 
+    const parsedMaxParticipants = Number.parseInt(maxParticipants.trim(), 10);
+    const parsedMaxRequests = maxRequests.trim()
+      ? Number.parseInt(maxRequests.trim(), 10)
+      : undefined;
+
+    setCreating(true);
     try {
       const newActivity = {
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim() || undefined,
         categoryId,
         meetingPointId,
-        maxParticipants: parseInt(maxParticipants, 10),
+        maxParticipants: parsedMaxParticipants,
         participationMode,
-        maxRequests: maxRequests ? parseInt(maxRequests, 10) : undefined,
+        maxRequests: participationMode === 'approval_based' ? parsedMaxRequests : undefined,
         genderPreference,
-        // For the mockup we set the start date to "tomorrow"
-        scheduledDateTime: new Date(Date.now() + 86400000).toISOString()
+        scheduledDateTime: new Date(scheduledDateTime.trim()).toISOString()
       };
 
       await api.post('/activities', newActivity);
-      Alert.alert('Success', 'Activity published successfully!');
+      Alert.alert('Success', 'Activity published successfully.');
       navigation.goBack();
-    } catch (error: any) {
-      console.error('Error creating activity:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to create activity.');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error) ?? 'Failed to create activity.');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -62,8 +96,18 @@ export const CreateActivityScreen = ({ navigation }: any) => {
       <Text style={styles.label}>Title *</Text>
       <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="e.g. Coffee at the library" />
 
-      <Text style={styles.label}>Description *</Text>
+      <Text style={styles.label}>Description</Text>
       <TextInput style={styles.input} value={description} onChangeText={setDescription} placeholder="Activity details..." multiline />
+
+      <Text style={styles.label}>Start Date and Time *</Text>
+      <TextInput
+        style={styles.input}
+        value={scheduledDateTime}
+        onChangeText={setScheduledDateTime}
+        placeholder="2026-06-01T10:00:00.000Z"
+        autoCapitalize="none"
+        editable={!creating}
+      />
 
       <Text style={styles.label}>Category</Text>
       <View style={styles.optionsContainer}>
@@ -125,11 +169,67 @@ export const CreateActivityScreen = ({ navigation }: any) => {
       </View>
 
       <View style={styles.buttonContainer}>
-        <Button title="Publish Activity" onPress={handleCreate} />
+        {creating ? (
+          <ActivityIndicator />
+        ) : (
+          <Button title="Publish Activity" onPress={handleCreate} />
+        )}
       </View>
     </ScrollView>
   );
 };
+
+function validateForm(args: {
+  title: string;
+  categoryId: string;
+  meetingPointId: string;
+  scheduledDateTime: string;
+  maxParticipants: string;
+  participationMode: ParticipationMode;
+  maxRequests: string;
+}): string | null {
+  if (!args.title.trim()) {
+    return 'Title is required.';
+  }
+
+  if (!args.categoryId || !args.meetingPointId) {
+    return 'Choose a category and meeting point.';
+  }
+
+  const scheduledDate = new Date(args.scheduledDateTime.trim());
+  if (Number.isNaN(scheduledDate.getTime())) {
+    return 'Enter the start time as a valid ISO date.';
+  }
+  if (scheduledDate.getTime() <= Date.now()) {
+    return 'Start time must be in the future.';
+  }
+
+  if (!isPositiveIntegerString(args.maxParticipants)) {
+    return 'Maximum participants must be a positive whole number.';
+  }
+
+  if (
+    args.participationMode === 'approval_based' &&
+    args.maxRequests.trim() &&
+    !isPositiveIntegerString(args.maxRequests)
+  ) {
+    return 'Max pending requests must be a positive whole number.';
+  }
+
+  return null;
+}
+
+function isPositiveIntegerString(value: string): boolean {
+  if (!/^[0-9]+$/.test(value.trim())) {
+    return false;
+  }
+
+  return Number.parseInt(value.trim(), 10) > 0;
+}
+
+function defaultScheduledDateTime(): string {
+  return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#fff' },

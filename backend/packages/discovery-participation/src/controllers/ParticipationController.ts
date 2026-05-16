@@ -38,10 +38,11 @@ export class ParticipationController {
 
       await this.withdrawLeaveService.withdrawRequest(
         studentContext.studentAccountId,
+        studentContext.selectedCampusId,
         activityId
       );
 
-      res.status(204).send(); // 204 No Content è lo standard per una DELETE andata a buon fine
+      res.status(204).send();
     } catch (error) {
       next(error);
     }
@@ -55,6 +56,7 @@ export class ParticipationController {
 
       await this.withdrawLeaveService.leaveActivity(
         studentContext.studentAccountId,
+        studentContext.selectedCampusId,
         activityId
       );
 

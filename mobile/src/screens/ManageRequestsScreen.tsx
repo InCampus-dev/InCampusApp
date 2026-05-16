@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
 
 interface RequestItem {
   participationId: string;
   studentDisplayName?: string;
+  applicant?: {
+    studentDisplayName?: string;
+  };
   createdAt: string;
 }
 
@@ -27,8 +30,7 @@ export const ManageRequestsScreen = ({ route, navigation }: any) => {
       const response = await api.get<RequestItem[]>(`/activities/${activityId}/requests`);
       setRequests(response.data);
     } catch (error) {
-      console.error('Error fetching requests:', error);
-      Alert.alert('Error', 'Failed to load pending requests.');
+      Alert.alert('Error', getApiErrorMessage(error) ?? 'Failed to load pending requests.');
     } finally {
       setLoading(false);
     }
@@ -38,40 +40,39 @@ export const ManageRequestsScreen = ({ route, navigation }: any) => {
     try {
       await api.patch(`/activities/${activityId}/requests/${requestId}`, { decision });
       Alert.alert('Success', `Request ${decision}d successfully.`);
-      
-      // Rimuoviamo la richiesta dalla lista locale dopo la decisione
       setRequests(prev => prev.filter(req => req.participationId !== requestId));
-    } catch (error: any) {
-      console.error(`Error processing ${decision}:`, error);
-      Alert.alert('Error', error.response?.data?.message || `Failed to ${decision} request.`);
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error) ?? `Failed to ${decision} request.`);
     }
   };
 
-  const renderItem = ({ item }: any) => (
-    <View style={styles.card}>
-      <View style={styles.userInfo}>
-        {/* Il DUC-HL-02 richiede di mostrare i dati minimi del profilo dell'applicant */}
-        <Text style={styles.userName}>{item.studentDisplayName || 'Student Applicant'}</Text>
-        <Text style={styles.requestDate}>
-          Requested on: {new Date(item.createdAt).toLocaleDateString()}
-        </Text>
+  const renderItem = ({ item }: { item: RequestItem }) => {
+    const applicantName =
+      item.studentDisplayName ?? item.applicant?.studentDisplayName ?? 'Student Applicant';
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.userInfo}>
+          <Text style={styles.userName}>{applicantName}</Text>
+          <Text style={styles.requestDate}>Requested on: {formatRequestDate(item.createdAt)}</Text>
+        </View>
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={[styles.button, styles.approveButton]}
+            onPress={() => handleDecision(item.participationId, 'approve')}
+          >
+            <Text style={styles.buttonText}>Approve</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.declineButton]}
+            onPress={() => handleDecision(item.participationId, 'decline')}
+          >
+            <Text style={styles.buttonText}>Decline</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <View style={styles.actionButtons}>
-        <TouchableOpacity 
-          style={[styles.button, styles.approveButton]} 
-          onPress={() => handleDecision(item.participationId, 'approve')}
-        >
-          <Text style={styles.buttonText}>Approve</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.button, styles.declineButton]} 
-          onPress={() => handleDecision(item.participationId, 'decline')}
-        >
-          <Text style={styles.buttonText}>Decline</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -92,6 +93,15 @@ export const ManageRequestsScreen = ({ route, navigation }: any) => {
     </View>
   );
 };
+
+function formatRequestDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString();
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5', padding: 16 },

@@ -43,28 +43,45 @@ GET /health
 
 Do not commit `backend/.env`.
 
-## Seed Demo University Identity Rules
+## Seed Demo Data
 
-On a fresh development or demo database, seed `DS-AP-003` before testing sign-up:
+On a fresh development or demo database, seed the local Tongji Jiading demo data:
+
+```bash
+npm run seed:demo
+```
+
+This seeds the university identity rule, campus, structured options, verified host/guest accounts, profiles, consent settings, and demo activities. The seed is idempotent and local/demo only. See:
+
+```text
+docs/demo-seed.md
+```
+
+If you only need the historical identity-rule seed, the old command remains available:
 
 ```bash
 npm run seed:demo:identity-rules --workspace backend
 ```
 
-This bootstrap is idempotent and currently seeds the supported demo domain `tongji.edu.cn`.
+## Backend Demo Smoke Check
+
+With the backend running and demo data seeded:
+
+```bash
+npm run smoke:demo
+```
+
+See `docs/backend-smoke-check.md` for required, conditional, and skipped checks.
 
 ## Run Mobile
 
-The mobile folder is a shell only. Expo is intentionally not initialized in Phase 0.
-
-When the team is ready:
+The mobile app is an Expo workspace. Configure the backend URL before running it:
 
 ```bash
-npx create-expo-app@latest mobile
-cd mobile
-npm install
-npm run start
+EXPO_PUBLIC_API_BASE_URL=http://localhost:3000 npm run start --workspace mobile
 ```
+
+For a physical device, replace `localhost` with the machine LAN IP. See `docs/mobile-run-check.md`.
 
 ## Checks
 

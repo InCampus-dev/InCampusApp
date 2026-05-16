@@ -36,6 +36,10 @@ export class ActivityDetailService {
 
     const hostProfile = await this.hostProfileLookup.getProfile(activity.hostAccountId);
 
-    return { ...activity, hostProfile: hostProfile || undefined };
+    return {
+      ...activity,
+      hostProfile: hostProfile || undefined,
+      canManageRequests: activity.hostAccountId === studentAccountId
+    };
   }
 }

@@ -308,6 +308,7 @@ export interface ActivityDetailDto extends ActivitySummaryDto {
   maxRequests?: number | null;
   currentRequestCount: number;
   hostProfile?: StudentProfileDto;
+  canManageRequests?: boolean;
 }
 
 export interface ParticipationDto {
@@ -318,6 +319,32 @@ export interface ParticipationDto {
   status: ParticipationStatus;
   createdAt: string;
 }
+
+export type PersonalActivityRelationship =
+  | "host"
+  | "pending_request"
+  | "confirmed_participant";
+
+export interface PersonalActivityListItemDto extends ActivityDetailDto {
+  personalActivityStatus: PersonalActivityRelationship;
+  participationId?: ParticipationId;
+  participationRecordType?: ParticipationRecordType;
+  participationStatus?: ParticipationStatus;
+}
+
+export type PersonalActivityListDto = PersonalActivityListItemDto[];
+
+export interface JoinRequestApplicantDto {
+  studentAccountId: StudentAccountId;
+  studentDisplayName?: string;
+}
+
+export interface JoinRequestListItemDto extends ParticipationDto {
+  applicant: JoinRequestApplicantDto;
+  studentDisplayName?: string;
+}
+
+export type JoinRequestListDto = JoinRequestListItemDto[];
 
 export interface NotificationRecordDto {
   notificationId: NotificationId;

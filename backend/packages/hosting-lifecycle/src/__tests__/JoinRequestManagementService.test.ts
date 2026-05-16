@@ -18,6 +18,7 @@ describe("JoinRequestManagementService", () => {
   let mockManager: any;
   let mockActivityRepo: any;
   let mockParticipationRepo: any;
+  let mockApplicantLookup: any;
 
   beforeEach(() => {
     mockActivityRepo = {
@@ -49,7 +50,15 @@ describe("JoinRequestManagementService", () => {
       dispatch: vi.fn().mockResolvedValue(undefined),
     };
 
-    service = new JoinRequestManagementService(mockDataSource, mockEventDispatcher);
+    mockApplicantLookup = {
+      getApplicantSummary: vi.fn().mockResolvedValue(null),
+    };
+
+    service = new JoinRequestManagementService(
+      mockDataSource,
+      mockEventDispatcher,
+      mockApplicantLookup
+    );
   });
 
   afterEach(() => {
@@ -59,7 +68,10 @@ describe("JoinRequestManagementService", () => {
   describe("getPendingRequests", () => {
     it("should return pending requests if user is host", async () => {
       mockActivityRepo.findOne.mockResolvedValue({ activityId: "act-1", hostAccountId: "host-1" });
-      const mockRequests = [{ participationId: "req-1" }, { participationId: "req-2" }];
+      const mockRequests = [
+        { participationId: "req-1", studentAccountId: "student-1" },
+        { participationId: "req-2", studentAccountId: "student-2" }
+      ];
       mockParticipationRepo.find.mockResolvedValue(mockRequests);
 
       const result = await service.getPendingRequests("host-1", "act-1");
@@ -72,6 +84,43 @@ describe("JoinRequestManagementService", () => {
           status: ParticipationStatus.Pending
         },
       });
+    });
+
+    it("should include minimal applicant display data when available", async () => {
+      mockActivityRepo.findOne.mockResolvedValue({ activityId: "act-1", hostAccountId: "host-1" });
+      mockParticipationRepo.find.mockResolvedValue([
+        { participationId: "req-1", studentAccountId: "student-1" },
+        { participationId: "req-2", studentAccountId: "student-2" }
+      ]);
+      mockApplicantLookup.getApplicantSummary.mockImplementation(async (studentAccountId: string) => {
+        if (studentAccountId === "student-1") {
+          return {
+            studentAccountId,
+            studentDisplayName: "Ada Lovelace"
+          };
+        }
+
+        return null;
+      });
+
+      const result = await service.getPendingRequests("host-1", "act-1");
+
+      expect(result).toEqual([
+        expect.objectContaining({
+          participationId: "req-1",
+          studentDisplayName: "Ada Lovelace",
+          applicant: {
+            studentAccountId: "student-1",
+            studentDisplayName: "Ada Lovelace"
+          }
+        }),
+        expect.objectContaining({
+          participationId: "req-2",
+          applicant: {
+            studentAccountId: "student-2"
+          }
+        })
+      ]);
     });
 
     it("should throw if activity not found", async () => {

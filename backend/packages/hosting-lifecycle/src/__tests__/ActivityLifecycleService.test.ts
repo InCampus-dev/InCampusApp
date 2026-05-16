@@ -9,6 +9,10 @@ describe("ActivityLifecycleService", () => {
     dispatch: vi.fn()
   };
 
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("accepts active campus options and preserves snapshot labels", async () => {
     const activityStore: Activity[] = [];
     const service = new ActivityLifecycleService(
@@ -72,6 +76,61 @@ describe("ActivityLifecycleService", () => {
     });
   });
 
+  it("rejects creation when categoryId is missing", async () => {
+    const service = new ActivityLifecycleService(
+      createActivityRepo([]),
+      createStructuredOptionLookup([]),
+      mockEventDispatcher
+    );
+
+    await expect(
+      service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
+        title: "Lunch near the library",
+        scheduledDateTime: new Date("2026-05-11T12:00:00Z"),
+        meetingPointId: "22383836-9f17-4cf7-8e57-07d6b10b96ec",
+        participationMode: ParticipationMode.Open,
+        maxParticipants: 4,
+        genderPreference: GenderPreference.All
+      })
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        validation: [expect.objectContaining({ field: "categoryId", code: "required" })]
+      }
+    });
+  });
+
+  it("rejects creation when meetingPointId is missing", async () => {
+    const service = new ActivityLifecycleService(
+      createActivityRepo([]),
+      createStructuredOptionLookup([
+        {
+          optionId: "7eb3c60c-f4c2-43b4-97d3-48ee28d97a1c",
+          campusId: "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81",
+          optionType: CampusStructuredOptionType.ActivityCategory,
+          name: "Lunch"
+        }
+      ]),
+      mockEventDispatcher
+    );
+
+    await expect(
+      service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
+        title: "Lunch near the library",
+        categoryId: "7eb3c60c-f4c2-43b4-97d3-48ee28d97a1c",
+        scheduledDateTime: new Date("2026-05-11T12:00:00Z"),
+        participationMode: ParticipationMode.Open,
+        maxParticipants: 4,
+        genderPreference: GenderPreference.All
+      })
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        validation: [expect.objectContaining({ field: "meetingPointId", code: "required" })]
+      }
+    });
+  });
+
   it("rejects wrong-type meeting point options", async () => {
     const service = new ActivityLifecycleService(
       createActivityRepo([]),
@@ -102,8 +161,6 @@ describe("ActivityLifecycleService", () => {
   });
 
   describe("updateActivityStatus", () => {
-    beforeEach(() => { vi.clearAllMocks(); });
-
     it("successfully updates status to completed", async () => {
       const activityStore: Activity[] = [
         { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Open } as Activity
@@ -139,6 +196,35 @@ describe("ActivityLifecycleService", () => {
         .rejects.toThrow("Only the host can update the activity status");
     });
 
+    it("fails opaquely if activity belongs to another campus", async () => {
+      const activityStore: Activity[] = [
+        { activityId: "act-1", campusId: "camp-2", hostAccountId: "host-1", status: ActivityStatus.Open } as Activity
+      ];
+      const service = new ActivityLifecycleService(createActivityRepo(activityStore), createStructuredOptionLookup([]), mockEventDispatcher);
+
+      await expect(service.updateActivityStatus("host-1", "camp-1", "act-1", ActivityStatus.Completed))
+        .rejects.toMatchObject({
+          code: "NOT_FOUND",
+          details: {
+            resourceType: "Activity",
+            resourceId: "act-1"
+          }
+        });
+    });
+
+    it("fails if activity is missing", async () => {
+      const service = new ActivityLifecycleService(createActivityRepo([]), createStructuredOptionLookup([]), mockEventDispatcher);
+
+      await expect(service.updateActivityStatus("host-1", "camp-1", "missing-act", ActivityStatus.Completed))
+        .rejects.toMatchObject({
+          code: "NOT_FOUND",
+          details: {
+            resourceType: "Activity",
+            resourceId: "missing-act"
+          }
+        });
+    });
+
     it("fails if trying to update to an invalid status", async () => {
       const activityStore: Activity[] = [
         { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Open } as Activity
@@ -170,6 +256,50 @@ describe("ActivityLifecycleService", () => {
       await expect(service.deleteActivity("host-1", "camp-1", "act-1"))
         .rejects.toThrow("Cannot delete an activity that has already started");
     });
+
+    it("fails if a non-host tries to delete the activity", async () => {
+      const activityStore: Activity[] = [
+        { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", scheduledDateTime: new Date(Date.now() + 86400000) } as Activity
+      ];
+      const service = new ActivityLifecycleService(createActivityRepo(activityStore), createStructuredOptionLookup([]), mockEventDispatcher);
+
+      await expect(service.deleteActivity("host-2", "camp-1", "act-1"))
+        .rejects.toMatchObject({
+          code: "AUTH_FORBIDDEN",
+          details: {
+            authReason: "not_activity_host"
+          }
+        });
+    });
+
+    it("fails opaquely if delete targets another campus", async () => {
+      const activityStore: Activity[] = [
+        { activityId: "act-1", campusId: "camp-2", hostAccountId: "host-1", scheduledDateTime: new Date(Date.now() + 86400000) } as Activity
+      ];
+      const service = new ActivityLifecycleService(createActivityRepo(activityStore), createStructuredOptionLookup([]), mockEventDispatcher);
+
+      await expect(service.deleteActivity("host-1", "camp-1", "act-1"))
+        .rejects.toMatchObject({
+          code: "NOT_FOUND",
+          details: {
+            resourceType: "Activity",
+            resourceId: "act-1"
+          }
+        });
+    });
+
+    it("fails if delete targets a missing activity", async () => {
+      const service = new ActivityLifecycleService(createActivityRepo([]), createStructuredOptionLookup([]), mockEventDispatcher);
+
+      await expect(service.deleteActivity("host-1", "camp-1", "missing-act"))
+        .rejects.toMatchObject({
+          code: "NOT_FOUND",
+          details: {
+            resourceType: "Activity",
+            resourceId: "missing-act"
+          }
+        });
+    });
   });
 });
 
@@ -188,7 +318,16 @@ function createActivityRepo(activityStore: Activity[]) {
       } as Activity;
     },
     async save(activity: Activity) {
-      activityStore.push(activity);
+      const existingIndex = activityStore.findIndex(
+        (candidate) => candidate.activityId === activity.activityId
+      );
+
+      if (existingIndex >= 0) {
+        activityStore[existingIndex] = activity;
+      } else {
+        activityStore.push(activity);
+      }
+
       return activity;
     },
     async findOne(options: any) {

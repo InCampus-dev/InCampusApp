@@ -108,7 +108,9 @@ export class ActivityLifecycleService {
     if (!activity) throw AppError.notFound("Activity", activityId);
     if (activity.campusId !== campusId) throw AppError.notFound("Activity", activityId);
     if (activity.hostAccountId !== hostAccountId) {
-      throw new AppError("AUTH_REQUIRED", "Only the host can update the activity status", 403);
+      throw new AppError("AUTH_FORBIDDEN", "Only the host can update the activity status", 403, {
+        authReason: "not_activity_host"
+      });
     }
 
     if (newStatus !== ActivityStatus.Completed && newStatus !== ActivityStatus.Cancelled) {
@@ -141,7 +143,11 @@ export class ActivityLifecycleService {
     
     if (!activity) throw AppError.notFound("Activity", activityId);
     if (activity.campusId !== campusId) throw AppError.notFound("Activity", activityId);
-    if (activity.hostAccountId !== hostAccountId) throw new AppError("AUTH_REQUIRED", "Only the host can delete the activity", 403);
+    if (activity.hostAccountId !== hostAccountId) {
+      throw new AppError("AUTH_FORBIDDEN", "Only the host can delete the activity", 403, {
+        authReason: "not_activity_host"
+      });
+    }
 
     if (new Date() >= activity.scheduledDateTime) {
       throw AppError.conflict("Cannot delete an activity that has already started", "Activity");

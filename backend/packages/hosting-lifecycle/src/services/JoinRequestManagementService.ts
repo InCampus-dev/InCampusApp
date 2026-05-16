@@ -7,6 +7,7 @@ import {
   type JoinRequestApprovedEvent,
   type JoinRequestDeclinedEvent
 } from "../../../shared/src/events/EventBus";
+import { AppError } from "../../../shared/src/errors/AppError";
 import { executeTransaction, findWithPessimisticWriteLock } from "../../../shared/src/db/transaction";
 import { findOtherActiveByActivityAndStudent } from "../repositories/ParticipationRepo";
 
@@ -14,29 +15,53 @@ export interface JoinRequestEventDispatcherPort {
   dispatch(eventName: string, payload: any): Promise<void>;
 }
 
+export interface JoinRequestApplicantSummary {
+  studentAccountId: string;
+  studentDisplayName?: string;
+}
+
+export interface JoinRequestApplicantLookupPort {
+  getApplicantSummary(studentAccountId: string): Promise<JoinRequestApplicantSummary | null>;
+}
+
+export type PendingJoinRequestListItem = Participation & {
+  applicant: JoinRequestApplicantSummary;
+  studentDisplayName?: string;
+};
+
 export class JoinRequestManagementService {
   constructor(
     private dataSource: DataSource,
-    private eventDispatcher: JoinRequestEventDispatcherPort
+    private eventDispatcher: JoinRequestEventDispatcherPort,
+    private applicantLookup?: JoinRequestApplicantLookupPort
   ) {}
 
-  async getPendingRequests(hostAccountId: string, activityId: string): Promise<Participation[]> {
+  async getPendingRequests(
+    hostAccountId: string,
+    activityId: string
+  ): Promise<PendingJoinRequestListItem[]> {
     const participationRepo = this.dataSource.getRepository(Participation);
     const activityRepo = this.dataSource.getRepository(Activity);
 
     const activity = await activityRepo.findOne({ where: { activityId } });
-    if (!activity) throw new Error("Activity not found");
+    if (!activity) throw AppError.notFound("Activity", activityId);
     if (activity.hostAccountId !== hostAccountId) {
-      throw new Error("Unauthorized: Only the host can view requests");
+      throw new AppError("AUTH_FORBIDDEN", "Unauthorized: Only the host can view requests", 403, {
+        authReason: "not_activity_host"
+      });
     }
 
-    return participationRepo.find({
+    const pendingRequests = await participationRepo.find({
       where: {
         activityId,
         recordType: ParticipationRecordType.Request,
         status: ParticipationStatus.Pending
       }
     });
+
+    return await Promise.all(
+      pendingRequests.map((request) => this.attachApplicantSummary(request))
+    );
   }
 
   async reviewJoinRequest(
@@ -136,5 +161,23 @@ export class JoinRequestManagementService {
 
     await this.eventDispatcher.dispatch(eventName, eventPayload);
     return savedParticipation;
+  }
+
+  private async attachApplicantSummary(
+    request: Participation
+  ): Promise<PendingJoinRequestListItem> {
+    const applicantSummary =
+      (await this.applicantLookup?.getApplicantSummary(request.studentAccountId)) ?? {
+        studentAccountId: request.studentAccountId
+      };
+
+    const enrichedRequest = request as PendingJoinRequestListItem;
+    enrichedRequest.applicant = applicantSummary;
+
+    if (applicantSummary.studentDisplayName) {
+      enrichedRequest.studentDisplayName = applicantSummary.studentDisplayName;
+    }
+
+    return enrichedRequest;
   }
 }

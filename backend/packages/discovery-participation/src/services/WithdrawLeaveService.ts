@@ -17,11 +17,18 @@ export class WithdrawLeaveService {
     private readonly eventDispatcher: any
   ) {}
 
-  async withdrawRequest(studentAccountId: string, activityId: string): Promise<void> {
+  async withdrawRequest(
+    studentAccountId: string,
+    campusId: string,
+    activityId: string
+  ): Promise<void> {
     await executeTransaction(this.dataSource, async (manager) => {
       const activity = await findWithPessimisticWriteLock(manager, Activity, { activityId });
 
       if (!activity) {
+        throw AppError.notFound('Activity', activityId);
+      }
+      if (activity.campusId !== campusId) {
         throw AppError.notFound('Activity', activityId);
       }
 
@@ -38,16 +45,23 @@ export class WithdrawLeaveService {
       }
 
       await manager.remove(Participation, participation);
-      activity.currentRequestCount -= 1;
+      activity.currentRequestCount = Math.max(0, activity.currentRequestCount - 1);
       await manager.save(Activity, activity);
     });
   }
 
-  async leaveActivity(studentAccountId: string, activityId: string): Promise<void> {
+  async leaveActivity(
+    studentAccountId: string,
+    campusId: string,
+    activityId: string
+  ): Promise<void> {
     await executeTransaction(this.dataSource, async (manager) => {
       const activity = await findWithPessimisticWriteLock(manager, Activity, { activityId });
 
       if (!activity) {
+        throw AppError.notFound('Activity', activityId);
+      }
+      if (activity.campusId !== campusId) {
         throw AppError.notFound('Activity', activityId);
       }
 
@@ -68,7 +82,7 @@ export class WithdrawLeaveService {
       }
 
       await manager.remove(Participation, participation);
-      activity.currentParticipantCount -= 1;
+      activity.currentParticipantCount = Math.max(0, activity.currentParticipantCount - 1);
 
       if (activity.status === ActivityStatus.Full) {
         activity.status = ActivityStatus.Open;

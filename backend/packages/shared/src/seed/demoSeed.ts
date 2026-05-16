@@ -5,18 +5,36 @@ import {
   GenderPreference,
   ParticipationMode,
   PlatformAccessStatus,
+  StudentProfileGender,
   VerificationStatus
 } from "../domain/enums";
 
+export const demoPassword = "InCampusDemo2026!";
+export const demoActivityTitlePrefix = "[DEMO]";
 export const demoCampusId: CampusId = "1d8a58b3-4df0-40fe-9ad0-5bd563c13d6f";
 export const demoCategoryLunchOptionId = "87fe4ec4-0d68-45c1-b7c2-0abef2e3ef70";
+export const demoCategoryCoffeeOptionId = "06390f30-5028-4d1c-8c31-095b893d4534";
 export const demoCategoryStudyOptionId = "d5f86aa2-7d8a-4c83-8426-d6f6b7b0ad7a";
-export const demoLibraryLocationOptionId = "f2af15aa-d347-4037-8f1e-f6b4e8616d06";
-export const demoStudentAccountOneId: StudentAccountId = "e5a8f8d7-34cd-4696-bf0f-1d2b89c29fbc";
-export const demoStudentAccountTwoId: StudentAccountId = "845e6c55-e3fe-4aa0-9e0f-b2968876c4c8";
-export const demoStudentProfileOneId = "8bc2ea96-b3b7-4b15-8c03-1c8b42d5d6d0";
-export const demoStudentProfileTwoId = "b7f2e5f0-f780-4244-b03f-deddb8ffc16f";
-export const demoActivityLunchId: ActivityId = "6b6a4767-5ebf-4d86-b65a-5716f17d9d41";
+export const demoCategorySportOptionId = "094f2c11-fc93-4b7c-9f95-695de30fd194";
+export const demoCategoryLanguageExchangeOptionId = "8a52a24e-c5b0-4f83-ae5d-0c31a5d998b2";
+export const demoLibraryPlazaLocationOptionId = "f2af15aa-d347-4037-8f1e-f6b4e8616d06";
+export const demoCafeteriaLocationOptionId = "779ae557-ed88-4b1f-9f45-286fa6f32044";
+export const demoMainGateLocationOptionId = "17a7563d-0e26-4352-9bde-b0472fe10bb2";
+export const demoSportsCenterLocationOptionId = "a15a2c41-b0eb-4135-8f4b-29f4a08bf76c";
+export const demoHostAccountId: StudentAccountId = "e5a8f8d7-34cd-4696-bf0f-1d2b89c29fbc";
+export const demoGuestAccountId: StudentAccountId = "845e6c55-e3fe-4aa0-9e0f-b2968876c4c8";
+export const demoHostProfileId = "8bc2ea96-b3b7-4b15-8c03-1c8b42d5d6d0";
+export const demoGuestProfileId = "b7f2e5f0-f780-4244-b03f-deddb8ffc16f";
+export const demoOpenActivityId: ActivityId = "6b6a4767-5ebf-4d86-b65a-5716f17d9d41";
+export const demoApprovalActivityId: ActivityId = "172ddca6-871d-41ce-ad5e-f7c310b20743";
+
+// Backward-compatible aliases used by older seed tests/docs.
+export const demoLibraryLocationOptionId = demoLibraryPlazaLocationOptionId;
+export const demoStudentAccountOneId = demoHostAccountId;
+export const demoStudentAccountTwoId = demoGuestAccountId;
+export const demoStudentProfileOneId = demoHostProfileId;
+export const demoStudentProfileTwoId = demoGuestProfileId;
+export const demoActivityLunchId = demoOpenActivityId;
 
 export interface DemoCampusSeed {
   campusId: CampusId;
@@ -37,9 +55,12 @@ export interface DemoStructuredOptionSeed {
 export interface DemoStudentAccountSeed {
   studentAccountId: StudentAccountId;
   universityEmail: string;
+  password: string;
+  universityStudentId: string;
   selectedCampusId: CampusId;
   platformAccessStatus: PlatformAccessStatus;
   verificationStatus: VerificationStatus;
+  campusInsightSharingConsent: boolean;
 }
 
 export interface DemoUniversityIdentityRuleSeed {
@@ -54,8 +75,11 @@ export interface DemoStudentProfileSeed {
   studentAccountId: StudentAccountId;
   displayName: string;
   major: string;
+  dateOfBirth: string | null;
+  gender: StudentProfileGender | null;
   interests: string[];
   languages: string[];
+  shortBio: string | null;
 }
 
 export interface DemoActivitySeed {
@@ -65,9 +89,13 @@ export interface DemoActivitySeed {
   title: string;
   categoryId: string;
   categoryLabel: string;
+  description: string | null;
+  startsInHours: number;
+  durationHours: number;
   meetingPointId: string;
   meetingPointLabel: string;
   maxParticipants: number;
+  maxRequests: number | null;
   participationMode: ParticipationMode;
   genderPreference: GenderPreference;
   status: ActivityStatus;
@@ -101,6 +129,14 @@ export const phase0DemoSeed: DemoSeedData = {
       isActive: true
     },
     {
+      optionId: demoCategoryCoffeeOptionId,
+      campusId: demoCampusId,
+      optionType: CampusStructuredOptionType.ActivityCategory,
+      name: "Coffee",
+      description: "Short coffee breaks and casual campus chats.",
+      isActive: true
+    },
+    {
       optionId: demoCategoryStudyOptionId,
       campusId: demoCampusId,
       optionType: CampusStructuredOptionType.ActivityCategory,
@@ -109,11 +145,51 @@ export const phase0DemoSeed: DemoSeedData = {
       isActive: true
     },
     {
-      optionId: demoLibraryLocationOptionId,
+      optionId: demoCategorySportOptionId,
+      campusId: demoCampusId,
+      optionType: CampusStructuredOptionType.ActivityCategory,
+      name: "Sport",
+      description: "Light sports and movement activities.",
+      isActive: true
+    },
+    {
+      optionId: demoCategoryLanguageExchangeOptionId,
+      campusId: demoCampusId,
+      optionType: CampusStructuredOptionType.ActivityCategory,
+      name: "Language Exchange",
+      description: "Small language practice meetups.",
+      isActive: true
+    },
+    {
+      optionId: demoLibraryPlazaLocationOptionId,
       campusId: demoCampusId,
       optionType: CampusStructuredOptionType.CampusLocation,
-      name: "Jiading Library",
-      description: "Shared library meeting point.",
+      name: "Library Plaza",
+      description: "Open plaza outside the Jiading campus library.",
+      isActive: true
+    },
+    {
+      optionId: demoCafeteriaLocationOptionId,
+      campusId: demoCampusId,
+      optionType: CampusStructuredOptionType.CampusLocation,
+      name: "Cafeteria",
+      description: "Main student cafeteria meeting area.",
+      isActive: true
+    },
+    {
+      optionId: demoMainGateLocationOptionId,
+      campusId: demoCampusId,
+      optionType: CampusStructuredOptionType.CampusLocation,
+      name: "Main Gate",
+      description: "Jiading Campus main gate.",
+      isActive: true
+    },
+    {
+      optionId: demoSportsCenterLocationOptionId,
+      campusId: demoCampusId,
+      optionType: CampusStructuredOptionType.CampusLocation,
+      name: "Sports Center",
+      description: "Campus sports center entrance.",
       isActive: true
     }
   ],
@@ -127,50 +203,84 @@ export const phase0DemoSeed: DemoSeedData = {
   ],
   studentAccounts: [
     {
-      studentAccountId: demoStudentAccountOneId,
-      universityEmail: "demo.student1@tongji.edu.cn",
+      studentAccountId: demoHostAccountId,
+      universityEmail: "demo.host@tongji.edu.cn",
+      password: demoPassword,
+      universityStudentId: "DEMO-HOST-001",
       selectedCampusId: demoCampusId,
       platformAccessStatus: PlatformAccessStatus.Active,
-      verificationStatus: VerificationStatus.Verified
+      verificationStatus: VerificationStatus.Verified,
+      campusInsightSharingConsent: true
     },
     {
-      studentAccountId: demoStudentAccountTwoId,
-      universityEmail: "demo.student2@tongji.edu.cn",
+      studentAccountId: demoGuestAccountId,
+      universityEmail: "demo.guest@tongji.edu.cn",
+      password: demoPassword,
+      universityStudentId: "DEMO-GUEST-001",
       selectedCampusId: demoCampusId,
       platformAccessStatus: PlatformAccessStatus.Active,
-      verificationStatus: VerificationStatus.Verified
+      verificationStatus: VerificationStatus.Verified,
+      campusInsightSharingConsent: false
     }
   ],
   studentProfiles: [
     {
-      profileId: demoStudentProfileOneId,
-      studentAccountId: demoStudentAccountOneId,
+      profileId: demoHostProfileId,
+      studentAccountId: demoHostAccountId,
       displayName: "Demo Host",
       major: "Software Engineering",
+      dateOfBirth: "2001-04-18",
+      gender: StudentProfileGender.PreferNotToSay,
       interests: ["lunch", "language exchange"],
-      languages: ["English", "Chinese"]
+      languages: ["English", "Chinese"],
+      shortBio: "Hosts low-pressure campus activities for demo walkthroughs."
     },
     {
-      profileId: demoStudentProfileTwoId,
-      studentAccountId: demoStudentAccountTwoId,
+      profileId: demoGuestProfileId,
+      studentAccountId: demoGuestAccountId,
       displayName: "Demo Participant",
       major: "Design",
+      dateOfBirth: "2002-09-02",
+      gender: StudentProfileGender.PreferNotToSay,
       interests: ["study", "coffee"],
-      languages: ["English", "Italian"]
+      languages: ["English", "Italian"],
+      shortBio: "Uses the demo flow to browse, join, and request activities."
     }
   ],
   activities: [
     {
-      activityId: demoActivityLunchId,
+      activityId: demoOpenActivityId,
       campusId: demoCampusId,
-      hostAccountId: demoStudentAccountOneId,
-      title: "Lunch near the library",
+      hostAccountId: demoHostAccountId,
+      title: "[DEMO] Lunch near Library Plaza",
       categoryId: demoCategoryLunchOptionId,
       categoryLabel: "Lunch",
-      meetingPointId: demoLibraryLocationOptionId,
-      meetingPointLabel: "Jiading Library",
+      description: "A simple open-join lunch activity for the core demo path.",
+      startsInHours: 24,
+      durationHours: 1,
+      meetingPointId: demoLibraryPlazaLocationOptionId,
+      meetingPointLabel: "Library Plaza",
       maxParticipants: 4,
+      maxRequests: null,
       participationMode: ParticipationMode.Open,
+      genderPreference: GenderPreference.All,
+      status: ActivityStatus.Open
+    },
+    {
+      activityId: demoApprovalActivityId,
+      campusId: demoCampusId,
+      hostAccountId: demoHostAccountId,
+      title: "[DEMO] Language Exchange at Cafeteria",
+      categoryId: demoCategoryLanguageExchangeOptionId,
+      categoryLabel: "Language Exchange",
+      description: "Approval-based activity for join-request and manage-request checks.",
+      startsInHours: 30,
+      durationHours: 1,
+      meetingPointId: demoCafeteriaLocationOptionId,
+      meetingPointLabel: "Cafeteria",
+      maxParticipants: 3,
+      maxRequests: 8,
+      participationMode: ParticipationMode.ApprovalBased,
       genderPreference: GenderPreference.All,
       status: ActivityStatus.Open
     }

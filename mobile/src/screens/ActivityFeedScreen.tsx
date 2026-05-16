@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api, { getApiErrorMessage } from '../services/api';
 
@@ -51,9 +52,11 @@ export const ActivityFeedScreen = ({ navigation, route }: any) => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchActivities();
-  }, [fetchActivities]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchActivities();
+    }, [fetchActivities]),
+  );
 
   useEffect(() => {
     const createdActivityId = route?.params?.createdActivityId;

@@ -8,6 +8,8 @@
     "dev": "tsx watch src/server.ts",
     "start": "node dist/src/server.js",
     "seed:demo:identity-rules": "tsx src/seedDemoIdentityRules.ts",
+    "seed:demo": "tsx src/seedDemo.ts",
+    "smoke:demo": "tsx src/demoSmokeCheck.ts",
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "build": "tsc -p tsconfig.json",

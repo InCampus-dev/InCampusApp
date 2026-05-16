@@ -10,7 +10,6 @@ import { Activity } from "../packages/hosting-lifecycle/src/entities/Activity";
 import { Participation } from "../packages/hosting-lifecycle/src/entities/Participation";
 import { NotificationRecord } from "../packages/notifications-system-flow/src/entities/NotificationRecord";
 import { AppDataSource } from "../packages/shared/src/config/database";
-import { ActivityStatus } from "../packages/shared/src/domain/enums";
 import {
   demoActivityTitlePrefix,
   phase0DemoSeed,
@@ -311,7 +310,7 @@ async function seedActivities(
     activity.currentParticipantCount = 0;
     activity.currentRequestCount = 0;
     activity.genderPreference = activitySeed.genderPreference;
-    activity.status = ActivityStatus.Open;
+    activity.status = activitySeed.status;
 
     await repo.save(activity);
     summary.activities += 1;

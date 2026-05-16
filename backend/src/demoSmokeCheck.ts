@@ -103,6 +103,20 @@ let directJoinNotificationId: string | null = null;
 async function main(): Promise<void> {
   console.log(`[Demo Smoke] Base URL: ${baseUrl}`);
 
+  try {
+    await runDemoChecks();
+  } finally {
+    await cleanupSmokeActivities();
+  }
+
+  printSummary();
+  const failed = results.filter((result) => result.status === "FAIL");
+  if (failed.length > 0) {
+    process.exitCode = 1;
+  }
+}
+
+async function runDemoChecks(): Promise<void> {
   await required("health check", async () => {
     const health = await getJson<{ status: string; service: string }>("/health");
     assert(health.status === "ok", "Expected health status ok");
@@ -286,7 +300,7 @@ async function main(): Promise<void> {
     if (!directActivityId || !directJoinNotificationId) {
       throw new CheckSkipped("direct notification was not created");
     }
-    await deleteRequest(`/activities/${directActivityId}`, hostAuth!.accessToken);
+    await deleteSmokeActivity(directActivityId);
     directActivityId = null;
     const fallback = await getJson<NotificationContextResponse>(
       `/notifications/${directJoinNotificationId}/context`,
@@ -296,25 +310,9 @@ async function main(): Promise<void> {
     return fallback.fallbackReason ?? "fallback";
   });
 
-  await conditional("cleanup approval smoke activity", async () => {
-    requireAuth();
-    if (!approvalActivityId) {
-      throw new CheckSkipped("approval smoke activity was not created");
-    }
-    await deleteRequest(`/activities/${approvalActivityId}`, hostAuth!.accessToken);
-    approvalActivityId = null;
-    return "deleted";
-  });
-
   skipped("mobile create activity UI", "T09 is outside backend smoke and must be verified in Expo");
   skipped("mobile feed refresh / join / manage UI", "T10-T12 are verified by mobile checklist");
   skipped("push delivery", "NotificationDispatcher is a known stub; smoke checks records only");
-
-  printSummary();
-  const failed = results.filter((result) => result.status === "FAIL");
-  if (failed.length > 0) {
-    process.exitCode = 1;
-  }
 }
 
 async function required(name: string, run: () => Promise<string>): Promise<void> {
@@ -399,6 +397,40 @@ async function createSmokeActivity(label: string, mode: ParticipationMode): Prom
     },
     hostAuth!.accessToken
   );
+}
+
+async function cleanupSmokeActivities(): Promise<void> {
+  const smokeActivities = [
+    { label: "direct smoke activity", activityId: directActivityId },
+    { label: "approval smoke activity", activityId: approvalActivityId }
+  ].filter((item): item is { label: string; activityId: string } => Boolean(item.activityId));
+
+  for (const { label, activityId } of smokeActivities) {
+    try {
+      await deleteSmokeActivity(activityId);
+      if (activityId === directActivityId) {
+        directActivityId = null;
+      }
+      if (activityId === approvalActivityId) {
+        approvalActivityId = null;
+      }
+      record({ kind: "conditional", status: "PASS", name: `cleanup ${label}`, detail: "deleted" });
+    } catch (error) {
+      record({
+        kind: "conditional",
+        status: "FAIL",
+        name: `cleanup ${label}`,
+        detail: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+}
+
+async function deleteSmokeActivity(activityId: string): Promise<void> {
+  if (!hostAuth) {
+    throw new CheckSkipped("host auth prerequisite missing");
+  }
+  await deleteRequest(`/activities/${activityId}`, hostAuth.accessToken);
 }
 
 async function findNotification(

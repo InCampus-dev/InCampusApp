@@ -34,8 +34,14 @@ detection picks the wrong interface, set the host explicitly:
 INCAMPUS_DEVICE_HOST=192.168.1.10 npm run start:device --workspace mobile
 ```
 
+PowerShell:
+
+```powershell
+$env:INCAMPUS_DEVICE_HOST="192.168.1.10"; npm run start:device --workspace mobile
+```
+
 The phone and development machine must be on the same network. Disable VPNs or
-firewall rules that block device-to-Mac traffic. Some VPN or mesh-network IPs
+firewall rules that block device-to-machine traffic. Some VPN or mesh-network IPs
 can work too when the phone can route to them; if auto detection picks the wrong
 one, set `INCAMPUS_DEVICE_HOST` explicitly.
 
@@ -61,6 +67,12 @@ Examples:
 ```bash
 EXPO_PUBLIC_API_BASE_URL=http://localhost:3000 npm run start --workspace mobile
 EXPO_PUBLIC_API_BASE_URL=http://192.168.1.10:3000 npm run start --workspace mobile
+```
+
+PowerShell:
+
+```powershell
+$env:EXPO_PUBLIC_API_BASE_URL="http://192.168.1.10:3000"; npm run start --workspace mobile
 ```
 
 Use `localhost` for a local simulator when that is supported by your setup. Use your machine's LAN IP for a physical device.

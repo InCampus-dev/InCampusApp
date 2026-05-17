@@ -5,6 +5,11 @@ The backend smoke check verifies the real demo path through HTTP calls against a
 ## Prerequisites
 
 1. Local database exists and migrations have been applied.
+
+   ```bash
+   npm run migrate
+   ```
+
 2. Backend is running:
 
    ```bash
@@ -32,6 +37,8 @@ npm run smoke:demo
 ```
 
 The command prints every check as `PASS`, `FAIL`, or `SKIPPED`.
+
+On 2026-05-17 the local migrated database passed with `pass=15`, `fail=0`, `skipped=3`, `blocked=0`.
 
 ## Required Checks
 
@@ -62,6 +69,8 @@ These run when required prerequisites are present. Unexpected failures are repor
 | Fallback context | After deleting the direct-join smoke activity, the notification context returns fallback instead of reconstructing deleted state. |
 
 Notification smoke checks verify notification records, `GET /notifications`, and `GET /notifications/:id/context`. They do not verify push delivery because `NotificationDispatcher` is still a known stub.
+
+CI now runs the same backend path with a Postgres service: migrate, seed, start backend, then smoke.
 
 ## Skipped Or Blocked Checks
 

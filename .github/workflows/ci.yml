@@ -6,6 +6,7 @@ on:
       - main
       - develop
       - "feature/**"
+      - "docs/**"
   pull_request:
     branches:
       - main
@@ -15,6 +16,26 @@ jobs:
   backend:
     name: Backend checks
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: incampus_ci
+          POSTGRES_USER: incampus
+          POSTGRES_PASSWORD: incampus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U incampus -d incampus_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USERNAME: incampus
+      DB_PASSWORD: incampus
+      DB_DATABASE: incampus_ci
 
     steps:
       - name: Checkout
@@ -37,6 +58,29 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Demo migrations, seed, and smoke
+        run: |
+          npm run migrate
+          npm run seed:demo
+          npm run start --workspace backend > /tmp/incampus-backend.log 2>&1 &
+          backend_pid=$!
+          trap 'kill "$backend_pid" || true' EXIT
+
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/health; then
+              break
+            fi
+
+            if [ "$attempt" -eq 30 ]; then
+              cat /tmp/incampus-backend.log
+              exit 1
+            fi
+
+            sleep 1
+          done
+
+          DEMO_API_BASE_URL=http://127.0.0.1:3000 npm run smoke:demo
 
   mobile:
     name: Mobile checks

@@ -31,7 +31,6 @@ T15 report/block/community rules: STABLE
 - ReportSubmissionScreen: functional and demo-safe, but still requires manual ID entry when opened without target context because contextual profile/activity pickers are outside MVP scope.
 - BlockUserScreen: functional and demo-safe, but still requires manual ID entry when opened without profile context because `StudentProfileScreen` launch context is outside this mobile slice.
 - CommunityRulesScreen: functional and demo-safe, but still uses static MVP safety content/fallback rather than a richer acknowledgement or versioned rules experience.
-- Jacopo-owned mobile screens: no automated mobile tests cover these flows yet; J3 was source-level verification plus TypeScript validation.
 
 ## Cross-owner blockers
 None identified
@@ -42,6 +41,7 @@ None identified
 - Activity reminder scheduler handler exists but no real scheduler runs it
 - Report and block screens require manual ID entry when opened without profile context (by design, MVP scope)
 - Admin UI does not exist in mobile
+- No automated mobile tests cover Jacopo-owned flows; J3 was source-level verification plus TypeScript validation
 
 ## Recommended next steps for T20
 Use this handoff as evidence that Jacopo-owned notification and safety/moderation mobile flows are stable after J2.

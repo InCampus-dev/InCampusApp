@@ -15,10 +15,10 @@ describe("JoinRequestManagementService", () => {
   let service: JoinRequestManagementService;
   let mockDataSource: any;
   let mockEventDispatcher: any;
+  let mockApplicantProfileLookup: any;
   let mockManager: any;
   let mockActivityRepo: any;
   let mockParticipationRepo: any;
-  let mockApplicantLookup: any;
 
   beforeEach(() => {
     mockActivityRepo = {
@@ -49,15 +49,14 @@ describe("JoinRequestManagementService", () => {
     mockEventDispatcher = {
       dispatch: vi.fn().mockResolvedValue(undefined),
     };
-
-    mockApplicantLookup = {
-      getApplicantSummary: vi.fn().mockResolvedValue(null),
+    mockApplicantProfileLookup = {
+      getApplicantProfile: vi.fn(),
     };
 
     service = new JoinRequestManagementService(
       mockDataSource,
       mockEventDispatcher,
-      mockApplicantLookup
+      mockApplicantProfileLookup
     );
   });
 
@@ -67,16 +66,72 @@ describe("JoinRequestManagementService", () => {
 
   describe("getPendingRequests", () => {
     it("should return pending requests if user is host", async () => {
-      mockActivityRepo.findOne.mockResolvedValue({ activityId: "act-1", hostAccountId: "host-1" });
+      mockActivityRepo.findOne.mockResolvedValue({
+        activityId: "act-1",
+        campusId: "campus-1",
+        hostAccountId: "host-1"
+      });
       const mockRequests = [
-        { participationId: "req-1", studentAccountId: "student-1" },
-        { participationId: "req-2", studentAccountId: "student-2" }
+        {
+          participationId: "req-1",
+          activityId: "act-1",
+          studentAccountId: "student-1",
+          status: ParticipationStatus.Pending,
+          createdAt: new Date("2026-05-16T08:00:00.000Z")
+        },
+        {
+          participationId: "req-2",
+          activityId: "act-1",
+          studentAccountId: "student-2",
+          status: ParticipationStatus.Pending,
+          createdAt: new Date("2026-05-16T09:00:00.000Z")
+        }
       ];
       mockParticipationRepo.find.mockResolvedValue(mockRequests);
+      mockApplicantProfileLookup.getApplicantProfile
+        .mockResolvedValueOnce({
+          applicantId: "student-1",
+          displayName: "Ada Lovelace",
+          major: "Computer Science",
+          shortBio: "I like study groups."
+        })
+        .mockResolvedValueOnce({
+          applicantId: "student-2",
+          displayName: "Grace Hopper",
+          major: "Software Engineering",
+          shortBio: null
+        });
 
-      const result = await service.getPendingRequests("host-1", "act-1");
+      const result = await service.getPendingRequests("host-1", "campus-1", "act-1");
 
-      expect(result).toEqual(mockRequests);
+      expect(result).toEqual([
+        {
+          requestId: "req-1",
+          activityId: "act-1",
+          applicantId: "student-1",
+          status: ParticipationStatus.Pending,
+          createdAt: "2026-05-16T08:00:00.000Z",
+          applicant: {
+            applicantId: "student-1",
+            displayName: "Ada Lovelace",
+            major: "Computer Science",
+            shortBio: "I like study groups."
+          }
+        },
+        {
+          requestId: "req-2",
+          activityId: "act-1",
+          applicantId: "student-2",
+          status: ParticipationStatus.Pending,
+          createdAt: "2026-05-16T09:00:00.000Z",
+          applicant: {
+            applicantId: "student-2",
+            displayName: "Grace Hopper",
+            major: "Software Engineering",
+            shortBio: null
+          }
+        }
+      ]);
       expect(mockParticipationRepo.find).toHaveBeenCalledWith({
         where: {
           activityId: "act-1",
@@ -84,59 +139,62 @@ describe("JoinRequestManagementService", () => {
           status: ParticipationStatus.Pending
         },
       });
+      expect(mockApplicantProfileLookup.getApplicantProfile).toHaveBeenCalledWith("student-1");
+      expect(mockApplicantProfileLookup.getApplicantProfile).toHaveBeenCalledWith("student-2");
     });
 
-    it("should include minimal applicant display data when available", async () => {
-      mockActivityRepo.findOne.mockResolvedValue({ activityId: "act-1", hostAccountId: "host-1" });
-      mockParticipationRepo.find.mockResolvedValue([
-        { participationId: "req-1", studentAccountId: "student-1" },
-        { participationId: "req-2", studentAccountId: "student-2" }
-      ]);
-      mockApplicantLookup.getApplicantSummary.mockImplementation(async (studentAccountId: string) => {
-        if (studentAccountId === "student-1") {
-          return {
-            studentAccountId,
-            studentDisplayName: "Ada Lovelace"
-          };
-        }
-
-        return null;
+    it("should throw if an applicant profile is missing", async () => {
+      mockActivityRepo.findOne.mockResolvedValue({
+        activityId: "act-1",
+        campusId: "campus-1",
+        hostAccountId: "host-1"
       });
-
-      const result = await service.getPendingRequests("host-1", "act-1");
-
-      expect(result).toEqual([
-        expect.objectContaining({
+      mockParticipationRepo.find.mockResolvedValue([
+        {
           participationId: "req-1",
-          studentDisplayName: "Ada Lovelace",
-          applicant: {
-            studentAccountId: "student-1",
-            studentDisplayName: "Ada Lovelace"
-          }
-        }),
-        expect.objectContaining({
-          participationId: "req-2",
-          applicant: {
-            studentAccountId: "student-2"
-          }
-        })
+          activityId: "act-1",
+          studentAccountId: "student-1",
+          status: ParticipationStatus.Pending,
+          createdAt: new Date("2026-05-16T08:00:00.000Z")
+        }
       ]);
+      mockApplicantProfileLookup.getApplicantProfile.mockResolvedValue(null);
+
+      await expect(service.getPendingRequests("host-1", "campus-1", "act-1")).rejects.toThrow(
+        "Applicant profile not found"
+      );
     });
 
     it("should throw if activity not found", async () => {
       mockActivityRepo.findOne.mockResolvedValue(null);
-      await expect(service.getPendingRequests("host-1", "act-1")).rejects.toThrow("Activity not found");
+      await expect(service.getPendingRequests("host-1", "campus-1", "act-1")).rejects.toThrow("Activity not found");
+    });
+
+    it("should throw if activity belongs to a different campus", async () => {
+      mockActivityRepo.findOne.mockResolvedValue({
+        activityId: "act-1",
+        campusId: "campus-2",
+        hostAccountId: "host-1"
+      });
+
+      await expect(service.getPendingRequests("host-1", "campus-1", "act-1")).rejects.toThrow("Activity not found");
+      expect(mockParticipationRepo.find).not.toHaveBeenCalled();
     });
 
     it("should throw if user is not host", async () => {
-      mockActivityRepo.findOne.mockResolvedValue({ activityId: "act-1", hostAccountId: "host-2" });
-      await expect(service.getPendingRequests("host-1", "act-1")).rejects.toThrow("Unauthorized");
+      mockActivityRepo.findOne.mockResolvedValue({
+        activityId: "act-1",
+        campusId: "campus-1",
+        hostAccountId: "host-2"
+      });
+      await expect(service.getPendingRequests("host-1", "campus-1", "act-1")).rejects.toThrow("Unauthorized");
     });
   });
 
   describe("reviewJoinRequest", () => {
     const defaultActivity = {
       activityId: "act-1",
+      campusId: "campus-1",
       hostAccountId: "host-1",
       currentParticipantCount: 0,
       maxParticipants: 5,
@@ -162,7 +220,7 @@ describe("JoinRequestManagementService", () => {
         .mockResolvedValueOnce(null);
       mockManager.save.mockImplementation(async (entity: any, instance: any) => instance);
 
-      const result = await service.reviewJoinRequest("host-1", "act-1", "req-1", "approve");
+      const result = await service.reviewJoinRequest("host-1", "campus-1", "act-1", "req-1", "approve");
 
       expect(result.status).toBe(ParticipationStatus.Confirmed);
       expect(result.recordType).toBe(ParticipationRecordType.Participation);
@@ -186,7 +244,7 @@ describe("JoinRequestManagementService", () => {
         .mockResolvedValueOnce(null);
       mockManager.save.mockImplementation(async (entity: any, instance: any) => instance);
 
-      await service.reviewJoinRequest("host-1", "act-1", "req-1", "approve");
+      await service.reviewJoinRequest("host-1", "campus-1", "act-1", "req-1", "approve");
 
       expect(activity.currentParticipantCount).toBe(5);
       expect(activity.status).toBe(ActivityStatus.Full); // Regola coperta!
@@ -200,7 +258,7 @@ describe("JoinRequestManagementService", () => {
       mockManager.findOne.mockResolvedValue(participation);
       mockManager.save.mockImplementation(async (entity: any, instance: any) => instance);
 
-      const result = await service.reviewJoinRequest("host-1", "act-1", "req-1", "decline");
+      const result = await service.reviewJoinRequest("host-1", "campus-1", "act-1", "req-1", "decline");
 
       expect(result.status).toBe(ParticipationStatus.Declined);
       expect(result.recordType).toBe(ParticipationRecordType.Request); // Rimane request
@@ -221,7 +279,7 @@ describe("JoinRequestManagementService", () => {
         .mockResolvedValueOnce(participation)
         .mockResolvedValueOnce(null);
 
-      await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve"))
+      await expect(service.reviewJoinRequest("host-1", "campus-1", "act-1", "req-1", "approve"))
         .rejects.toThrow("Cannot approve request: Activity is already full");
     });
 
@@ -243,26 +301,36 @@ describe("JoinRequestManagementService", () => {
           status: ParticipationStatus.Confirmed
         });
 
-      await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve"))
+      await expect(service.reviewJoinRequest("host-1", "campus-1", "act-1", "req-1", "approve"))
         .rejects.toThrow("Student already has an active participation record");
     });
 
     it("should throw if activity not found", async () => {
       (findWithPessimisticWriteLock as Mock).mockResolvedValue(null);
-      await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("Activity not found");
+      await expect(service.reviewJoinRequest("host-1", "campus-1", "act-1", "req-1", "approve")).rejects.toThrow("Activity not found");
+    });
+
+    it("should throw if activity belongs to a different campus before mutating request state", async () => {
+      const activity = { ...defaultActivity, campusId: "campus-2" };
+      (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+
+      await expect(service.reviewJoinRequest("host-1", "campus-1", "act-1", "req-1", "approve")).rejects.toThrow("Activity not found");
+      expect(mockManager.findOne).not.toHaveBeenCalled();
+      expect(mockManager.save).not.toHaveBeenCalled();
+      expect(mockEventDispatcher.dispatch).not.toHaveBeenCalled();
     });
 
     it("should throw if user is not host", async () => {
       const activity = { ...defaultActivity, hostAccountId: "host-2" };
       (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
-      await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("Unauthorized");
+      await expect(service.reviewJoinRequest("host-1", "campus-1", "act-1", "req-1", "approve")).rejects.toThrow("Unauthorized");
     });
 
     it("should throw if participation request not found", async () => {
       const activity = { ...defaultActivity };
       (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
       mockManager.findOne.mockResolvedValue(null);
-      await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("Join request not found");
+      await expect(service.reviewJoinRequest("host-1", "campus-1", "act-1", "req-1", "approve")).rejects.toThrow("Join request not found");
     });
 
     it("should throw if request is not pending", async () => {
@@ -270,7 +338,7 @@ describe("JoinRequestManagementService", () => {
       const participation = { ...defaultParticipation, status: ParticipationStatus.Declined };
       (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
       mockManager.findOne.mockResolvedValue(participation);
-      await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("This request is not pending");
+      await expect(service.reviewJoinRequest("host-1", "campus-1", "act-1", "req-1", "approve")).rejects.toThrow("This request is not pending");
     });
 
     it("should throw if the targeted record is not a join request", async () => {
@@ -281,7 +349,7 @@ describe("JoinRequestManagementService", () => {
       };
       (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
       mockManager.findOne.mockResolvedValue(participation);
-      await expect(service.reviewJoinRequest("host-1", "act-1", "req-1", "approve")).rejects.toThrow("This request is not pending");
+      await expect(service.reviewJoinRequest("host-1", "campus-1", "act-1", "req-1", "approve")).rejects.toThrow("This request is not pending");
     });
   });
 });

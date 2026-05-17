@@ -2,7 +2,15 @@ import { randomUUID } from "crypto";
 import { DataSource } from "typeorm";
 import { Activity } from "../entities/Activity";
 import { Participation } from "../entities/Participation";
-import { ActivityStatus, ParticipationRecordType, ParticipationStatus } from "../../../shared/src/domain/enums";
+import type {
+  JoinRequestApplicantProfileDto,
+  JoinRequestListItemDto
+} from "../../../shared/src/domain/dtos";
+import {
+  ActivityStatus,
+  ParticipationRecordType,
+  ParticipationStatus
+} from "../../../shared/src/domain/enums";
 import {
   type JoinRequestApprovedEvent,
   type JoinRequestDeclinedEvent
@@ -15,36 +23,28 @@ export interface JoinRequestEventDispatcherPort {
   dispatch(eventName: string, payload: any): Promise<void>;
 }
 
-export interface JoinRequestApplicantSummary {
-  studentAccountId: string;
-  studentDisplayName?: string;
+export interface JoinRequestApplicantProfileLookupPort {
+  getApplicantProfile(applicantId: string): Promise<JoinRequestApplicantProfileDto | null>;
 }
-
-export interface JoinRequestApplicantLookupPort {
-  getApplicantSummary(studentAccountId: string): Promise<JoinRequestApplicantSummary | null>;
-}
-
-export type PendingJoinRequestListItem = Participation & {
-  applicant: JoinRequestApplicantSummary;
-  studentDisplayName?: string;
-};
 
 export class JoinRequestManagementService {
   constructor(
     private dataSource: DataSource,
     private eventDispatcher: JoinRequestEventDispatcherPort,
-    private applicantLookup?: JoinRequestApplicantLookupPort
+    private applicantProfileLookup: JoinRequestApplicantProfileLookupPort
   ) {}
 
   async getPendingRequests(
     hostAccountId: string,
+    campusId: string,
     activityId: string
-  ): Promise<PendingJoinRequestListItem[]> {
+  ): Promise<JoinRequestListItemDto[]> {
     const participationRepo = this.dataSource.getRepository(Participation);
     const activityRepo = this.dataSource.getRepository(Activity);
 
     const activity = await activityRepo.findOne({ where: { activityId } });
     if (!activity) throw AppError.notFound("Activity", activityId);
+    if (activity.campusId !== campusId) throw AppError.notFound("Activity", activityId);
     if (activity.hostAccountId !== hostAccountId) {
       throw new AppError("AUTH_FORBIDDEN", "Unauthorized: Only the host can view requests", 403, {
         authReason: "not_activity_host"
@@ -59,13 +59,14 @@ export class JoinRequestManagementService {
       }
     });
 
-    return await Promise.all(
-      pendingRequests.map((request) => this.attachApplicantSummary(request))
+    return Promise.all(
+      pendingRequests.map((request) => this.toJoinRequestListItem(request))
     );
   }
 
   async reviewJoinRequest(
     hostAccountId: string,
+    campusId: string,
     activityId: string,
     participationId: string,
     decision: "approve" | "decline"
@@ -77,6 +78,7 @@ export class JoinRequestManagementService {
         const activity = await findWithPessimisticWriteLock(manager, Activity, { activityId });
 
         if (!activity) throw new Error("Activity not found");
+        if (activity.campusId !== campusId) throw new Error("Activity not found");
         if (activity.hostAccountId !== hostAccountId) {
           throw new Error("Unauthorized: Only the host can review requests");
         }
@@ -163,21 +165,27 @@ export class JoinRequestManagementService {
     return savedParticipation;
   }
 
-  private async attachApplicantSummary(
+  private async toJoinRequestListItem(
     request: Participation
-  ): Promise<PendingJoinRequestListItem> {
-    const applicantSummary =
-      (await this.applicantLookup?.getApplicantSummary(request.studentAccountId)) ?? {
-        studentAccountId: request.studentAccountId
-      };
+  ): Promise<JoinRequestListItemDto> {
+    const applicantProfile = await this.applicantProfileLookup.getApplicantProfile(
+      request.studentAccountId
+    );
 
-    const enrichedRequest = request as PendingJoinRequestListItem;
-    enrichedRequest.applicant = applicantSummary;
-
-    if (applicantSummary.studentDisplayName) {
-      enrichedRequest.studentDisplayName = applicantSummary.studentDisplayName;
+    if (!applicantProfile) {
+      throw new Error("Applicant profile not found");
     }
 
-    return enrichedRequest;
+    return {
+      requestId: request.participationId,
+      activityId: request.activityId,
+      applicantId: request.studentAccountId,
+      status: request.status,
+      createdAt:
+        request.createdAt instanceof Date
+          ? request.createdAt.toISOString()
+          : request.createdAt,
+      applicant: applicantProfile
+    };
   }
 }

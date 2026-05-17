@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  Button,
-  StyleSheet,
   ActivityIndicator,
   Alert,
+  Button,
   Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import api, { getApiErrorMessage } from '../services/api';
 
@@ -37,18 +37,28 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
   const [joining, setJoining] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+
     const fetchActivityDetails = async () => {
       try {
         const response = await api.get<ActivityDetailsViewModel>(`/activities/${activityId}`);
-        setActivity(response.data);
+        if (mounted) {
+          setActivity(response.data);
+        }
       } catch (error) {
         Alert.alert('Error', getApiErrorMessage(error) ?? 'Failed to load activity details.');
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchActivityDetails();
+
+    return () => {
+      mounted = false;
+    };
   }, [activityId]);
 
   useEffect(() => {
@@ -71,7 +81,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
     try {
       await api.post(`/activities/${activityId}/join`);
       Alert.alert('Success', getJoinSuccessMessage(activity?.participationMode));
-      navigation.goBack();
+      navigation.navigate('ActivityFeed', { refreshAfterJoin: Date.now() });
     } catch (error) {
       Alert.alert('Error', getApiErrorMessage(error) ?? 'Failed to join the activity.');
     } finally {
@@ -83,6 +93,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={styles.stateText}>Loading activity details...</Text>
       </View>
     );
   }
@@ -90,7 +101,8 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
   if (!activity) {
     return (
       <View style={styles.centered}>
-        <Text>Activity unavailable.</Text>
+        <Text style={styles.stateTitle}>Activity unavailable</Text>
+        <Text style={styles.stateText}>This activity may have been removed or may no longer be accessible.</Text>
       </View>
     );
   }
@@ -103,7 +115,9 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
       <Text style={styles.title}>{activity.title}</Text>
       {activity.description ? (
         <Text style={styles.description}>{activity.description}</Text>
-      ) : null}
+      ) : (
+        <Text style={styles.descriptionMuted}>No description provided.</Text>
+      )}
 
       <View style={styles.infoBox}>
         <Text style={styles.infoText}>When: {formatDateTime(activity.scheduledDateTime)}</Text>
@@ -113,12 +127,32 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
           Participants: {activity.currentParticipantCount} / {activity.maxParticipants}
         </Text>
         <Text style={styles.infoText}>Host: {activity.hostProfile?.displayName || 'Student'}</Text>
-        {activity.hostProfile?.shortBio && (
+        {activity.hostProfile?.shortBio ? (
           <Text style={styles.hostBio}>"{activity.hostProfile.shortBio}"</Text>
-        )}
+        ) : null}
         <Text style={styles.infoText}>Status: {formatStatus(activity.status)}</Text>
         <Text style={styles.infoText}>Gender Pref: {formatGenderPreference(activity.genderPreference)}</Text>
         <Text style={styles.infoText}>Mode: {activity.participationMode === 'open' ? 'Direct Join' : 'Approval Required'}</Text>
+      </View>
+
+      <View style={styles.secondaryActions}>
+        <Pressable
+          style={styles.secondaryAction}
+          onPress={() =>
+            navigation.navigate('ReportSubmission', {
+              targetType: 'activity',
+              targetActivityId: activity.activityId,
+            })
+          }
+        >
+          <Text style={styles.secondaryActionText}>Report activity</Text>
+        </Pressable>
+        <Pressable
+          style={styles.secondaryAction}
+          onPress={() => navigation.navigate('BlockUser', { targetAccountId: activity.hostAccountId })}
+        >
+          <Text style={styles.secondaryActionText}>Block host</Text>
+        </Pressable>
       </View>
 
       <View style={styles.buttonContainer}>
@@ -179,12 +213,25 @@ function getJoinSuccessMessage(participationMode?: ActivityDetailsViewModel['par
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#fff' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  stateTitle: { fontSize: 18, fontWeight: '700', color: '#222', marginBottom: 8, textAlign: 'center' },
+  stateText: { fontSize: 14, color: '#666', textAlign: 'center', marginTop: 8 },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12, color: '#000' },
   description: { fontSize: 16, color: '#444', marginBottom: 20 },
+  descriptionMuted: { fontSize: 16, color: '#777', marginBottom: 20, fontStyle: 'italic' },
   infoBox: { backgroundColor: '#f0f0f0', padding: 16, borderRadius: 8, marginBottom: 20 },
   infoText: { fontSize: 15, marginBottom: 8, color: '#333' },
   hostBio: { fontSize: 14, fontStyle: 'italic', color: '#666', marginBottom: 8, marginLeft: 24 },
+  secondaryActions: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+  secondaryAction: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#d7dce2',
+    borderRadius: 8,
+    padding: 10,
+    alignItems: 'center',
+  },
+  secondaryActionText: { color: '#1976d2', fontSize: 14, fontWeight: '600' },
   buttonContainer: { marginTop: 'auto', marginBottom: 20 },
   headerActionText: {
     color: '#1976d2',

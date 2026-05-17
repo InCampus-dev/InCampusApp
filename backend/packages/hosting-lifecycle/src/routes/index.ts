@@ -36,10 +36,13 @@ export function createHostingLifecycleRoutes(
   );
   const activityController = new ActivityController(activityLifecycleService);
   
+  const applicantProfileLookup = new APApplicantProfileLookupAdapter(
+    studentProfileRepo
+  );
   const joinRequestService = new JoinRequestManagementService(
     args.dataSource,
     args.eventDispatcher,
-    new APApplicantProfileLookupAdapter(studentProfileRepo)
+    applicantProfileLookup
   );
   const joinRequestController = new JoinRequestController(joinRequestService);
 

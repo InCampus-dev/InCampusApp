@@ -31,18 +31,19 @@ const FALLBACK_LOCATIONS: StructuredOptionChoice[] = [
 ];
 
 export const CreateActivityScreen = ({ navigation }: any) => {
+  const categories = FALLBACK_CATEGORIES;
+  const locations = FALLBACK_LOCATIONS;
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [categoryId, setCategoryId] = useState(FALLBACK_CATEGORIES[0]?.id ?? '');
-  const [meetingPointId, setMeetingPointId] = useState(FALLBACK_LOCATIONS[0]?.id ?? '');
+  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '');
+  const [meetingPointId, setMeetingPointId] = useState(locations[0]?.id ?? '');
   const [scheduledDateTime, setScheduledDateTime] = useState(defaultScheduledDateTime());
   const [maxParticipants, setMaxParticipants] = useState('5');
   const [participationMode, setParticipationMode] = useState<ParticipationMode>('open');
   const [maxRequests, setMaxRequests] = useState('');
   const [genderPreference, setGenderPreference] = useState<GenderPreference>('all');
   const [creating, setCreating] = useState(false);
-  const categories = FALLBACK_CATEGORIES;
-  const locations = FALLBACK_LOCATIONS;
 
   const handleCreate = async () => {
     const validationMessage = validateForm({
@@ -67,7 +68,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
 
     setCreating(true);
     try {
-      const newActivity = {
+      const createdActivity = await api.post<{ activityId?: string }>('/activities', {
         title: title.trim(),
         description: description.trim() || undefined,
         categoryId,
@@ -76,12 +77,14 @@ export const CreateActivityScreen = ({ navigation }: any) => {
         participationMode,
         maxRequests: participationMode === 'approval_based' ? parsedMaxRequests : undefined,
         genderPreference,
-        scheduledDateTime: new Date(scheduledDateTime.trim()).toISOString()
-      };
+        scheduledDateTime: new Date(scheduledDateTime.trim()).toISOString(),
+      });
 
-      await api.post('/activities', newActivity);
       Alert.alert('Success', 'Activity published successfully.');
-      navigation.goBack();
+      navigation.navigate('ActivityFeed', {
+        refreshAfterCreate: Date.now(),
+        createdActivityId: createdActivity.data?.activityId,
+      });
     } catch (error) {
       Alert.alert('Error', getApiErrorMessage(error) ?? 'Failed to create activity.');
     } finally {
@@ -90,14 +93,31 @@ export const CreateActivityScreen = ({ navigation }: any) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.header}>Create New Activity</Text>
+      <Text style={styles.helperText}>
+        Demo options come from the seeded campus configuration until a student-facing structured
+        options endpoint is exposed.
+      </Text>
 
       <Text style={styles.label}>Title *</Text>
-      <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="e.g. Coffee at the library" />
+      <TextInput
+        style={styles.input}
+        value={title}
+        onChangeText={setTitle}
+        placeholder="e.g. Coffee at the library"
+        editable={!creating}
+      />
 
       <Text style={styles.label}>Description</Text>
-      <TextInput style={styles.input} value={description} onChangeText={setDescription} placeholder="Activity details..." multiline />
+      <TextInput
+        style={[styles.input, styles.multilineInput]}
+        value={description}
+        onChangeText={setDescription}
+        placeholder="Activity details..."
+        multiline
+        editable={!creating}
+      />
 
       <Text style={styles.label}>Start Date and Time *</Text>
       <TextInput
@@ -111,60 +131,107 @@ export const CreateActivityScreen = ({ navigation }: any) => {
 
       <Text style={styles.label}>Category</Text>
       <View style={styles.optionsContainer}>
-        {categories.map(cat => (
-          <TouchableOpacity 
-            key={cat.id} 
-            style={[styles.optionBtn, categoryId === cat.id && styles.optionBtnSelected]}
-            onPress={() => setCategoryId(cat.id)}
+        {categories.map((category) => (
+          <TouchableOpacity
+            key={category.id}
+            style={[styles.optionBtn, categoryId === category.id && styles.optionBtnSelected]}
+            onPress={() => setCategoryId(category.id)}
+            disabled={creating}
           >
-            <Text style={categoryId === cat.id ? styles.optionTextSelected : styles.optionText}>{cat.name}</Text>
+            <Text style={categoryId === category.id ? styles.optionTextSelected : styles.optionText}>
+              {category.name}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
 
       <Text style={styles.label}>Meeting Point</Text>
       <View style={styles.optionsContainer}>
-        {locations.map(loc => (
-          <TouchableOpacity 
-            key={loc.id} 
-            style={[styles.optionBtn, meetingPointId === loc.id && styles.optionBtnSelected]}
-            onPress={() => setMeetingPointId(loc.id)}
+        {locations.map((location) => (
+          <TouchableOpacity
+            key={location.id}
+            style={[styles.optionBtn, meetingPointId === location.id && styles.optionBtnSelected]}
+            onPress={() => setMeetingPointId(location.id)}
+            disabled={creating}
           >
-            <Text style={meetingPointId === loc.id ? styles.optionTextSelected : styles.optionText}>{loc.name}</Text>
+            <Text style={meetingPointId === location.id ? styles.optionTextSelected : styles.optionText}>
+              {location.name}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
 
       <Text style={styles.label}>Maximum Participants</Text>
-      <TextInput style={styles.input} value={maxParticipants} onChangeText={setMaxParticipants} keyboardType="numeric" />
+      <TextInput
+        style={styles.input}
+        value={maxParticipants}
+        onChangeText={setMaxParticipants}
+        keyboardType="numeric"
+        editable={!creating}
+      />
 
       {participationMode === 'approval_based' && (
         <>
           <Text style={styles.label}>Max Pending Requests (Optional)</Text>
-          <TextInput style={styles.input} value={maxRequests} onChangeText={setMaxRequests} keyboardType="numeric" placeholder="e.g. 10" />
+          <TextInput
+            style={styles.input}
+            value={maxRequests}
+            onChangeText={setMaxRequests}
+            keyboardType="numeric"
+            placeholder="e.g. 10"
+            editable={!creating}
+          />
         </>
       )}
 
       <Text style={styles.label}>Participation Mode</Text>
       <View style={styles.optionsContainer}>
-        <TouchableOpacity style={[styles.optionBtn, participationMode === 'open' && styles.optionBtnSelected]} onPress={() => setParticipationMode('open')}>
-          <Text style={participationMode === 'open' ? styles.optionTextSelected : styles.optionText}>Open Access</Text>
+        <TouchableOpacity
+          style={[styles.optionBtn, participationMode === 'open' && styles.optionBtnSelected]}
+          onPress={() => setParticipationMode('open')}
+          disabled={creating}
+        >
+          <Text style={participationMode === 'open' ? styles.optionTextSelected : styles.optionText}>
+            Open Access
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.optionBtn, participationMode === 'approval_based' && styles.optionBtnSelected]} onPress={() => setParticipationMode('approval_based')}>
-          <Text style={participationMode === 'approval_based' ? styles.optionTextSelected : styles.optionText}>Requires Approval</Text>
+        <TouchableOpacity
+          style={[styles.optionBtn, participationMode === 'approval_based' && styles.optionBtnSelected]}
+          onPress={() => setParticipationMode('approval_based')}
+          disabled={creating}
+        >
+          <Text style={participationMode === 'approval_based' ? styles.optionTextSelected : styles.optionText}>
+            Requires Approval
+          </Text>
         </TouchableOpacity>
       </View>
 
       <Text style={styles.label}>Gender Preference</Text>
       <View style={styles.optionsContainer}>
-        <TouchableOpacity style={[styles.optionBtn, genderPreference === 'all' && styles.optionBtnSelected]} onPress={() => setGenderPreference('all')}>
+        <TouchableOpacity
+          style={[styles.optionBtn, genderPreference === 'all' && styles.optionBtnSelected]}
+          onPress={() => setGenderPreference('all')}
+          disabled={creating}
+        >
           <Text style={genderPreference === 'all' ? styles.optionTextSelected : styles.optionText}>All</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.optionBtn, genderPreference === 'male_only' && styles.optionBtnSelected]} onPress={() => setGenderPreference('male_only')}>
-          <Text style={genderPreference === 'male_only' ? styles.optionTextSelected : styles.optionText}>Male Only</Text>
+        <TouchableOpacity
+          style={[styles.optionBtn, genderPreference === 'male_only' && styles.optionBtnSelected]}
+          onPress={() => setGenderPreference('male_only')}
+          disabled={creating}
+        >
+          <Text style={genderPreference === 'male_only' ? styles.optionTextSelected : styles.optionText}>
+            Male Only
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.optionBtn, genderPreference === 'female_only' && styles.optionBtnSelected]} onPress={() => setGenderPreference('female_only')}>
-          <Text style={genderPreference === 'female_only' ? styles.optionTextSelected : styles.optionText}>Female Only</Text>
+        <TouchableOpacity
+          style={[styles.optionBtn, genderPreference === 'female_only' && styles.optionBtnSelected]}
+          onPress={() => setGenderPreference('female_only')}
+          disabled={creating}
+        >
+          <Text style={genderPreference === 'female_only' ? styles.optionTextSelected : styles.optionText}>
+            Female Only
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -200,6 +267,7 @@ function validateForm(args: {
   if (Number.isNaN(scheduledDate.getTime())) {
     return 'Enter the start time as a valid ISO date.';
   }
+
   if (scheduledDate.getTime() <= Date.now()) {
     return 'Start time must be in the future.';
   }
@@ -232,14 +300,17 @@ function defaultScheduledDateTime(): string {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
-  header: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#333' },
+  container: { flex: 1, backgroundColor: '#fff' },
+  content: { padding: 16 },
+  header: { fontSize: 24, fontWeight: 'bold', marginBottom: 8, color: '#333' },
+  helperText: { fontSize: 13, lineHeight: 18, color: '#666', marginBottom: 12 },
   label: { fontSize: 16, fontWeight: '600', marginTop: 12, marginBottom: 8, color: '#555' },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: '#fafafa' },
+  multilineInput: { minHeight: 88, textAlignVertical: 'top' },
   optionsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   optionBtn: { paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#ccc', borderRadius: 20, backgroundColor: '#fff' },
   optionBtnSelected: { backgroundColor: '#0066cc', borderColor: '#0066cc' },
   optionText: { color: '#333' },
   optionTextSelected: { color: '#fff', fontWeight: 'bold' },
-  buttonContainer: { marginTop: 20, marginBottom: 40 }
+  buttonContainer: { marginTop: 20, marginBottom: 40 },
 });

@@ -17,6 +17,7 @@ import api from "../services/api";
 
 interface SignInResponse {
   accessToken: string;
+  studentAccountId: string;
   selectedCampusId: string | null;
 }
 
@@ -43,9 +44,10 @@ const SignInScreen: React.FC = () => {
         password
       });
 
-      const { accessToken, selectedCampusId } = response.data;
+      const { accessToken, studentAccountId, selectedCampusId } = response.data;
 
       await AsyncStorage.setItem("authToken", accessToken);
+      await AsyncStorage.setItem("studentAccountId", studentAccountId);
       if (selectedCampusId) {
         await AsyncStorage.setItem("selectedCampusId", selectedCampusId);
       } else {

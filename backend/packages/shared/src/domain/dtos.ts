@@ -334,14 +334,20 @@ export interface PersonalActivityListItemDto extends ActivityDetailDto {
 
 export type PersonalActivityListDto = PersonalActivityListItemDto[];
 
-export interface JoinRequestApplicantDto {
-  studentAccountId: StudentAccountId;
-  studentDisplayName?: string;
+export interface JoinRequestApplicantProfileDto {
+  applicantId: StudentAccountId;
+  displayName: string;
+  major: string;
+  shortBio: string | null;
 }
 
-export interface JoinRequestListItemDto extends ParticipationDto {
-  applicant: JoinRequestApplicantDto;
-  studentDisplayName?: string;
+export interface JoinRequestListItemDto {
+  requestId: ParticipationId;
+  activityId: ActivityId;
+  applicantId: StudentAccountId;
+  status: ParticipationStatus;
+  createdAt: string;
+  applicant: JoinRequestApplicantProfileDto;
 }
 
 export type JoinRequestListDto = JoinRequestListItemDto[];

@@ -8,11 +8,12 @@ export class JoinRequestController {
 
   getRequests = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const studentContext = requireStudentContext(req);
+      const studentContext = requireCampusSelectedStudentContext(req);
 
       const { id: activityId } = req.params;
       const requests = await this.joinRequestService.getPendingRequests(
         studentContext.studentAccountId,
+        studentContext.selectedCampusId,
         activityId
       );
 
@@ -28,7 +29,7 @@ export class JoinRequestController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const studentContext = requireStudentContext(req);
+      const studentContext = requireCampusSelectedStudentContext(req);
 
       const { id: activityId, requestId: participationId } = req.params;
       const { decision } = req.body; // 'approve' | 'decline'
@@ -45,6 +46,7 @@ export class JoinRequestController {
 
       const participation = await this.joinRequestService.reviewJoinRequest(
         studentContext.studentAccountId,
+        studentContext.selectedCampusId,
         activityId,
         participationId,
         decision
@@ -53,6 +55,24 @@ export class JoinRequestController {
     } catch (error) {
       next(normalizeJoinRequestError(error, req.params.id, req.params.requestId));
     }
+  };
+}
+
+function requireCampusSelectedStudentContext(request: Request): {
+  studentAccountId: string;
+  selectedCampusId: string;
+} {
+  const studentContext = requireStudentContext(request);
+
+  if (!studentContext.selectedCampusId) {
+    throw new AppError("AUTH_REQUIRED", "A selected campus is required", 401, {
+      authReason: "missing_selected_campus"
+    });
+  }
+
+  return {
+    studentAccountId: studentContext.studentAccountId,
+    selectedCampusId: studentContext.selectedCampusId
   };
 }
 
@@ -74,6 +94,8 @@ function normalizeJoinRequestError(
       return AppError.notFound("Activity", activityId);
     case "Join request not found":
       return AppError.notFound("Participation", requestId ?? "unknown");
+    case "Applicant profile not found":
+      return AppError.notFound("StudentProfile", "applicant");
     case "Unauthorized: Only the host can view requests":
     case "Unauthorized: Only the host can review requests":
       return new AppError("AUTH_FORBIDDEN", error.message, 403, {

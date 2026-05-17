@@ -11,7 +11,7 @@ import {
 import api, { getApiErrorMessage } from '../services/api';
 
 export default function BlockUserScreen({ navigation, route }: { navigation: any; route: any }) {
-  const [targetAccountId, setTargetAccountId] = useState(route?.params?.targetAccountId ?? '');
+  const [targetAccountId, setTargetAccountId] = useState(getStringParam(route?.params?.targetAccountId));
   const [submitting, setSubmitting] = useState(false);
 
   async function handleBlock() {
@@ -69,6 +69,10 @@ export default function BlockUserScreen({ navigation, route }: { navigation: any
       </Text>
     </View>
   );
+}
+
+function getStringParam(value: unknown): string {
+  return typeof value === 'string' ? value : '';
 }
 
 const styles = StyleSheet.create({

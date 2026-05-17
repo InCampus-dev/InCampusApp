@@ -60,6 +60,8 @@ export default function CommunityRulesScreen() {
     );
   }
 
+  const ruleSections = rules ? rules.sections : FALLBACK_RULE_SECTIONS;
+
   return (
     <ScrollView
       style={styles.container}
@@ -80,12 +82,16 @@ export default function CommunityRulesScreen() {
         </View>
       ) : null}
 
-      {(rules?.sections ?? FALLBACK_RULE_SECTIONS).map((section) => (
-        <View key={section.sectionId} style={styles.ruleCard}>
-          <Text style={styles.ruleTitle}>{section.title}</Text>
-          <Text style={styles.ruleBody}>{section.body}</Text>
-        </View>
-      ))}
+      {ruleSections.length === 0 ? (
+        <Text style={styles.emptyText}>No community rules are currently available.</Text>
+      ) : (
+        ruleSections.map((section) => (
+          <View key={section.sectionId} style={styles.ruleCard}>
+            <Text style={styles.ruleTitle}>{section.title}</Text>
+            <Text style={styles.ruleBody}>{section.body}</Text>
+          </View>
+        ))
+      )}
     </ScrollView>
   );
 }
@@ -130,4 +136,5 @@ const styles = StyleSheet.create({
   },
   ruleTitle: { fontSize: 16, fontWeight: '700', color: '#222', marginBottom: 8 },
   ruleBody: { fontSize: 14, color: '#555', lineHeight: 20 },
+  emptyText: { fontSize: 14, color: '#777', lineHeight: 20 },
 });

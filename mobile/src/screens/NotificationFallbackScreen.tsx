@@ -3,16 +3,27 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
-export default function NotificationFallbackScreen({ navigation }: { navigation: any }) {
+type NotificationFallbackReason =
+  | 'TargetActivityUnavailable'
+  | 'BlockRelationshipExists'
+  | 'MissingActivityContext'
+  | 'UnknownNotificationTarget';
+
+export default function NotificationFallbackScreen({
+  navigation,
+  route,
+}: {
+  navigation: any;
+  route: any;
+}) {
+  const message = getFallbackMessage(route?.params?.reason);
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.icon}>{'\u{1F517}'}</Text>
         <Text style={styles.title}>Content Unavailable</Text>
-        <Text style={styles.message}>
-          The activity or content linked to this notification is no longer available.
-          It may have been deleted or is no longer accessible.
-        </Text>
+        <Text style={styles.message}>{message}</Text>
       </View>
 
       <View style={styles.footer}>
@@ -34,6 +45,34 @@ export default function NotificationFallbackScreen({ navigation }: { navigation:
       </View>
     </View>
   );
+}
+
+function getFallbackMessage(reason: unknown): string {
+  switch (normalizeFallbackReason(reason)) {
+    case 'TargetActivityUnavailable':
+      return 'The activity linked to this notification is no longer available.';
+    case 'BlockRelationshipExists':
+      return 'This notification is no longer accessible because a block relationship limits this interaction.';
+    case 'MissingActivityContext':
+      return 'This notification is missing the activity context needed to open it.';
+    case 'UnknownNotificationTarget':
+      return 'This notification points to content that the app cannot open safely.';
+    default:
+      return 'The activity or content linked to this notification is no longer available. It may have been deleted or is no longer accessible.';
+  }
+}
+
+function normalizeFallbackReason(reason: unknown): NotificationFallbackReason | undefined {
+  if (
+    reason === 'TargetActivityUnavailable' ||
+    reason === 'BlockRelationshipExists' ||
+    reason === 'MissingActivityContext' ||
+    reason === 'UnknownNotificationTarget'
+  ) {
+    return reason;
+  }
+
+  return undefined;
 }
 
 const styles = StyleSheet.create({

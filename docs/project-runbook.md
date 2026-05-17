@@ -55,7 +55,7 @@ npm run start --workspace backend
 DEMO_API_BASE_URL=http://127.0.0.1:3000 npm run smoke:demo
 ```
 
-This branch adds that cycle to `.github/workflows/ci.yml`. The branch is still waiting for a remote Actions run.
+That cycle is present in `.github/workflows/ci.yml`. After PR #39, `docs/incampus-current-state-update-2026-05-17.md` records the GitHub Actions DB-backed checks as passed.
 
 ## Device QA
 

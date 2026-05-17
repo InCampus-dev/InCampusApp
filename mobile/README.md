@@ -18,6 +18,27 @@ Run the Expo dev server from the repository root:
 npm run start --workspace mobile
 ```
 
+For physical iPhone or Android testing with Expo Go, keep the backend running on
+the same machine and start Expo in LAN mode:
+
+```bash
+npm run dev:backend:device
+npm run start:device --workspace mobile
+```
+
+The device flow detects the machine LAN IP and sets
+`EXPO_PUBLIC_API_BASE_URL=http://<lan-ip>:3000` before starting Expo. If auto
+detection picks the wrong interface, set the host explicitly:
+
+```bash
+INCAMPUS_DEVICE_HOST=192.168.1.10 npm run start:device --workspace mobile
+```
+
+The phone and development machine must be on the same network. Disable VPNs or
+firewall rules that block device-to-Mac traffic. Some VPN or mesh-network IPs
+can work too when the phone can route to them; if auto detection picks the wrong
+one, set `INCAMPUS_DEVICE_HOST` explicitly.
+
 Optional device shortcuts:
 
 ```bash

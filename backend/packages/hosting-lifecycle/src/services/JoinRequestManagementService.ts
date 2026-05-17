@@ -36,6 +36,7 @@ export class JoinRequestManagementService {
 
   async getPendingRequests(
     hostAccountId: string,
+    campusId: string,
     activityId: string
   ): Promise<JoinRequestListItemDto[]> {
     const participationRepo = this.dataSource.getRepository(Participation);
@@ -43,6 +44,7 @@ export class JoinRequestManagementService {
 
     const activity = await activityRepo.findOne({ where: { activityId } });
     if (!activity) throw AppError.notFound("Activity", activityId);
+    if (activity.campusId !== campusId) throw AppError.notFound("Activity", activityId);
     if (activity.hostAccountId !== hostAccountId) {
       throw new AppError("AUTH_FORBIDDEN", "Unauthorized: Only the host can view requests", 403, {
         authReason: "not_activity_host"
@@ -64,6 +66,7 @@ export class JoinRequestManagementService {
 
   async reviewJoinRequest(
     hostAccountId: string,
+    campusId: string,
     activityId: string,
     participationId: string,
     decision: "approve" | "decline"
@@ -75,6 +78,7 @@ export class JoinRequestManagementService {
         const activity = await findWithPessimisticWriteLock(manager, Activity, { activityId });
 
         if (!activity) throw new Error("Activity not found");
+        if (activity.campusId !== campusId) throw new Error("Activity not found");
         if (activity.hostAccountId !== hostAccountId) {
           throw new Error("Unauthorized: Only the host can review requests");
         }

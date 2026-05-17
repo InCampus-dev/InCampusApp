@@ -13,7 +13,7 @@ import { CreateActivityScreen } from '../screens/CreateActivityScreen';
 import { ManageRequestsScreen } from '../screens/ManageRequestsScreen';
 import NotificationFallbackScreen from '../screens/NotificationFallbackScreen';
 import NotificationListScreen from '../screens/NotificationListScreen';
-import PersonalActivityListScreen from '../screens/PersonalActivityListPlaceholderScreen';
+import PersonalActivityListScreen from '../screens/PersonalActivityListScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import ReportSubmissionScreen from '../screens/ReportSubmissionScreen';
 import SignInScreen from '../screens/SignInScreen';

@@ -9,10 +9,15 @@ async function bootstrap(): Promise<void> {
 
   const app = createApp({ dataSource: AppDataSource });
 
-  app.listen(port, host, () => {
-    console.log(
-      `InCampus backend listening on ${host ? `${host}:` : "port "}${port}`
-    );
+  if (host) {
+    app.listen(port, host, () => {
+      console.log(`InCampus backend listening on ${host}:${port}`);
+    });
+    return;
+  }
+
+  app.listen(port, () => {
+    console.log(`InCampus backend listening on port ${port}`);
   });
 }
 

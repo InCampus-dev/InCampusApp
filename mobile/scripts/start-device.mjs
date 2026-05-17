@@ -24,6 +24,7 @@ const child = spawn("npx", ["expo", "start", "--lan"], {
   stdio: "inherit",
   env: {
     ...process.env,
+    EXPO_NO_TELEMETRY: process.env.EXPO_NO_TELEMETRY ?? "1",
     EXPO_PUBLIC_API_BASE_URL: apiBaseUrl
   }
 });

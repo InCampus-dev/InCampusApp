@@ -1,16 +1,16 @@
 # InCampus - Stato Attuale Completo
 
 Data analisi: 2026-05-17
-Base analizzata: `main` a `1dfcd4e` (`Merge pull request #39 from MatteoSilvestro/docs/francesco-final-readiness-reconciliation`)
-Aggiornamento documento: branch di review PR #38, per riallineare lo snapshot dopo PR #38 e PR #39
+Base analizzata: branch `fix/jacopo-mobile-qa-bugs` / PR #40, basata su `origin/main` dopo PR #38 e PR #39
+Aggiornamento documento: include il QA mobile Jacopo J1 e i fix mobile Jacopo J2 presenti in PR #40
 
 ## Sintesi Esecutiva
 
-InCampus e' oggi una alpha/MVP integration abbastanza avanzata: backend modulare funzionante, seed demo e smoke check presenti, mobile Expo collegato ai principali flussi studente, e supporto Expo Go fisico allineato a SDK 55.
+InCampus e' oggi una alpha/MVP integration abbastanza avanzata: backend modulare funzionante, seed demo e smoke check presenti, mobile Expo collegato ai principali flussi studente, supporto Expo Go fisico allineato a SDK 55, e pass QA mobile Jacopo documentato.
 
-Il progetto e' adatto a una demo alpha guidata con backend locale, seed demo e mobile Expo. PR #37 ha aggiunto un comando ripetibile `npm run migrate`, ha riallineato i documenti readiness/runbook/checklist, e ha configurato CI con Postgres per migrazioni, seed demo, backend startup e smoke check. PR #39 ha aggiunto questo current-state snapshot in `docs/` e ha ritirato la vecchia cartella `codingOrganization/`. PR #38 aggiorna gli script device per renderli cross-platform; al momento di questo aggiornamento risulta ancora una PR aperta da riallineare a `main`.
+Il progetto e' adatto a una demo alpha guidata con backend locale, seed demo e mobile Expo. PR #37 ha aggiunto un comando ripetibile `npm run migrate`, ha riallineato i documenti readiness/runbook/checklist, e ha configurato CI con Postgres per migrazioni, seed demo, backend startup e smoke check. PR #38 ha aggiornato gli script device rendendoli cross-platform. PR #39 ha aggiunto questo current-state snapshot in `docs/` e ha ritirato la vecchia cartella `codingOrganization/`. PR #40 aggiunge `docs/mobile-qa-buglist.md` e corregge i bug confermati nelle schermate mobile di Jacopo.
 
-Non e' ancora production-ready: email verification reale, push delivery reale, scheduler reminder, UI admin, structured options dinamiche mobile, UI withdraw/leave e verifica fisica iPhone/Android restano aperti. La CI Postgres migrate/seed/smoke e' stata confermata su GitHub per PR #39, ma PR #38 deve ancora avere branch riallineata e check remoti propri prima del merge.
+Non e' ancora production-ready: email verification reale, push delivery reale, scheduler reminder, UI admin, structured options dinamiche mobile, UI withdraw/leave e verifica fisica iPhone/Android restano aperti. La CI Postgres migrate/seed/smoke e' stata confermata su GitHub per PR #39; il percorso device Expo Go resta da validare manualmente su iPhone/Android reali.
 
 ## Stato Repository
 
@@ -25,8 +25,9 @@ La cartella `codingOrganization/` era utile nello stadio iniziale di divisione l
 
 Stato git osservato durante questa analisi:
 
-- Base `main`: allineata a `origin/main` al commit `1dfcd4e`, dopo merge di PR #37 e PR #39.
-- Branch device compatibility: `chore/expo-go-device-testing`, PR #38, ancora aperta e da riallineare a `main` prima del merge.
+- Base corrente: `origin/main` include PR #38 e PR #39.
+- Branch QA mobile Jacopo: `fix/jacopo-mobile-qa-bugs`, PR #40.
+- Ultimo commit funzionale PR #40 prima di questo aggiornamento documento: `04a4ce9` (`docs: include mobile QA buglist`).
 - Questo file e' ora tracciato in `docs/incampus-current-state-update-2026-05-17.md`.
 
 ## Stack Tecnico Attuale
@@ -207,9 +208,9 @@ Route principali:
 
 Mobile presente:
 
-- `CommunityRulesScreen` chiama `GET /community-rules` e mostra fallback locale se il fetch fallisce.
-- `ReportSubmissionScreen` chiama `POST /reports`, usa `selectedCampusId` da AsyncStorage e supporta target `activity` o `student`.
-- `BlockUserScreen` chiama `POST /blocks` e puo' ricevere `targetAccountId` da route params.
+- `CommunityRulesScreen` chiama `GET /community-rules`, mostra fallback locale se il fetch fallisce e mostra empty-state esplicito se il backend risponde con `sections: []`.
+- `ReportSubmissionScreen` chiama `POST /reports`, usa `selectedCampusId` da AsyncStorage, supporta target `activity` o `student`, e ignora route params non stringa/non supportati.
+- `BlockUserScreen` chiama `POST /blocks` e puo' ricevere `targetAccountId` da route params, con guardia runtime sui valori non stringa.
 - `ActivityDetailsScreen` apre `ReportSubmission` per attivita' e `BlockUser` per host.
 
 Limiti:
@@ -254,7 +255,7 @@ Limiti:
 
 - Push delivery resta stub/non reale.
 - Reminder handler esiste, ma manca uno scheduler reale che produca automaticamente `ActivityReminderDue`.
-- Mobile NotificationFallback ignora al momento il testo `reason` nel rendering, anche se la route lo accetta.
+- Mobile NotificationFallback ora usa il `reason` per spiegare il motivo del fallback, ma resta una schermata informativa MVP senza recovery action avanzate.
 
 ## Backend - Invarianti Codice
 
@@ -301,17 +302,17 @@ Screen principali e stato:
 - `SignUpScreen`: signup backend, flusso email verification ancora mock lato backend.
 - `CampusSelectionScreen`: selezione campus e token refresh.
 - `ProfileSetupScreen`: crea profilo minimo.
-- `ConsentSettingsScreen`: aggiorna consenso campus insight.
+- `ConsentSettingsScreen`: aggiorna consenso campus insight; `Skip for now` forza esplicitamente `campusInsightSharingConsent: false`.
 - `ActivityFeedScreen`: `GET /activities`, usa `selectedCampusId`, pull-to-refresh, reload on focus, refresh dopo create/join, highlight `Just created`.
 - `CreateActivityScreen`: valida form, chiama `POST /activities`, naviga al feed con `refreshAfterCreate` e `createdActivityId`.
 - `ActivityDetailsScreen`: `GET /activities/:id`, mostra host profile, direct join/request via `POST /activities/:id/join`, espone manage requests se host, e azioni report/block.
 - `ManageRequestsScreen`: `GET /activities/:id/requests`, approve/decline via `PATCH /activities/:id/requests/:requestId`, usa DTO forte applicant.
-- `NotificationListScreen`: `GET /notifications`, paginazione, tap su notification context e navigazione verso detail/manage/personal/fallback.
-- `NotificationFallbackScreen`: safe fallback per target non disponibili.
+- `NotificationListScreen`: `GET /notifications`, paginazione, tap su notification context e navigazione verso detail/manage/personal/fallback; inoltra il fallback reason quando il context resolver fallisce.
+- `NotificationFallbackScreen`: safe fallback per target non disponibili con messaggi specifici per `TargetActivityUnavailable`, `BlockRelationshipExists`, `MissingActivityContext` e `UnknownNotificationTarget`.
 - `PersonalActivityListScreen`: `GET /profiles/me/activities`, split upcoming/history, supporta flat response o response gia' splittata.
-- `CommunityRulesScreen`: `GET /community-rules`, fallback locale se API non disponibile.
-- `ReportSubmissionScreen`: `POST /reports`.
-- `BlockUserScreen`: `POST /blocks`.
+- `CommunityRulesScreen`: `GET /community-rules`, fallback locale se API non disponibile, empty-state esplicito se il backend risponde con `sections: []`.
+- `ReportSubmissionScreen`: `POST /reports`, valida a runtime route params opzionali e accetta solo target `activity` o `student`.
+- `BlockUserScreen`: `POST /blocks`, valida a runtime `targetAccountId` opzionale prima di usarlo nel form.
 
 Limiti mobile ancora reali:
 
@@ -394,7 +395,7 @@ Limiti demo:
 - `migrate`, `seed:demo` e `smoke:demo` richiedono database locale e backend/runtime corretti.
 - In PR #37 la verifica locale DB-backed e' stata eseguita: `npm run migrate`, `npm run seed:demo`, backend locale, `npm run smoke:demo`.
 - Risultato smoke locale registrato: `pass=15`, `fail=0`, `skipped=3`, `blocked=0`.
-- CI Postgres migrate/seed/smoke e' configurata in `.github/workflows/ci.yml`; i check GitHub Actions di PR #39 risultano passati, mentre PR #38 deve ancora avere check remoti propri dopo il riallineamento della branch.
+- CI Postgres migrate/seed/smoke e' configurata in `.github/workflows/ci.yml`; i check GitHub Actions di PR #39 risultano passati.
 - I documenti operativi principali in `docs/` sono stati riallineati: `demo-readiness-review.md`, `mobile-run-check.md`, `project-runbook.md`, `final-integrated-review.md`, `backend-smoke-check.md`, `demo-seed.md`.
 
 ## Device Testing / Expo Go
@@ -481,7 +482,9 @@ EXPO_NO_TELEMETRY=1 npm exec --workspace mobile -- expo install --check
 | `npm run seed:demo` | Pass: seed demo sincronizzato |
 | `npm run smoke:demo` | Pass: `pass=15`, `fail=0`, `skipped=3`, `blocked=0` |
 
-Nota Expo: il precedente `expo install --check` era passato usando dependency map locale per sandbox offline, ma non e' stato rieseguito in questo aggiornamento PR #38.
+Nota Expo: il precedente `expo install --check` era passato usando dependency map locale per sandbox offline, ma non e' stato rieseguito durante il pass PR #40.
+
+Nota PR #40: i fix mobile Jacopo sono stati verificati con `npm run typecheck --workspace mobile` durante il pass J2/review. Questo aggiornamento documento non introduce codice eseguibile.
 
 ## Readiness Matrix Aggiornata
 
@@ -501,10 +504,10 @@ Nota Expo: il precedente `expo install --check` era passato usando dependency ma
 | Withdraw request | Done | Missing | Backend only | Manca UI mobile. |
 | Leave joined activity | Done | Missing | Backend only | Manca UI mobile. |
 | Personal activity list | Done | Done/Partial | Partial | Split upcoming/history lato mobile, UX MVP. |
-| Notifications list/context | Done | Done/Partial | Partial | Records/context/fallback; push reale assente. |
-| Community rules | Done | Done/Partial | Partial | Mobile fallback statico se API fallisce. |
-| Report activity/student | Done | Done/Partial | Partial | MVP screen, target ID manuale se manca contesto. |
-| Block user | Done | Done/Partial | Partial | MVP screen, target ID manuale se manca contesto. |
+| Notifications list/context | Done | Done/Partial | Partial | Records/context/fallback; fallback reason visibile; push reale assente. |
+| Community rules | Done | Done/Partial | Partial | Mobile fallback statico se API fallisce; empty-state per lista vuota. |
+| Report activity/student | Done | Done/Partial | Partial | MVP screen, target ID manuale se manca contesto; route params sanificati. |
+| Block user | Done | Done/Partial | Partial | MVP screen, target ID manuale se manca contesto; route param sanificato. |
 | Admin report review | Done | Missing | Backend only | Nessuna UI admin. |
 | Admin campus/options | Done | Missing | Backend only | Nessuna UI admin/student-facing options. |
 | Reminder | Partial | N/A | No | Handler testato, scheduler assente. |
@@ -558,12 +561,13 @@ Docs:
 - `docs/project-runbook.md`: runbook integrazione readiness.
 - `docs/final-integrated-review.md`: skeleton T20, non sign-off finale.
 - `docs/incampus-current-state-update-2026-05-17.md`: questo snapshot operativo aggiornato.
+- `docs/mobile-qa-buglist.md`: buglist QA Jacopo J1 validata, con BUG-4 e BUG-6 marcati invalid e BUG-1/2/3/5/7/8/9/10 confermati.
 - `mobile/README.md`: run mobile e device flow aggiornato.
 - `documentation/INcampusFILESsciolti/UCR - *.md`: UCR di dominio.
 
 ## Documentazione Operativa Riallineata
 
-Questi file erano stale rispetto a create activity, manage requests, personal activities e PR #36 device tooling; in PR #37 sono stati riallineati:
+Questi file costituiscono la documentazione operativa corrente per demo readiness, runbook e checklist:
 
 - `docs/demo-readiness-review.md`.
 - `docs/mobile-run-check.md`.
@@ -572,15 +576,17 @@ Questi file erano stale rispetto a create activity, manage requests, personal ac
 - `docs/backend-smoke-check.md`.
 - `docs/demo-seed.md`.
 
-I documenti mantengono esplicitamente aperti: device fisico, T20 final QA/sign-off, email reale, push reale, scheduler reminder, admin UI/auth reale, structured options dinamiche mobile e withdraw/leave UI. La CI remota DB-backed e' stata confermata su PR #39, ma va ricontrollata su PR #38 una volta risolto il riallineamento con `main`.
+I documenti mantengono esplicitamente aperti: device fisico, T20 final QA/sign-off, email reale, push reale, scheduler reminder, admin UI/auth reale, structured options dinamiche mobile e withdraw/leave UI. La CI remota DB-backed e' stata confermata su PR #39.
 
-## Aggiornamenti PR #38 E PR #39
+## Aggiornamenti PR Recenti
 
 - PR #39: ha aggiunto `docs/incampus-current-state-update-2026-05-17.md`, ha rimosso `codingOrganization/`, e ha aggiornato i riferimenti in `README.md` e `docs/setup.md`.
 - PR #38: rende cross-platform `npm run dev:backend:device` tramite `scripts/start-backend-device.mjs`.
 - PR #38: rende cross-platform `npm run start:device --workspace mobile` usando `npx.cmd` su Windows.
 - PR #38: aggiunge esempi PowerShell per `INCAMPUS_DEVICE_HOST` e `EXPO_PUBLIC_API_BASE_URL` in `mobile/README.md`.
-- PR #38: mantiene invariati i caveat di validazione; il tooling device e' pronto nella branch, ma la run fisica iPhone/Android resta da eseguire davvero e la PR va ancora riallineata a `main`.
+- PR #38: mantiene invariati i caveat di validazione; il tooling device e' pronto, ma la run fisica iPhone/Android resta da eseguire davvero.
+- PR #40: aggiunge `docs/mobile-qa-buglist.md` come buglist QA Jacopo J1.
+- PR #40: corregge il consenso `Skip for now`, il fallback notification reason, l'empty-state community rules, la copy history personal activities e la sanificazione runtime dei route params in report/block.
 
 ## Rischi E Gap Principali
 
@@ -588,14 +594,12 @@ Priorita' alta:
 
 - Caricare structured options reali nel mobile create activity invece dei fallback seed hardcoded.
 - Implementare UI mobile per withdraw pending request e leave joined activity.
-- Ricontrollare su PR #38 i check GitHub Actions dopo il riallineamento con `main`; PR #39 ha gia' avuto check remoti verdi.
 - Fare una run manuale Expo Go su device fisico con backend e DB reali.
-- Dopo merge di PR #38, verificare su Windows/PowerShell il percorso device cross-platform.
+- Verificare su Windows/PowerShell il percorso device cross-platform.
 
 Priorita' media:
 
 - Aggiungere test mobile almeno per API client/navigation-critical screens.
-- Migliorare NotificationFallback usando `reason`.
 - Aggiungere profile/detail context per report/block senza ID manuale.
 - Aggiungere edit profile UX.
 - Rendere feed filters e empty/error states piu' vicini alla demo finale.
@@ -615,4 +619,4 @@ Usa questo file come stato operativo aggiornato, ma verifica sempre DTO e route 
 
 Non reintrodurre mock nascosti nei flussi gia' collegati al backend. Se una demo non funziona, preferisci correggere client/API alignment o documentare il gap invece di simulare dati. Per mobile, preserva i route name attuali in `AppNavigator`. Per backend, non cambiare DTO o enum senza controllare impatto su mobile, test e docs.
 
-Conclusione: il progetto e' in buono stato per una demo alpha guidata, soprattutto con migrate + seed + smoke + Expo device tooling. Non e' ancora una beta chiusa: mancano alcune UX secondarie, verifica device reale, ricontrollo CI su PR #38 dopo riallineamento, e i servizi production-grade (email, push, scheduler, admin UI, hardening) non sono completi.
+Conclusione: il progetto e' in buono stato per una demo alpha guidata, soprattutto con migrate + seed + smoke + Expo device tooling e il primo pass QA mobile Jacopo corretto. Non e' ancora una beta chiusa: mancano alcune UX secondarie, verifica device reale, e i servizi production-grade (email, push, scheduler, admin UI, hardening) non sono completi.

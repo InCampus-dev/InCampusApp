@@ -1,16 +1,16 @@
 # InCampus - Stato Attuale Completo
 
-Data analisi: 2026-05-17  
-Base analizzata: `main` a `b79dc38` (`Merge pull request #36 from MatteoSilvestro/chore/expo-go-device-testing`)  
-Aggiornamento documento: branch `docs/francesco-final-readiness-reconciliation`, PR #37
+Data analisi: 2026-05-17
+Base analizzata: `main` a `1dfcd4e` (`Merge pull request #39 from MatteoSilvestro/docs/francesco-final-readiness-reconciliation`)
+Aggiornamento documento: branch di review PR #38, per riallineare lo snapshot dopo PR #38 e PR #39
 
 ## Sintesi Esecutiva
 
 InCampus e' oggi una alpha/MVP integration abbastanza avanzata: backend modulare funzionante, seed demo e smoke check presenti, mobile Expo collegato ai principali flussi studente, e supporto Expo Go fisico allineato a SDK 55.
 
-Il progetto e' adatto a una demo alpha guidata con backend locale, seed demo e mobile Expo. PR #37 aggiunge un comando ripetibile `npm run migrate`, riallinea i documenti readiness/runbook/checklist, e configura CI con Postgres per migrazioni, seed demo, backend startup e smoke check.
+Il progetto e' adatto a una demo alpha guidata con backend locale, seed demo e mobile Expo. PR #37 ha aggiunto un comando ripetibile `npm run migrate`, ha riallineato i documenti readiness/runbook/checklist, e ha configurato CI con Postgres per migrazioni, seed demo, backend startup e smoke check. PR #39 ha aggiunto questo current-state snapshot in `docs/` e ha ritirato la vecchia cartella `codingOrganization/`. PR #38 aggiorna gli script device per renderli cross-platform; al momento di questo aggiornamento risulta ancora una PR aperta da riallineare a `main`.
 
-Non e' ancora production-ready: email verification reale, push delivery reale, scheduler reminder, UI admin, structured options dinamiche mobile, UI withdraw/leave, verifica fisica iPhone/Android e conferma remota CI restano aperti.
+Non e' ancora production-ready: email verification reale, push delivery reale, scheduler reminder, UI admin, structured options dinamiche mobile, UI withdraw/leave e verifica fisica iPhone/Android restano aperti. La CI Postgres migrate/seed/smoke e' stata confermata su GitHub per PR #39, ma PR #38 deve ancora avere branch riallineata e check remoti propri prima del merge.
 
 ## Stato Repository
 
@@ -21,12 +21,12 @@ Il repository e' un monorepo npm workspace con due workspace principali:
 - `docs/`: contratti operativi, setup, demo seed, smoke check, runbook, current-state update e review demo readiness.
 - `documentation/` e `Documentation/`: documentazione di dominio, UCR, sequence/collaboration/state chart, requisiti e data model.
 
-La cartella `codingOrganization/` era utile nello stadio iniziale di divisione lavoro, ma non e' piu' parte della documentazione operativa corrente ed e' stata rimossa in PR #37.
+La cartella `codingOrganization/` era utile nello stadio iniziale di divisione lavoro, ma non e' piu' parte della documentazione operativa corrente ed e' stata rimossa in PR #39.
 
 Stato git osservato durante questa analisi:
 
-- Base `main`: allineata a `origin/main` al commit `b79dc38`.
-- Branch readiness: `docs/francesco-final-readiness-reconciliation`, pubblicato in PR #37.
+- Base `main`: allineata a `origin/main` al commit `1dfcd4e`, dopo merge di PR #37 e PR #39.
+- Branch device compatibility: `chore/expo-go-device-testing`, PR #38, ancora aperta e da riallineare a `main` prima del merge.
 - Questo file e' ora tracciato in `docs/incampus-current-state-update-2026-05-17.md`.
 
 ## Stack Tecnico Attuale
@@ -394,16 +394,18 @@ Limiti demo:
 - `migrate`, `seed:demo` e `smoke:demo` richiedono database locale e backend/runtime corretti.
 - In PR #37 la verifica locale DB-backed e' stata eseguita: `npm run migrate`, `npm run seed:demo`, backend locale, `npm run smoke:demo`.
 - Risultato smoke locale registrato: `pass=15`, `fail=0`, `skipped=3`, `blocked=0`.
-- CI Postgres migrate/seed/smoke e' configurata in `.github/workflows/ci.yml`; la conferma remota GitHub Actions resta pending finche' non passa su GitHub.
+- CI Postgres migrate/seed/smoke e' configurata in `.github/workflows/ci.yml`; i check GitHub Actions di PR #39 risultano passati, mentre PR #38 deve ancora avere check remoti propri dopo il riallineamento della branch.
 - I documenti operativi principali in `docs/` sono stati riallineati: `demo-readiness-review.md`, `mobile-run-check.md`, `project-runbook.md`, `final-integrated-review.md`, `backend-smoke-check.md`, `demo-seed.md`.
 
 ## Device Testing / Expo Go
 
 Il flusso device fisico attuale include:
 
-- Root script `npm run dev:backend:device` avvia backend con `HOST=0.0.0.0`.
+- Root script `npm run dev:backend:device` chiama `node scripts/start-backend-device.mjs`.
+- `scripts/start-backend-device.mjs` avvia il backend con default `HOST=0.0.0.0` e `PORT=3000`, usando `npm.cmd` su Windows e `npm` sugli altri sistemi.
 - Mobile script `npm run start:device --workspace mobile` esegue `mobile/scripts/start-device.mjs`.
 - Lo script rileva un IP LAN raggiungibile e imposta `EXPO_PUBLIC_API_BASE_URL=http://<host>:3000`.
+- `mobile/scripts/start-device.mjs` usa `npx.cmd` su Windows e `npx` sugli altri sistemi.
 - Override manuale: `INCAMPUS_DEVICE_HOST=<reachable-ip> npm run start:device --workspace mobile`.
 - `EXPO_NO_TELEMETRY` viene impostato di default a `1` nello script device.
 - Expo parte in LAN mode con `npx expo start --lan`.
@@ -419,6 +421,12 @@ Se auto-detection sceglie IP sbagliato:
 
 ```bash
 INCAMPUS_DEVICE_HOST=192.168.1.10 npm run start:device --workspace mobile
+```
+
+PowerShell:
+
+```powershell
+$env:INCAMPUS_DEVICE_HOST="192.168.1.10"; npm run start:device --workspace mobile
 ```
 
 ## Comandi Operativi Correnti
@@ -467,11 +475,13 @@ EXPO_NO_TELEMETRY=1 npm exec --workspace mobile -- expo install --check
 | `npm run build` | Pass |
 | `npm run lint` | Pass |
 | `npm test` | Pass: 29 file test, 220 test |
+| `node --check scripts/start-backend-device.mjs` | Pass |
+| `node --check mobile/scripts/start-device.mjs` | Pass |
 | `npm run migrate` | Pass: DB gia' migrato, 0 migrazioni applicate nell'ultima run |
 | `npm run seed:demo` | Pass: seed demo sincronizzato |
 | `npm run smoke:demo` | Pass: `pass=15`, `fail=0`, `skipped=3`, `blocked=0` |
 
-Nota Expo: il precedente `expo install --check` era passato usando dependency map locale per sandbox offline, ma non e' stato rieseguito in questo aggiornamento PR #37.
+Nota Expo: il precedente `expo install --check` era passato usando dependency map locale per sandbox offline, ma non e' stato rieseguito in questo aggiornamento PR #38.
 
 ## Readiness Matrix Aggiornata
 
@@ -533,6 +543,7 @@ Mobile:
 - `mobile/src/screens/ReportSubmissionScreen.tsx`: reports.
 - `mobile/src/screens/BlockUserScreen.tsx`: blocks.
 - `mobile/scripts/start-device.mjs`: Expo LAN/device start.
+- `scripts/start-backend-device.mjs`: backend device start cross-platform per `npm run dev:backend:device`.
 
 Docs:
 
@@ -561,7 +572,15 @@ Questi file erano stale rispetto a create activity, manage requests, personal ac
 - `docs/backend-smoke-check.md`.
 - `docs/demo-seed.md`.
 
-I documenti mantengono esplicitamente aperti: CI remota, device fisico, T20 final QA/sign-off, email reale, push reale, scheduler reminder, admin UI/auth reale, structured options dinamiche mobile e withdraw/leave UI.
+I documenti mantengono esplicitamente aperti: device fisico, T20 final QA/sign-off, email reale, push reale, scheduler reminder, admin UI/auth reale, structured options dinamiche mobile e withdraw/leave UI. La CI remota DB-backed e' stata confermata su PR #39, ma va ricontrollata su PR #38 una volta risolto il riallineamento con `main`.
+
+## Aggiornamenti PR #38 E PR #39
+
+- PR #39: ha aggiunto `docs/incampus-current-state-update-2026-05-17.md`, ha rimosso `codingOrganization/`, e ha aggiornato i riferimenti in `README.md` e `docs/setup.md`.
+- PR #38: rende cross-platform `npm run dev:backend:device` tramite `scripts/start-backend-device.mjs`.
+- PR #38: rende cross-platform `npm run start:device --workspace mobile` usando `npx.cmd` su Windows.
+- PR #38: aggiunge esempi PowerShell per `INCAMPUS_DEVICE_HOST` e `EXPO_PUBLIC_API_BASE_URL` in `mobile/README.md`.
+- PR #38: mantiene invariati i caveat di validazione; il tooling device e' pronto nella branch, ma la run fisica iPhone/Android resta da eseguire davvero e la PR va ancora riallineata a `main`.
 
 ## Rischi E Gap Principali
 
@@ -569,8 +588,9 @@ Priorita' alta:
 
 - Caricare structured options reali nel mobile create activity invece dei fallback seed hardcoded.
 - Implementare UI mobile per withdraw pending request e leave joined activity.
-- Confermare su GitHub Actions la nuova CI Postgres migrate/seed/smoke.
+- Ricontrollare su PR #38 i check GitHub Actions dopo il riallineamento con `main`; PR #39 ha gia' avuto check remoti verdi.
 - Fare una run manuale Expo Go su device fisico con backend e DB reali.
+- Dopo merge di PR #38, verificare su Windows/PowerShell il percorso device cross-platform.
 
 Priorita' media:
 
@@ -595,4 +615,4 @@ Usa questo file come stato operativo aggiornato, ma verifica sempre DTO e route 
 
 Non reintrodurre mock nascosti nei flussi gia' collegati al backend. Se una demo non funziona, preferisci correggere client/API alignment o documentare il gap invece di simulare dati. Per mobile, preserva i route name attuali in `AppNavigator`. Per backend, non cambiare DTO o enum senza controllare impatto su mobile, test e docs.
 
-Conclusione: il progetto e' in buono stato per una demo alpha guidata, soprattutto con migrate + seed + smoke + Expo device tooling. Non e' ancora una beta chiusa: mancano alcune UX secondarie, verifica device reale, conferma CI remota, e i servizi production-grade (email, push, scheduler, admin UI, hardening) non sono completi.
+Conclusione: il progetto e' in buono stato per una demo alpha guidata, soprattutto con migrate + seed + smoke + Expo device tooling. Non e' ancora una beta chiusa: mancano alcune UX secondarie, verifica device reale, ricontrollo CI su PR #38 dopo riallineamento, e i servizi production-grade (email, push, scheduler, admin UI, hardening) non sono completi.

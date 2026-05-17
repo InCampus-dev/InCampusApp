@@ -1,84 +1,87 @@
 # Demo Readiness Review
 
-This review tracks the integrated demo path after Francesco's T19/T16/T17/T20 work. It is meant to be updated after Matteo and Jacopo merge their remaining mobile/API tasks.
+Updated: 2026-05-17
 
-## Demo Path Status
+This review reconciles the integrated demo state after PR #35 and PR #36 were merged into `main`.
 
-| Step | Status | Evidence | Command or screen to verify | Owner if remaining issue |
-| --- | --- | --- | --- | --- |
-| Sign up / sign in | Partial | Backend sign-in is smoke-checkable with seeded accounts; sign-up still relies on mock email token delivery. | `npm run smoke:demo`; mobile `SignIn` / `SignUp` screens. | Jacopo for AP mobile polish/email flow. |
-| Campus selection with refreshed token | Pass | Backend returns refreshed token after `PATCH /accounts/me/campus`; mobile stores `authToken` and `selectedCampusId`. | `npm run smoke:demo`; mobile `CampusSelection`. | None known. |
-| Profile setup/read | Pass | Backend profile read is smoke-checkable; mobile create profile screen is wired. | `GET /profiles/me`; mobile `ProfileSetup`. | None known. |
-| Create activity | Partial / blocked mobile | Backend create activity is conditional-smoke-checkable; mobile screen still uses mock option IDs and no `POST /activities`. | `npm run smoke:demo`; mobile `CreateActivity`. | Matteo / T09. |
-| Feed refresh | Partial | Backend seeded feed/detail are smoke-checkable; mobile feed calls `GET /activities`, but refresh behavior is T10. | `GET /activities`; mobile `ActivityFeed`. | Matteo / T10. |
-| Activity detail | Partial | Backend detail is smoke-checkable; mobile detail calls API but expects flattened host fields not guaranteed by backend DTO. | `GET /activities/:id`; mobile `ActivityDetails`. | Matteo for DTO/UI alignment. |
-| Join/request | Partial | Backend direct join and request are smoke-checkable; mobile join button calls endpoint, full UX remains to verify. | `POST /activities/:id/join`; mobile `ActivityDetails`. | Matteo / T11. |
-| Manage requests | Partial | Backend pending requests and approve/decline are smoke-checkable; mobile screen is present but DTO/display alignment remains to verify. | `GET/PATCH /activities/:id/requests`; mobile `ManageRequests`. | Matteo / T12. |
-| Notifications/fallback | Partial | Backend records, list, context, and fallback are smoke-checkable; push delivery remains stubbed. | `GET /notifications`; `GET /notifications/:id/context`; mobile `NotificationList`. | Jacopo / T13 for mobile/delivery integration. |
+Important PR note: the real merged PR #36 is `chore: support latest Expo Go device testing`. It is not the older roadmap PR #36 for T12. Status below is tracked by Task ID and current behavior on `main`, not by old roadmap PR numbers.
 
-## Final Bugs And Risks
+## Task Status T10-T20
 
-### Blocker
+| Task | Status | Evidence on current main or this branch | Remaining validation |
+| --- | --- | --- | --- |
+| T10 - Feed refresh after create/join | Implemented on main | PR #35 added feed refresh parameters after create/join plus pull-to-refresh in `ActivityFeedScreen`; backend feed/detail passed smoke. | Manual Expo QA still needs to verify the mobile transition on device/simulator. |
+| T11 - Join/request activity flow | Implemented before/through current main | Backend direct join and approval request paths passed smoke; mobile detail calls the join endpoint and returns to feed with refresh. | Manual Expo QA for both open and approval-based activities. |
+| T12 - Manage requests | Implemented on main | PR #35 added the real backend DTO with `requestId`, `applicantId`, and applicant profile summary; smoke passed pending request lookup and approval. | Manual host UI QA on device/simulator. |
+| T13 - Notifications list/context/fallback | Implemented on main, push delivery mocked | Smoke passed notification list/context and deleted-activity fallback. Mobile notification list routes to activity, manage requests, personal activity, or fallback screens. | Push dispatch is still a log/stub, so only records and context are verified. |
+| T14 - Personal activities | Implemented on main | Mobile `PersonalActivityListScreen` calls real `GET /profiles/me/activities`; backend route is mounted and service tests exist. | Manual mobile QA for upcoming/history grouping with seeded and runtime data. |
+| T15 - Safety screens | Implemented on main | Report submission, block user, and community rules screens are wired to backend routes. | Manual safety-flow QA and admin review QA remain. |
+| T16 - Backend seed/smoke reliability | Locally verified; CI support added in this branch | `npm run migrate`, `npm run seed:demo`, `npm run dev:backend`, and `npm run smoke:demo` were run locally against a migrated DB. CI now has a Postgres-backed migrate/seed/smoke step. | Remote GitHub Actions run has not executed yet for this branch. |
+| T17 - Expo Go/device support | Implemented on main by real PR #36; device QA pending | Root `dev:backend:device`, mobile `start:device`, LAN API base detection, and `INCAMPUS_DEVICE_HOST` override exist. | Physical iPhone/Android Expo Go flow still needs real validation. |
+| T18 - Mobile polish/loading/error/empty states | Implemented on main, QA pending | PR #35 added loading/error/empty handling across the relevant mobile screens. | Final mobile pass should confirm states with slow backend, empty data, and API errors. |
+| T19 - Runbook/checklist | Updated in this branch | `docs/mobile-run-check.md` and `docs/project-runbook.md` now include PR #36 device commands and current seed/smoke flow. | Keep updated with actual device QA results. |
+| T20 - Final integrated review | Draft only | `docs/final-integrated-review.md` is created as a skeleton. | Do not mark complete until QA/device flow and CI are actually complete. |
 
-- Mobile create activity is still mock-backed, using local category/location IDs and not calling `POST /activities`. This blocks a full mobile-only demo path until T09 lands.
+## Runtime Seed/Smoke Verification
 
-### High
+Local verification was actually executed on 2026-05-17 against the local migrated PostgreSQL database.
 
-- Personal activity list remains a placeholder, so the participant history part of the demo is not mobile-ready.
-- Mobile activity detail/manage-request DTOs may not match backend shapes, especially host profile and applicant display fields.
-- Admin auth is still header-based and must remain local/demo only.
-
-### Medium
-
-- Email verification is still mock/console based, so seeded accounts are preferred for demos.
-- Push delivery is still a `NotificationDispatcher` stub; only notification records/list/context are verifiable.
-- CI does not run DB-backed migrations or end-to-end checks.
-
-### Low
-
-- Root and setup documentation still contains some historical Phase 0 language, although demo-specific docs now describe current checks.
-
-## Known Limits
-
-- Email verification mock.
-- Push dispatcher stub.
-- Provisional admin auth via headers.
-- No DB-backed CI/e2e in the standard suite.
-- Mobile feature completion depends on T09, T10, T11, T12, T13, and T15.
-
-## Final Commands
-
-Run these before opening or merging the PR:
+Commands and results:
 
 ```bash
-git diff --check
-npm run lint
-npm run build
-npm test
-npm run typecheck --workspace mobile
+npm run migrate
 ```
 
-Runtime demo checks:
+Result: pass. The local DB was already migrated, so the runner reported `Applied 0 migration(s).`
 
 ```bash
 npm run seed:demo
+```
+
+Result: pass. Summary: 1 identity rule, 1 campus, 9 structured options, 2 student accounts, 2 profiles, 2 activities, and 2 existing demo activities reset.
+
+```bash
+npm run dev:backend
+```
+
+Result: pass. Backend started on port 3000 for smoke verification.
+
+```bash
 npm run smoke:demo
-EXPO_PUBLIC_API_BASE_URL=http://localhost:3000 npm run start --workspace mobile
 ```
 
-## PR Summary Draft
+Result: pass. Summary: `pass=15`, `fail=0`, `skipped=3`, `blocked=0`.
 
-```text
-Implemented Francesco demo readiness tasks:
-- added local/demo seed runner with idempotent Tongji Jiading data;
-- added backend smoke check for required and conditional demo-path API checks;
-- documented demo seed, backend smoke, mobile run checklist, and integrated readiness review;
-- kept mobile feature work owned by Matteo/Jacopo marked as partial/blocked instead of replacing it with hidden mocks.
+Skipped smoke checks are intentional: mobile UI execution, mobile create-activity UI, and real push delivery are outside the backend smoke script.
 
-Validation:
-- git diff --check
-- npm run lint
-- npm run build
-- npm test
-- npm run typecheck --workspace mobile
+## Device Run Commands
+
+Backend for physical device testing:
+
+```bash
+npm run dev:backend:device
 ```
+
+Expo Go device start:
+
+```bash
+npm run start:device --workspace mobile
+```
+
+Explicit host override when auto-detection chooses the wrong interface:
+
+```bash
+INCAMPUS_DEVICE_HOST=<reachable-ip> npm run start:device --workspace mobile
+```
+
+## Known Limits
+
+- Email verification delivery is still mock/console based through `EmailVerificationService`.
+- Push dispatch is still mock/log based through `NotificationDispatcher`; notification records/list/context are real.
+- Reminder handling exists for `ActivityReminderDue`, but no real scheduler produces those events automatically.
+- Admin auth remains provisional and header-based for demo/local workflows.
+- No admin UI exists for campus/options or report review workflows.
+- Mobile create activity still relies on demo-seed fallback category/location options; structured options are not fully dynamic in mobile.
+- Mobile withdraw pending request and leave joined activity UI is missing.
+- Secrets, logging, rate limiting, deploy hardening, and broader production hardening are out of scope for this readiness pass.
+- Physical iPhone/Android Expo Go validation was not executed in this pass.

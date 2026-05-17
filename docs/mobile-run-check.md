@@ -1,37 +1,39 @@
 # Mobile Run Check
 
-This checklist verifies the mobile app without implementing feature work owned by Matteo or Jacopo.
+Updated: 2026-05-17
 
-## Typecheck
+This checklist verifies the current mobile app after merged PR #35 and the real PR #36, which is the Expo Go/device-testing PR. Do not use old roadmap PR numbers as status evidence.
 
-```bash
-npm run typecheck --workspace mobile
-```
+## Local Backend And Seed
 
-This should pass before any manual Expo check.
-
-## Backend URL
-
-Set the mobile API base URL before starting Expo.
-
-For iOS simulator on the same machine:
+Prepare the local database and demo data first:
 
 ```bash
-EXPO_PUBLIC_API_BASE_URL=http://localhost:3000 npm run start --workspace mobile
+npm run migrate
+npm run seed:demo
 ```
 
-For a physical device, use the machine LAN IP:
-
-```bash
-EXPO_PUBLIC_API_BASE_URL=http://<LAN_IP>:3000 npm run start --workspace mobile
-```
-
-Make sure the backend is already running and the seed has been applied:
+For a local simulator:
 
 ```bash
 npm run dev:backend
-npm run seed:demo
+EXPO_PUBLIC_API_BASE_URL=http://localhost:3000 npm run start --workspace mobile
 ```
+
+For a physical iPhone or Android with Expo Go:
+
+```bash
+npm run dev:backend:device
+npm run start:device --workspace mobile
+```
+
+If the LAN IP auto-detection chooses the wrong interface:
+
+```bash
+INCAMPUS_DEVICE_HOST=<reachable-ip> npm run start:device --workspace mobile
+```
+
+The phone and development machine must be able to reach each other on the same LAN, VPN, or routable mesh network.
 
 ## Demo Accounts
 
@@ -42,34 +44,39 @@ npm run seed:demo
 
 ## Navigation Checklist
 
-| Area | Expected status in current branch | Check |
+| Area | Expected status | Check |
 | --- | --- | --- |
-| Sign in | Pass if backend/seed are running | Sign in with host or guest credentials. |
-| Sign up | Partial | Flow exists, but email verification is console/mock based. |
-| Campus selection | Pass | If selected campus is missing, select Tongji Jiading and confirm token refresh. |
-| Profile setup | Pass/partial | Creating a profile is wired; seeded accounts already have profiles. |
-| Consent settings | Pass | Toggle consent and continue to feed. |
-| Feed | Partial | Basic `GET /activities` wiring exists; refresh behavior from T10 must be verified after merge. |
-| Activity detail | Partial | Detail fetch and join button exist; host profile display may need DTO alignment. |
-| Create activity | Blocked by T09 | Current screen still uses mock option IDs and does not call `POST /activities`. Do not treat as complete. |
-| Join/request | Partial, owned outside Francesco | Screen calls backend join endpoint; full UX is T11/T12 territory. |
-| Manage requests | Partial, owned outside Francesco | Screen calls backend request endpoints but request DTO/display alignment still needs verification. |
-| Notifications | Partial | Notification list/context screens exist; push delivery is not real. |
-| Personal activity list | Blocked by T15 | Placeholder screen explicitly says personal history is not wired. |
-
-## What Not To Change In This Check
-
-- Do not replace the mock create-activity implementation as part of Francesco's tasks.
-- Do not rewrite feed, join/request, manage-requests, notifications, or secondary placeholders.
-- Only fix TypeScript/runtime breakage caused directly by the Francesco demo tooling if it appears.
+| Sign in | Implemented | Sign in with the host or guest seeded account. |
+| Sign up | Partial | Flow exists, but email verification delivery is console/mock based. |
+| Campus selection | Implemented | If selected campus is missing, select Tongji Jiading and confirm token refresh. |
+| Profile setup | Implemented | Seeded accounts already have profiles; profile create/update remains available. |
+| Consent settings | Implemented | Toggle consent and continue to feed. |
+| Create activity | Implemented, partial | `POST /activities` is wired, but category/location options still rely on demo-seed fallback IDs instead of fully dynamic mobile structured-options loading. |
+| Feed refresh, T10 | Implemented, QA pending | Create or join an activity and verify the feed refreshes; also pull to refresh. |
+| Activity detail and join, T11 | Implemented, QA pending | Open seeded `[DEMO]` activities and verify open join plus approval request behavior. |
+| Manage requests, T12 | Implemented, QA pending | Sign in as host, open an approval-based activity, and approve/decline a pending request. |
+| Notifications, T13 | Implemented records/context, push mocked | Verify list, context routing, and fallback routing after backend smoke creates records. |
+| Personal activities, T14 | Implemented, QA pending | Open My Activities and verify `GET /profiles/me/activities` data appears in upcoming/history. |
+| Report/block/community rules, T15 | Implemented, QA pending | Submit a report, block a host/student where available, and open community rules. |
+| Loading/error/empty states, T18 | Implemented, QA pending | Check offline backend, empty lists, retry buttons, and spinners. |
 
 ## Manual Demo Path
 
-1. Start backend and seed data.
-2. Start Expo with `EXPO_PUBLIC_API_BASE_URL`.
-3. Sign in as guest.
-4. Confirm campus/profile path reaches Activity Feed.
-5. Open seeded `[DEMO]` activity from feed.
-6. Try join/request only if T11/T12 code is present in the branch under test.
-7. Sign in as host and verify manage requests only if the UI receives a real activity context.
-8. Open notification list only after backend smoke or manual join/request has created notification records.
+1. Run `npm run migrate`.
+2. Run `npm run seed:demo`.
+3. Start the backend with `npm run dev:backend` for simulator or `npm run dev:backend:device` for physical device.
+4. Start Expo with `npm run start --workspace mobile` for simulator or `npm run start:device --workspace mobile` for physical device.
+5. Sign in as guest and confirm campus/profile/consent path reaches Activity Feed.
+6. Open seeded `[DEMO]` activities from feed.
+7. Try open join and approval-based request.
+8. Sign in as host and verify manage requests.
+9. Open notifications after the smoke script or manual join/request creates notification records.
+10. Open My Activities, Community Rules, Report, and Block flows.
+
+## Not Yet Claimed
+
+- Physical iPhone/Android Expo Go validation has not been executed in this pass.
+- Push delivery is not real; only notification records and context routing are verified.
+- Email verification delivery is not real; use seeded accounts for demos.
+- Mobile withdraw pending request and leave joined activity UI is missing.
+- No admin UI exists for campus/options or report review workflows.

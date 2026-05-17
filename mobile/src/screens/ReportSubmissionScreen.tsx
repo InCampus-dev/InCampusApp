@@ -22,10 +22,10 @@ const REASON_OPTIONS = [
 ];
 
 export default function ReportSubmissionScreen({ navigation, route }: { navigation: any; route: any }) {
-  const initialTargetType = route?.params?.targetType as ReportTargetType | undefined;
+  const initialTargetType = getValidReportTargetType(route?.params?.targetType);
   const [targetType, setTargetType] = useState<ReportTargetType>(initialTargetType ?? 'activity');
-  const [targetActivityId, setTargetActivityId] = useState(route?.params?.targetActivityId ?? '');
-  const [targetAccountId, setTargetAccountId] = useState(route?.params?.targetAccountId ?? '');
+  const [targetActivityId, setTargetActivityId] = useState(getStringParam(route?.params?.targetActivityId));
+  const [targetAccountId, setTargetAccountId] = useState(getStringParam(route?.params?.targetAccountId));
   const [reasonCode, setReasonCode] = useState(REASON_OPTIONS[0].code);
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -186,6 +186,14 @@ function validateReport(args: {
   }
 
   return null;
+}
+
+function getValidReportTargetType(value: unknown): ReportTargetType | undefined {
+  return value === 'activity' || value === 'student' ? value : undefined;
+}
+
+function getStringParam(value: unknown): string {
+  return typeof value === 'string' ? value : '';
 }
 
 const styles = StyleSheet.create({

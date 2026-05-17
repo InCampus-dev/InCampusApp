@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -38,6 +37,12 @@ type NotificationListResponse =
       notifications?: NotificationItem[];
       total?: number;
     };
+
+type NotificationFallbackReason =
+  | 'TargetActivityUnavailable'
+  | 'BlockRelationshipExists'
+  | 'MissingActivityContext'
+  | 'UnknownNotificationTarget';
 
 const PAGE_SIZE = 20;
 
@@ -120,16 +125,9 @@ export default function NotificationListScreen({ navigation }: { navigation: any
       navigateToNotificationContext(response.data);
     } catch (error) {
       const code = getApiErrorCode(error);
-      if (
-        code === 'NOT_FOUND' ||
-        code === 'TargetActivityUnavailable' ||
-        code === 'BlockRelationshipExists' ||
-        code === 'NotificationNotFound'
-      ) {
-        navigation.navigate('NotificationFallback');
-      } else {
-        Alert.alert('Error', getApiErrorMessage(error) ?? 'Could not open notification.');
-      }
+      navigation.navigate('NotificationFallback', {
+        reason: getFallbackReasonFromErrorCode(code),
+      });
     } finally {
       setTappedId(null);
     }
@@ -276,6 +274,17 @@ function formatNotificationType(type: string): string {
       return 'Reminder';
     default:
       return 'Notice';
+  }
+}
+
+function getFallbackReasonFromErrorCode(code?: string): NotificationFallbackReason {
+  switch (code) {
+    case 'TargetActivityUnavailable':
+    case 'BlockRelationshipExists':
+    case 'MissingActivityContext':
+      return code;
+    default:
+      return 'UnknownNotificationTarget';
   }
 }
 

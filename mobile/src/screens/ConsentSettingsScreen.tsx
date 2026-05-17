@@ -41,10 +41,28 @@ export default function ConsentSettingsScreen({ navigation }: { navigation: any 
     }
   }
 
-  function handleSkip() {
+  async function handleSkip() {
     // FR-2901: refusing consent does not block normal app use
     // Save as false (default) and proceed
-    handleContinue();
+    setSubmitting(true);
+    try {
+      await api.patch('/accounts/me/consent', {
+        campusInsightSharingConsent: false,
+      });
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'ActivityFeed' }],
+      });
+    } catch (error: any) {
+      const code = getApiErrorCode(error);
+      if (code === 'NOT_FOUND' || code === 'AccountNotFound') {
+        Alert.alert('Error', 'Account not found. Please sign in again.');
+      } else {
+        Alert.alert('Error', 'Could not save consent preference. Please try again.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (

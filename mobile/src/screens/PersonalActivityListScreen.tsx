@@ -127,7 +127,7 @@ export default function PersonalActivityListScreen({
       />
       <ActivitySection
         title="History"
-        emptyText="Completed, cancelled, deleted, or past activities will appear here when available."
+        emptyText="Completed, cancelled, or past activities will appear here when available."
         activities={history}
         navigation={navigation}
       />

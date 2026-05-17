@@ -57,7 +57,12 @@ Rerunning the seed updates the demo records and resets only participations and n
 ## Start Order
 
 1. Start or reset the local PostgreSQL database.
-2. Apply the backend migrations using the team's current local migration process.
+2. Apply the backend migrations:
+
+   ```bash
+   npm run migrate
+   ```
+
 3. Start the backend:
 
    ```bash
@@ -84,7 +89,7 @@ For normal demo cleanup, rerun:
 npm run seed:demo
 ```
 
-For a full database reset, recreate the local database, apply migrations again, and rerun the seed. The repository does not currently define a standard DB reset or migration CLI command, so use the project team's local database process.
+For a full database reset, recreate the local database, apply migrations again with `npm run migrate`, and rerun the seed.
 
 ## Quick API Verification
 

@@ -10,6 +10,7 @@
   "scripts": {
     "dev:backend": "npm run dev --workspace backend",
     "dev:backend:device": "HOST=0.0.0.0 npm run dev --workspace backend",
+    "migrate": "npm run migrate --workspace backend",
     "seed:demo": "npm run seed:demo --workspace backend",
     "smoke:demo": "npm run smoke:demo --workspace backend",
     "lint": "npm run lint --workspace backend",

@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node dist/src/server.js",
+    "migrate": "tsx src/runMigrations.ts",
     "seed:demo:identity-rules": "tsx src/seedDemoIdentityRules.ts",
     "seed:demo": "tsx src/seedDemo.ts",
     "smoke:demo": "tsx src/demoSmokeCheck.ts",

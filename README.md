@@ -126,4 +126,4 @@ feature/francesco/phase-0-foundation
 
 ## Documentation
 
-The source documentation remains in `Documentation/` and `codingOrganization/`. These folders are retained as planning and traceability source material, not runtime code.
+The source documentation remains in `Documentation/`. The earlier `codingOrganization/` planning folder has been retired from the active repository after the initial work-division phase.

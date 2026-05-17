@@ -2,7 +2,7 @@
 
 ## Repository Purpose
 
-This repository is the first coding foundation for the InCampus alpha sprint. It keeps the final documentation in `Documentation/` and `codingOrganization/` untouched while adding a GitHub monorepo foundation.
+This repository is the coding foundation for the InCampus alpha/MVP sprint. It keeps the final documentation in `Documentation/` while root `docs/` carries the active operational contracts and readiness runbooks.
 
 Root `docs/` is the active contract location for Phase 0 / Phase 1 implementation. `backend/docs/` is reserved for backend-local notes only.
 
@@ -116,7 +116,7 @@ feature/francesco/phase-0-foundation
 ## Documentation Sources Used
 
 - `Documentation/InCampus_Project_Map.md`
-- `codingOrganization/workdivisionCODINGv1.2_corrected.md`
+- Earlier `codingOrganization/` planning files were used during initial work division and have been retired from the active repository.
 - `Documentation/INcampusFILES/requirements-data-model-crud/CRUD matrix v1.6.md`
 - `Documentation/INcampusFILES/requirements-data-model-crud/Entities & Attributes v1.2.md`
 - `Documentation/INcampusFILES/requirements-data-model-crud/Databases v1.1.md`

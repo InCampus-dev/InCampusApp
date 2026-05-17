@@ -6,9 +6,9 @@ Aggiornamento documento: include il QA mobile Jacopo J1 e i fix mobile Jacopo J2
 
 ## Sintesi Esecutiva
 
-InCampus e' oggi una alpha/MVP integration abbastanza avanzata: backend modulare funzionante, seed demo e smoke check presenti, mobile Expo collegato ai principali flussi studente, supporto Expo Go fisico allineato a SDK 55, e pass QA mobile Jacopo documentato.
+InCampus e' oggi una alpha/MVP integration abbastanza avanzata: backend modulare funzionante, seed demo e smoke check presenti, mobile Expo collegato ai principali flussi studente, runtime mobile riallineato a Expo SDK 54 per l'Expo Go disponibile su iPhone durante il test, e pass QA mobile Jacopo documentato.
 
-Il progetto e' adatto a una demo alpha guidata con backend locale, seed demo e mobile Expo. PR #37 ha aggiunto un comando ripetibile `npm run migrate`, ha riallineato i documenti readiness/runbook/checklist, e ha configurato CI con Postgres per migrazioni, seed demo, backend startup e smoke check. PR #38 ha aggiornato gli script device rendendoli cross-platform. PR #39 ha aggiunto questo current-state snapshot in `docs/` e ha ritirato la vecchia cartella `codingOrganization/`. PR #40 aggiunge `docs/mobile-qa-buglist.md` e corregge i bug confermati nelle schermate mobile di Jacopo.
+Il progetto e' adatto a una demo alpha guidata con backend locale, seed demo e mobile Expo. PR #37 ha aggiunto un comando ripetibile `npm run migrate`, ha riallineato i documenti readiness/runbook/checklist, e ha configurato CI con Postgres per migrazioni, seed demo, backend startup e smoke check. PR #38 ha aggiornato gli script device rendendoli cross-platform. PR #39 ha aggiunto questo current-state snapshot in `docs/` e ha ritirato la vecchia cartella `codingOrganization/`. PR #40 aggiunge `docs/mobile-qa-buglist.md` e corregge i bug confermati nelle schermate mobile di Jacopo. L'aggiornamento Expo successivo e' limitato alla compatibilita' runtime/tooling: lancio app confermato in iOS Simulator, con walkthrough frontend completo e QA fisica iPhone ancora pendenti.
 
 Non e' ancora production-ready: email verification reale, push delivery reale, scheduler reminder, UI admin, structured options dinamiche mobile, UI withdraw/leave e verifica fisica iPhone/Android restano aperti. La CI Postgres migrate/seed/smoke e' stata confermata su GitHub per PR #39; il percorso device Expo Go resta da validare manualmente su iPhone/Android reali.
 
@@ -34,7 +34,7 @@ Stato git osservato durante questa analisi:
 
 Backend:
 
-- Node >= 20.
+- Node >= 20. Per Expo/Metro usare Node 20 o 22; evitare Node 25 perche' in test locale ha dato errori Expo/Metro/ngrok.
 - TypeScript.
 - Express 4.
 - TypeORM 0.3.
@@ -45,14 +45,17 @@ Backend:
 
 Mobile:
 
-- Expo `~55.0.0`.
-- `expo-status-bar ~55.0.6`.
-- React `^19.2.0`.
-- React Native `^0.83.6`.
+- Expo `54.0.34`, allineato all'Expo Go disponibile su iPhone durante il test.
+- `expo-status-bar 3.0.9`.
+- React `19.1.0`.
+- React Native `0.81.5`.
+- `react-native-gesture-handler 2.28.0`.
+- `react-native-safe-area-context 5.6.2`.
+- `react-native-screens 4.16.0`.
 - React Navigation native stack.
 - AsyncStorage per token e selected campus.
 - TypeScript.
-- `babel-preset-expo ~55.0.21`.
+- `babel-preset-expo 54.0.10`.
 
 ## Architettura Prodotto
 
@@ -400,7 +403,27 @@ Limiti demo:
 
 ## Device Testing / Expo Go
 
-Il flusso device fisico attuale include:
+Il percorso Expo Go consigliato dopo il riallineamento SDK 54 usa backend tunnel
+piu' Expo tunnel. SDK 55 richiedeva un Expo Go piu' nuovo della build iPhone App
+Store disponibile durante il test; restare sul set SDK 54 coerente finche' il
+team non passa a development build o Expo Go SDK 55 non diventa disponibile.
+
+Percorso consigliato:
+
+```bash
+export PATH="$(brew --prefix node@20)/bin:$PATH"
+npm run dev:backend
+ngrok http 3000
+curl https://<backend-tunnel-url>/health
+cd mobile
+EXPO_PUBLIC_API_BASE_URL=https://<backend-tunnel-url> npx expo start --tunnel --clear
+```
+
+Validazione corrente: lancio app confermato in iOS Simulator. Walkthrough
+frontend completo e QA fisica iPhone/Android restano pendenti.
+
+Il flusso device LAN/IP resta disponibile, ma puo' fallire su reti dove il
+telefono non raggiunge direttamente il Mac:
 
 - Root script `npm run dev:backend:device` chiama `node scripts/start-backend-device.mjs`.
 - `scripts/start-backend-device.mjs` avvia il backend con default `HOST=0.0.0.0` e `PORT=3000`, usando `npm.cmd` su Windows e `npm` sugli altri sistemi.
@@ -411,7 +434,7 @@ Il flusso device fisico attuale include:
 - `EXPO_NO_TELEMETRY` viene impostato di default a `1` nello script device.
 - Expo parte in LAN mode con `npx expo start --lan`.
 
-Uso consigliato:
+Uso LAN/IP opzionale:
 
 ```bash
 npm run dev:backend:device

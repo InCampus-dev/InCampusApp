@@ -20,7 +20,15 @@
   "engines": {
     "node": ">=20"
   },
+  "overrides": {
+    "expo": "54.0.34",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  },
   "devDependencies": {
-    "@types/jest": "^30.0.0"
+    "@types/jest": "^30.0.0",
+    "@types/react": "19.1.17",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
   }
 }

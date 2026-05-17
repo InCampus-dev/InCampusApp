@@ -1,8 +1,38 @@
 # Mobile Run Check
 
-Updated: 2026-05-17
+Updated: 2026-05-18
 
-This checklist verifies the current mobile app after merged PR #35 and the real PR #36, which is the Expo Go/device-testing PR. Do not use old roadmap PR numbers as status evidence.
+This checklist verifies the current mobile app after the Expo Go compatibility
+alignment to Expo SDK 54. Do not use old roadmap PR numbers as status evidence.
+The current pass confirms runtime/tooling compatibility and iOS Simulator
+launch only; full frontend walkthrough and physical-device QA are still pending.
+
+## Expo Runtime Alignment
+
+The mobile workspace is pinned to Expo SDK 54 because SDK 55 required a newer
+Expo Go than the iPhone App Store build available during testing. SDK 54 is the
+compatible target for the currently available Expo Go runtime.
+
+Keep this dependency set coherent unless the team moves to a development build
+or Expo Go SDK 55 becomes available:
+
+- `expo@54.0.34`
+- `react@19.1.0`
+- `react-native@0.81.5`
+- `expo-status-bar@3.0.9`
+- `react-native-gesture-handler@2.28.0`
+- `react-native-safe-area-context@5.6.2`
+- `react-native-screens@4.16.0`
+- `babel-preset-expo@54.0.10`
+
+Use Node 20 or 22. Do not use Node 25; Expo/Metro/ngrok failed in local testing
+with Node 25.
+
+With Homebrew Node 20:
+
+```bash
+export PATH="$(brew --prefix node@20)/bin:$PATH"
+```
 
 ## Local Backend And Seed
 
@@ -13,14 +43,38 @@ npm run migrate
 npm run seed:demo
 ```
 
-For a local simulator:
+Start the backend from the repository root:
 
 ```bash
 npm run dev:backend
+```
+
+Expose the backend with ngrok v3 or another working tunnel:
+
+```bash
+ngrok http 3000
+```
+
+Verify the public backend URL before starting Expo:
+
+```bash
+curl https://<backend-tunnel-url>/health
+```
+
+Start Expo from inside the mobile workspace:
+
+```bash
+cd mobile
+EXPO_PUBLIC_API_BASE_URL=https://<backend-tunnel-url> npx expo start --tunnel --clear
+```
+
+For a local simulator without a backend tunnel:
+
+```bash
 EXPO_PUBLIC_API_BASE_URL=http://localhost:3000 npm run start --workspace mobile
 ```
 
-For a physical iPhone or Android with Expo Go:
+The legacy device helper remains available for LAN/IP-based device testing:
 
 ```bash
 npm run dev:backend:device
@@ -33,7 +87,9 @@ If the LAN IP auto-detection chooses the wrong interface:
 INCAMPUS_DEVICE_HOST=<reachable-ip> npm run start:device --workspace mobile
 ```
 
-The phone and development machine must be able to reach each other on the same LAN, VPN, or routable mesh network.
+The phone and development machine must be able to reach each other on the same
+LAN, VPN, or routable mesh network. On unreliable LANs, prefer backend tunnel
+plus Expo tunnel. Do not use Node 25.
 
 ## Demo Accounts
 
@@ -64,19 +120,29 @@ The phone and development machine must be able to reach each other on the same L
 
 1. Run `npm run migrate`.
 2. Run `npm run seed:demo`.
-3. Start the backend with `npm run dev:backend` for simulator or `npm run dev:backend:device` for physical device.
-4. Start Expo with `npm run start --workspace mobile` for simulator or `npm run start:device --workspace mobile` for physical device.
-5. Sign in as guest and confirm campus/profile/consent path reaches Activity Feed.
-6. Open seeded `[DEMO]` activities from feed.
-7. Try open join and approval-based request.
-8. Sign in as host and verify manage requests.
-9. Open notifications after the smoke script or manual join/request creates notification records.
-10. Open My Activities, Community Rules, Report, and Block flows.
+3. Start the backend with `npm run dev:backend`.
+4. Expose it with `ngrok http 3000` and verify `https://<backend-tunnel-url>/health`.
+5. Start Expo from `mobile/` with `EXPO_PUBLIC_API_BASE_URL=https://<backend-tunnel-url> npx expo start --tunnel --clear`.
+6. Sign in as guest and confirm campus/profile/consent path reaches Activity Feed.
+7. Open seeded `[DEMO]` activities from feed.
+8. Try open join and approval-based request.
+9. Sign in as host and verify manage requests.
+10. Open notifications after the smoke script or manual join/request creates notification records.
+11. Open My Activities, Community Rules, Report, and Block flows.
 
 ## Not Yet Claimed
 
-- Physical iPhone/Android Expo Go validation has not been executed in this pass.
-- Push delivery is not real; only notification records and context routing are verified.
-- Email verification delivery is not real; use seeded accounts for demos.
+- App launch was confirmed in iOS Simulator after the Expo SDK 54 alignment.
+- Full frontend walkthrough has not been completed in this pass.
+- Physical iPhone/Android Expo Go QA has not been completed in this pass.
+- General mobile UI is not final and still needs polish.
+- Some mobile flows are still MVP/partial.
+- Dynamic structured options are not fully wired in mobile.
+- Some report/block contexts are still MVP fallback/manual.
+- Push delivery is still mock/log; only notification records and context routing are verified.
+- Email verification delivery is still mock/console; use seeded accounts for demos.
 - Mobile withdraw pending request and leave joined activity UI is missing.
+- Reminder scheduler is missing.
 - No admin UI exists for campus/options or report review workflows.
+- Admin auth production flow is missing.
+- Production hardening remains out of scope.

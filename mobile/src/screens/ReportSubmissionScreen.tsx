@@ -1,45 +1,58 @@
-import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useLayoutEffect, useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import api, { getApiErrorMessage } from '../services/api';
+import {
+  BottomActionBar,
+  CategoryPill,
+  EmptyState,
+  FieldError,
+  InlineBanner,
+  PrimaryButton,
+  ScreenShell,
+  SectionCard,
+  TextField,
+  TopBar,
+  colors,
+} from '../components/InCampusUI';
 
 type ReportTargetType = 'student' | 'activity';
 
 const REASON_OPTIONS = [
-  { code: 'unsafe_behavior', label: 'Unsafe behavior' },
-  { code: 'harassment', label: 'Harassment or discrimination' },
-  { code: 'misleading_activity', label: 'Misleading activity' },
-  { code: 'other', label: 'Other' },
+  { code: 'unsafe_behavior', label: 'Unsafe behavior', description: 'Threatening, dangerous, or harmful behavior' },
+  { code: 'harassment', label: 'Harassment', description: 'Bullying, unwanted contact, or hostile behavior' },
+  { code: 'misleading_activity', label: 'Misleading activity', description: 'False or misleading activity details' },
+  { code: 'other', label: 'Other', description: 'Something else not listed' },
 ];
 
 export default function ReportSubmissionScreen({ navigation, route }: { navigation: any; route: any }) {
-  const initialTargetType = getValidReportTargetType(route?.params?.targetType);
-  const [targetType, setTargetType] = useState<ReportTargetType>(initialTargetType ?? 'activity');
-  const [targetActivityId, setTargetActivityId] = useState(getStringParam(route?.params?.targetActivityId));
-  const [targetAccountId, setTargetAccountId] = useState(getStringParam(route?.params?.targetAccountId));
-  const [reasonCode, setReasonCode] = useState(REASON_OPTIONS[0].code);
+  const targetType = getValidReportTargetType(route?.params?.targetType) ?? 'activity';
+  const targetActivityId = getStringParam(route?.params?.targetActivityId);
+  const targetAccountId = getStringParam(route?.params?.targetAccountId);
+  const activityTitle = getStringParam(route?.params?.activityTitle) || 'Selected activity';
+  const categoryLabel = getStringParam(route?.params?.categoryLabel);
+  const [reasonCode, setReasonCode] = useState<string>('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  const missingTarget = targetType === 'activity' ? !targetActivityId : !targetAccountId;
 
   async function handleSubmit() {
-    const validationMessage = validateReport({
-      targetType,
-      targetActivityId,
-      targetAccountId,
-      reasonCode,
-    });
-
-    if (validationMessage) {
-      Alert.alert('Check report details', validationMessage);
+    setValidationError(null);
+    setErrorMessage(null);
+    if (!reasonCode) {
+      setValidationError('Please choose a reason for your report');
+      return;
+    }
+    if (missingTarget) {
+      setErrorMessage('Nothing to report yet. Open Report from an activity or student.');
       return;
     }
 
@@ -47,145 +60,114 @@ export default function ReportSubmissionScreen({ navigation, route }: { navigati
     try {
       const campusId = await AsyncStorage.getItem('selectedCampusId');
       if (!campusId) {
-        Alert.alert('Campus required', 'Select a campus before submitting a report.');
+        setErrorMessage('Select a campus before submitting a report.');
         return;
       }
-
       await api.post('/reports', {
         campusId,
         targetType,
-        targetActivityId: targetType === 'activity' ? targetActivityId.trim() : undefined,
-        targetAccountId: targetType === 'student' ? targetAccountId.trim() : undefined,
+        targetActivityId: targetType === 'activity' ? targetActivityId : undefined,
+        targetAccountId: targetType === 'student' ? targetAccountId : undefined,
         reasonCode,
         description: description.trim() || undefined,
       });
-
-      Alert.alert('Report submitted', 'Campus staff can review this report.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      setSuccessMessage('Report submitted. Campus staff will review it.');
+      setTimeout(() => navigation.goBack(), 800);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error) ?? 'Could not submit report.');
+      setErrorMessage(getApiErrorMessage(error) ?? "Couldn't submit report. Try again.");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Report</Text>
-      <Text style={styles.subtitle}>
-        Reports are campus-scoped and create Safety & Moderation records only. They do not notify
-        other students.
-      </Text>
-
-      <Text style={styles.label}>Target Type</Text>
-      <View style={styles.segmentedRow}>
-        <TouchableOpacity
-          style={[styles.segment, targetType === 'activity' && styles.segmentSelected]}
-          onPress={() => setTargetType('activity')}
-          disabled={submitting}
-        >
-          <Text style={targetType === 'activity' ? styles.segmentTextSelected : styles.segmentText}>
-            Activity
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.segment, targetType === 'student' && styles.segmentSelected]}
-          onPress={() => setTargetType('student')}
-          disabled={submitting}
-        >
-          <Text style={targetType === 'student' ? styles.segmentTextSelected : styles.segmentText}>
-            Student
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {targetType === 'activity' ? (
-        <>
-          <Text style={styles.label}>Activity ID *</Text>
-          <TextInput
-            style={styles.input}
-            value={targetActivityId}
-            onChangeText={setTargetActivityId}
-            placeholder="Activity ID"
-            autoCapitalize="none"
-            editable={!submitting}
-          />
-        </>
-      ) : (
-        <>
-          <Text style={styles.label}>Student Account ID *</Text>
-          <TextInput
-            style={styles.input}
-            value={targetAccountId}
-            onChangeText={setTargetAccountId}
-            placeholder="Student account ID"
-            autoCapitalize="none"
-            editable={!submitting}
-          />
-        </>
-      )}
-
-      <Text style={styles.label}>Reason</Text>
-      <View style={styles.optionsContainer}>
-        {REASON_OPTIONS.map((option) => (
-          <TouchableOpacity
-            key={option.code}
-            style={[styles.optionBtn, reasonCode === option.code && styles.optionBtnSelected]}
-            onPress={() => setReasonCode(option.code)}
-            disabled={submitting}
-          >
-            <Text style={reasonCode === option.code ? styles.optionTextSelected : styles.optionText}>
-              {option.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={styles.label}>Details</Text>
-      <TextInput
-        style={[styles.input, styles.multilineInput]}
-        value={description}
-        onChangeText={setDescription}
-        placeholder="Optional details for campus staff"
-        multiline
-        editable={!submitting}
-      />
-
-      <TouchableOpacity
-        style={[styles.primaryButton, submitting && styles.primaryButtonDisabled]}
-        onPress={handleSubmit}
-        disabled={submitting}
-      >
-        {submitting ? (
-          <ActivityIndicator color="#fff" />
+    <ScreenShell padded={false} style={styles.screen}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <TopBar title="Report" onBack={() => navigation.goBack()} rightLabel="Cancel" onRight={() => navigation.goBack()} />
+        {successMessage ? <View style={styles.toastWrap}><InlineBanner tone="success" text={successMessage} /></View> : null}
+        {missingTarget ? (
+          <View style={styles.missingWrap}>
+            <EmptyState title="Nothing to report yet" text="Open Report from an activity or student you'd like to report." primaryLabel="Back" onPrimary={() => navigation.goBack()} />
+          </View>
         ) : (
-          <Text style={styles.primaryButtonText}>Submit Report</Text>
+          <>
+            <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+              <Text style={styles.sectionLabel}>Reporting</Text>
+              <TargetSummary targetType={targetType} activityTitle={activityTitle} categoryLabel={categoryLabel} />
+              <Text style={styles.sectionLabel}>What's the issue?</Text>
+              <View style={styles.reasonList}>
+                {REASON_OPTIONS.map((option) => (
+                  <Pressable
+                    key={option.code}
+                    style={[styles.reasonCard, reasonCode === option.code && styles.reasonCardSelected]}
+                    onPress={() => setReasonCode(option.code)}
+                    disabled={submitting}
+                  >
+                    <View style={[styles.reasonRadio, reasonCode === option.code && styles.reasonRadioSelected]} />
+                    <View style={styles.reasonTextCol}>
+                      <Text style={[styles.reasonTitle, reasonCode === option.code && styles.reasonTitleSelected]}>{option.label}</Text>
+                      <Text style={styles.reasonDescription}>{option.description}</Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+              {validationError ? <FieldError message={validationError} /> : null}
+              <TextField
+                label="Add details"
+                placeholder="Anything else you'd like campus staff to know"
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                maxLength={300}
+                editable={!submitting}
+                inputStyle={styles.detailsInput}
+                helper={`${description.length}/300`}
+              />
+              <SectionCard style={styles.reassuranceCard}>
+                <Text style={styles.reassuranceTitle}>Reports are private. Campus staff will review this.</Text>
+                <Text style={styles.reassuranceBody}>The other student will not be notified.</Text>
+                <Pressable onPress={() => navigation.navigate('CommunityRules')}>
+                  <Text style={styles.guidelinesLink}>Read community guidelines</Text>
+                </Pressable>
+              </SectionCard>
+            </ScrollView>
+            <BottomActionBar>
+              {errorMessage ? <InlineBanner tone="error" text={errorMessage} actionLabel="Retry" onAction={handleSubmit} /> : null}
+              <PrimaryButton label="Submit report" loading={submitting} disabled={!reasonCode} onPress={handleSubmit} />
+              <Pressable style={styles.cancelLink} onPress={() => navigation.goBack()} disabled={submitting}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </Pressable>
+            </BottomActionBar>
+          </>
         )}
-      </TouchableOpacity>
-    </ScrollView>
+      </KeyboardAvoidingView>
+    </ScreenShell>
   );
 }
 
-function validateReport(args: {
-  targetType: ReportTargetType;
-  targetActivityId: string;
-  targetAccountId: string;
-  reasonCode: string;
-}): string | null {
-  if (!args.reasonCode) {
-    return 'Choose a report reason.';
+function TargetSummary({ targetType, activityTitle, categoryLabel }: { targetType: ReportTargetType; activityTitle: string; categoryLabel: string }) {
+  if (targetType === 'activity') {
+    return (
+      <SectionCard style={styles.targetCard}>
+        <View style={styles.targetIcon}><Text style={styles.targetIconText}>A</Text></View>
+        <View style={styles.targetTextCol}>
+          <Text style={styles.targetKicker}>Reporting activity</Text>
+          <Text style={styles.targetTitle} numberOfLines={1}>{activityTitle}</Text>
+          {categoryLabel ? <CategoryPill label={categoryLabel} compact /> : null}
+        </View>
+      </SectionCard>
+    );
   }
-
-  if (args.targetType === 'activity' && !args.targetActivityId.trim()) {
-    return 'Activity reports need an activity ID.';
-  }
-
-  if (args.targetType === 'student' && !args.targetAccountId.trim()) {
-    return 'Student reports need a student account ID.';
-  }
-
-  return null;
+  return (
+    <SectionCard style={styles.targetCard}>
+      <View style={styles.targetIconMuted}><Text style={styles.targetIconMutedText}>S</Text></View>
+      <View style={styles.targetTextCol}>
+        <Text style={styles.targetKicker}>Reporting a student</Text>
+        <Text style={styles.targetTitle}>A verified student</Text>
+        <Text style={styles.targetHelper}>Only campus staff will see your report.</Text>
+      </View>
+    </SectionCard>
+  );
 }
 
 function getValidReportTargetType(value: unknown): ReportTargetType | undefined {
@@ -197,52 +179,35 @@ function getStringParam(value: unknown): string {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  content: { padding: 20, paddingBottom: 40 },
-  title: { fontSize: 24, fontWeight: '700', color: '#222', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#666', lineHeight: 20, marginBottom: 18 },
-  label: { fontSize: 15, fontWeight: '700', color: '#333', marginTop: 16, marginBottom: 8 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d7dce2',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    backgroundColor: '#fafafa',
-  },
-  multilineInput: { minHeight: 100, textAlignVertical: 'top' },
-  segmentedRow: { flexDirection: 'row', gap: 8 },
-  segment: {
-    flex: 1,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#d7dce2',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  segmentSelected: { backgroundColor: '#1976d2', borderColor: '#1976d2' },
-  segmentText: { color: '#333', fontWeight: '600' },
-  segmentTextSelected: { color: '#fff', fontWeight: '700' },
-  optionsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  optionBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#d7dce2',
-    borderRadius: 20,
-    backgroundColor: '#fff',
-  },
-  optionBtnSelected: { backgroundColor: '#1976d2', borderColor: '#1976d2' },
-  optionText: { color: '#333' },
-  optionTextSelected: { color: '#fff', fontWeight: '700' },
-  primaryButton: {
-    marginTop: 28,
-    backgroundColor: '#1976d2',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  primaryButtonDisabled: { opacity: 0.65 },
-  primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  screen: { backgroundColor: colors.bg, paddingTop: 54 },
+  flex: { flex: 1 },
+  toastWrap: { paddingHorizontal: 16, paddingTop: 8 },
+  missingWrap: { flex: 1, padding: 24, justifyContent: 'center' },
+  content: { padding: 16, paddingBottom: 132 },
+  sectionLabel: { color: colors.text, fontSize: 14, fontWeight: '900', marginTop: 18, marginBottom: 10 },
+  targetCard: { padding: 14, flexDirection: 'row', gap: 12, alignItems: 'center' },
+  targetIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: colors.skySoft, alignItems: 'center', justifyContent: 'center' },
+  targetIconText: { color: colors.sky, fontSize: 16, fontWeight: '900' },
+  targetIconMuted: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.borderSoft, alignItems: 'center', justifyContent: 'center' },
+  targetIconMutedText: { color: colors.text3, fontSize: 16, fontWeight: '900' },
+  targetTextCol: { flex: 1, gap: 4 },
+  targetKicker: { color: colors.text2, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
+  targetTitle: { color: colors.text, fontSize: 16, fontWeight: '900' },
+  targetHelper: { color: colors.text2, fontSize: 12, fontWeight: '600' },
+  reasonList: { gap: 8 },
+  reasonCard: { flexDirection: 'row', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card },
+  reasonCardSelected: { borderColor: colors.primary, backgroundColor: colors.primaryGhost },
+  reasonRadio: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.border },
+  reasonRadioSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
+  reasonTextCol: { flex: 1 },
+  reasonTitle: { color: colors.text, fontSize: 15, fontWeight: '900' },
+  reasonTitleSelected: { color: colors.primary },
+  reasonDescription: { color: colors.text2, fontSize: 12, fontWeight: '600', lineHeight: 17, marginTop: 2 },
+  detailsInput: { minHeight: 88, textAlignVertical: 'top' },
+  reassuranceCard: { padding: 14, backgroundColor: '#F4F8F6' },
+  reassuranceTitle: { color: colors.text, fontSize: 13, fontWeight: '800', lineHeight: 19 },
+  reassuranceBody: { color: colors.text2, fontSize: 12, fontWeight: '600', marginTop: 4 },
+  guidelinesLink: { color: colors.primary, fontSize: 13, fontWeight: '900', marginTop: 10 },
+  cancelLink: { alignItems: 'center', paddingVertical: 10 },
+  cancelText: { color: colors.text2, fontSize: 14, fontWeight: '900' },
 });

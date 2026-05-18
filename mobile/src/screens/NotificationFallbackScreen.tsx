@@ -1,7 +1,6 @@
-// Task: M06 | Path: mobile/src/screens/NotificationFallbackScreen.tsx
-
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useLayoutEffect } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { PrimaryButton, ScreenShell, TopBar, colors } from '../components/InCampusUI';
 
 type NotificationFallbackReason =
   | 'TargetActivityUnavailable'
@@ -9,87 +8,56 @@ type NotificationFallbackReason =
   | 'MissingActivityContext'
   | 'UnknownNotificationTarget';
 
-export default function NotificationFallbackScreen({
-  navigation,
-  route,
-}: {
-  navigation: any;
-  route: any;
-}) {
-  const message = getFallbackMessage(route?.params?.reason);
+export default function NotificationFallbackScreen({ navigation, route }: { navigation: any; route: any }) {
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+  const copy = getFallbackCopy(route?.params?.reason);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.icon}>{'\u{1F517}'}</Text>
-        <Text style={styles.title}>Content Unavailable</Text>
-        <Text style={styles.message}>{message}</Text>
+    <ScreenShell style={styles.screen}>
+      <TopBar onBack={() => navigation.goBack()} />
+      <View style={styles.center}>
+        <View style={styles.iconWrap}><Text style={styles.iconText}>{copy.icon}</Text></View>
+        <Text style={styles.title}>{copy.title}</Text>
+        <Text style={styles.body}>{copy.body}</Text>
       </View>
-
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('NotificationList')}
-        >
-          <Text style={styles.primaryButtonText}>Back to Notifications</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() =>
-            navigation.reset({ index: 0, routes: [{ name: 'ActivityFeed' }] })
-          }
-        >
-          <Text style={styles.secondaryButtonText}>Go to Activity Feed</Text>
-        </TouchableOpacity>
+        <PrimaryButton label="Back to Alerts" onPress={() => navigation.navigate('NotificationList')} />
+        <Pressable style={styles.secondary} onPress={() => navigation.reset({ index: 0, routes: [{ name: 'ActivityFeed' }] })}>
+          <Text style={styles.secondaryText}>Go to Feed</Text>
+        </Pressable>
       </View>
-    </View>
+    </ScreenShell>
   );
 }
 
-function getFallbackMessage(reason: unknown): string {
+function getFallbackCopy(reason: unknown): { title: string; body: string; icon: string } {
   switch (normalizeFallbackReason(reason)) {
     case 'TargetActivityUnavailable':
-      return 'The activity linked to this notification is no longer available.';
+      return { title: 'Activity no longer available', body: 'This activity may have been removed or cancelled.', icon: 'x' };
     case 'BlockRelationshipExists':
-      return 'This notification is no longer accessible because a block relationship limits this interaction.';
+      return { title: 'Content not accessible', body: 'This content is no longer available to you.', icon: '!' };
     case 'MissingActivityContext':
-      return 'This notification is missing the activity context needed to open it.';
+      return { title: 'Nothing to show here', body: "We couldn't find the activity linked to this notification.", icon: '?' };
     case 'UnknownNotificationTarget':
-      return 'This notification points to content that the app cannot open safely.';
     default:
-      return 'The activity or content linked to this notification is no longer available. It may have been deleted or is no longer accessible.';
+      return { title: 'Notification unavailable', body: 'This notification is no longer valid.', icon: 'i' };
   }
 }
 
 function normalizeFallbackReason(reason: unknown): NotificationFallbackReason | undefined {
-  if (
-    reason === 'TargetActivityUnavailable' ||
-    reason === 'BlockRelationshipExists' ||
-    reason === 'MissingActivityContext' ||
-    reason === 'UnknownNotificationTarget'
-  ) {
-    return reason;
-  }
-
-  return undefined;
+  return reason === 'TargetActivityUnavailable' || reason === 'BlockRelationshipExists' || reason === 'MissingActivityContext' || reason === 'UnknownNotificationTarget' ? reason : undefined;
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', justifyContent: 'space-between' },
-  content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  icon: { fontSize: 56, marginBottom: 20 },
-  title: { fontSize: 20, fontWeight: '700', color: '#333', marginBottom: 12 },
-  message: { fontSize: 15, color: '#666', textAlign: 'center', lineHeight: 22 },
-  footer: { padding: 20, paddingBottom: 36 },
-  primaryButton: {
-    backgroundColor: '#4A90D9',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  secondaryButton: { alignItems: 'center', paddingVertical: 10 },
-  secondaryButtonText: { color: '#4A90D9', fontSize: 14 },
+  screen: { backgroundColor: colors.bg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
+  iconWrap: { width: 96, height: 96, borderRadius: 28, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', marginBottom: 22 },
+  iconText: { color: colors.text2, fontSize: 32, fontWeight: '900' },
+  title: { color: colors.text, fontSize: 24, fontWeight: '900', textAlign: 'center' },
+  body: { color: colors.text2, fontSize: 15, fontWeight: '600', lineHeight: 22, textAlign: 'center', marginTop: 10 },
+  footer: { paddingHorizontal: 24, paddingBottom: 24 },
+  secondary: { alignItems: 'center', paddingVertical: 14 },
+  secondaryText: { color: colors.text2, fontSize: 14, fontWeight: '900' },
 });

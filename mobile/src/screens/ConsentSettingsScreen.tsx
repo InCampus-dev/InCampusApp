@@ -1,140 +1,89 @@
-// Task: M03 | Path: mobile/src/screens/ConsentSettingsScreen.tsx
-
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  Switch,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import React, { useLayoutEffect, useState } from 'react';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import api, { getApiErrorCode } from '../services/api';
+import {
+  BottomActionBar,
+  InlineBanner,
+  PrimaryButton,
+  ScreenShell,
+  TitleBlock,
+  colors,
+} from '../components/InCampusUI';
 
 export default function ConsentSettingsScreen({ navigation }: { navigation: any }) {
-  // Default consent is false (Entities & Attributes v1.2: StudentAccount.CampusInsightSharingConsent default=false)
   const [consentEnabled, setConsentEnabled] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  async function handleContinue() {
-    setSubmitting(true);
-    try {
-      // DUC-AP-07: PATCH /accounts/me/consent
-      await api.patch('/accounts/me/consent', {
-        campusInsightSharingConsent: consentEnabled,
-      });
-      // Navigate to main app — onboarding complete
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'ActivityFeed' }],
-      });
-    } catch (error: any) {
-      const code = getApiErrorCode(error);
-      if (code === 'NOT_FOUND' || code === 'AccountNotFound') {
-        Alert.alert('Error', 'Account not found. Please sign in again.');
-      } else {
-        Alert.alert('Error', 'Could not save consent preference. Please try again.');
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
-  async function handleSkip() {
-    // FR-2901: refusing consent does not block normal app use
-    // Save as false (default) and proceed
+  async function saveConsent(value: boolean) {
     setSubmitting(true);
+    setErrorMessage(null);
     try {
-      await api.patch('/accounts/me/consent', {
-        campusInsightSharingConsent: false,
-      });
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'ActivityFeed' }],
-      });
-    } catch (error: any) {
+      await api.patch('/accounts/me/consent', { campusInsightSharingConsent: value });
+      navigation.reset({ index: 0, routes: [{ name: 'ActivityFeed' }] });
+    } catch (error) {
       const code = getApiErrorCode(error);
-      if (code === 'NOT_FOUND' || code === 'AccountNotFound') {
-        Alert.alert('Error', 'Account not found. Please sign in again.');
-      } else {
-        Alert.alert('Error', 'Could not save consent preference. Please try again.');
-      }
+      setErrorMessage(code === 'NOT_FOUND' || code === 'AccountNotFound' ? 'Account not found. Please sign in again.' : 'Could not save your choice. Try again.');
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <View style={styles.container}>
+    <ScreenShell style={styles.screen}>
       <View style={styles.content}>
-        <Text style={styles.title}>Campus Insights</Text>
-        <Text style={styles.description}>
-          You can choose to share your profile interests and activity participation data with
-          authorized campus staff. This helps your university understand student interests
-          and improve campus life.
-        </Text>
-        <Text style={styles.note}>
-          You can change this setting at any time. Refusing does not affect your use of the app.
-        </Text>
-
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Share my data with campus staff</Text>
-          <Switch
-            value={consentEnabled}
-            onValueChange={setConsentEnabled}
-            trackColor={{ false: '#ddd', true: '#4A90D9' }}
-            thumbColor={consentEnabled ? '#fff' : '#f4f4f4'}
-          />
+        <View style={styles.motif}><View style={styles.motifInner} /></View>
+        <TitleBlock title="Help improve campus life" subtitle="Campus staff can view anonymised activity trends to improve campus services. This does not affect your access to InCampus." />
+        {errorMessage ? <InlineBanner tone="error" text={errorMessage} actionLabel="Retry" onAction={() => saveConsent(consentEnabled)} /> : null}
+        <View style={[styles.toggleCard, consentEnabled && styles.toggleCardActive]}>
+          <View style={styles.toggleTop}>
+            <View style={styles.toggleTextCol}>
+              <Text style={styles.toggleTitle}>Share activity insights with campus staff</Text>
+              <Text style={styles.toggleHelper}>Only authorised campus staff can see this data.</Text>
+            </View>
+            <Switch
+              value={consentEnabled}
+              onValueChange={setConsentEnabled}
+              disabled={submitting}
+              trackColor={{ false: '#D0D5DD', true: colors.primary }}
+              thumbColor={colors.card}
+            />
+          </View>
+          <View style={styles.detailBox}>
+            <Text style={styles.detailLine}><Text style={styles.detailKey}>Shared anonymously</Text> Peak meetup times and popular activity types</Text>
+            <Text style={styles.detailLine}><Text style={styles.detailKeyMuted}>Not shared</Text> Your name, ID, friends, or individual activities</Text>
+          </View>
         </View>
       </View>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.continueButton, submitting && styles.buttonDisabled]}
-          onPress={handleContinue}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.continueButtonText}>Continue</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.skipButton} onPress={handleSkip} disabled={submitting}>
-          <Text style={styles.skipButtonText}>Skip for now</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      <BottomActionBar>
+        <PrimaryButton label="Continue" loading={submitting} onPress={() => saveConsent(consentEnabled)} />
+        <Pressable style={styles.skipLink} onPress={() => saveConsent(false)} disabled={submitting}>
+          <Text style={styles.skipText}>Skip for now</Text>
+        </Pressable>
+      </BottomActionBar>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', justifyContent: 'space-between' },
-  content: { padding: 20, paddingTop: 40 },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 16 },
-  description: { fontSize: 15, color: '#444', lineHeight: 22, marginBottom: 12 },
-  note: { fontSize: 13, color: '#888', fontStyle: 'italic', marginBottom: 28 },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  toggleLabel: { fontSize: 16, color: '#333', flex: 1, marginRight: 12 },
-  footer: { padding: 20, paddingBottom: 36 },
-  continueButton: {
-    backgroundColor: '#4A90D9',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  buttonDisabled: { backgroundColor: '#B0C4DE' },
-  continueButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  skipButton: { alignItems: 'center', paddingVertical: 10 },
-  skipButtonText: { color: '#888', fontSize: 14 },
+  screen: { backgroundColor: colors.bg },
+  content: { flex: 1, paddingHorizontal: 24, justifyContent: 'center' },
+  motif: { width: 84, height: 84, borderRadius: 24, backgroundColor: colors.coralSoft, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 24 },
+  motifInner: { width: 42, height: 42, borderRadius: 21, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.coral },
+  toggleCard: { borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card, borderRadius: 18, padding: 18 },
+  toggleCardActive: { borderColor: colors.primary },
+  toggleTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  toggleTextCol: { flex: 1 },
+  toggleTitle: { color: colors.text, fontSize: 16, fontWeight: '900', lineHeight: 21 },
+  toggleHelper: { color: colors.text2, fontSize: 13, fontWeight: '600', marginTop: 6, lineHeight: 19 },
+  detailBox: { backgroundColor: colors.bg, borderRadius: 12, padding: 12, marginTop: 14, gap: 6 },
+  detailLine: { color: colors.text2, fontSize: 12, fontWeight: '600', lineHeight: 17 },
+  detailKey: { color: colors.primary, fontWeight: '900' },
+  detailKeyMuted: { color: colors.text3, fontWeight: '900' },
+  skipLink: { alignItems: 'center', paddingVertical: 12 },
+  skipText: { color: colors.text2, fontSize: 14, fontWeight: '900' },
 });

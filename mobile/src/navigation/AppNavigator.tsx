@@ -13,6 +13,7 @@ import { CreateActivityScreen } from '../screens/CreateActivityScreen';
 import { ManageRequestsScreen } from '../screens/ManageRequestsScreen';
 import NotificationFallbackScreen from '../screens/NotificationFallbackScreen';
 import NotificationListScreen from '../screens/NotificationListScreen';
+import MineScreen from '../screens/MineScreen';
 import PersonalActivityListScreen from '../screens/PersonalActivityListScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import ReportSubmissionScreen from '../screens/ReportSubmissionScreen';
@@ -31,6 +32,7 @@ export type RootStackParamList = {
   ManageRequests: { activityId?: string } | undefined;
   NotificationList: undefined;
   NotificationFallback: { reason?: string } | undefined;
+  Mine: undefined;
   PersonalActivityList: { activityId?: string; source?: string } | undefined;
   CommunityRules: undefined;
   ReportSubmission:
@@ -97,6 +99,11 @@ export default function AppNavigator() {
           name="NotificationFallback"
           component={NotificationFallbackScreen}
           options={{ title: 'Unavailable Content' }}
+        />
+        <Stack.Screen
+          name="Mine"
+          component={MineScreen}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="PersonalActivityList"

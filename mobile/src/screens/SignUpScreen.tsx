@@ -1,257 +1,226 @@
-// Task: M02 | Path: mobile/src/screens/SignUpScreen.tsx
-
-import React, { useState } from "react";
+import { useNavigation } from '@react-navigation/native';
+import React, { useLayoutEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import api from "../services/api";
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import api, { getApiErrorCode } from '../services/api';
+import {
+  BrandHeader,
+  InlineBanner,
+  PasswordField,
+  PrimaryButton,
+  ScreenShell,
+  StepIndicator,
+  TextField,
+  TitleBlock,
+  TopBar,
+  colors,
+} from '../components/InCampusUI';
 
-type SignUpStep = "register" | "verify";
+type SignUpStep = 'register' | 'verify';
 
-const SignUpScreen: React.FC = () => {
+export default function SignUpScreen() {
   const navigation = useNavigation<any>();
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [studentId, setStudentId] = useState("");
-
-  const [verificationToken, setVerificationToken] = useState("");
-
-  const [step, setStep] = useState<SignUpStep>("register");
+  const [step, setStep] = useState<SignUpStep>('register');
+  const [universityEmail, setUniversityEmail] = useState('');
+  const [universityStudentId, setUniversityStudentId] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [token, setToken] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
 
-  const handleSignUp = async () => {
-    setErrorMessage("");
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
-    if (!email.trim() || !password.trim() || !studentId.trim()) {
-      setErrorMessage("All fields are required.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setErrorMessage("Passwords do not match.");
+  async function handleRegister() {
+    setErrors({});
+    setFormError(null);
+    const nextErrors: Record<string, string> = {};
+    if (!universityEmail.trim()) nextErrors.universityEmail = 'Please enter your university email';
+    if (!universityStudentId.trim()) nextErrors.universityStudentId = 'Please enter your student ID';
+    if (!password.trim()) nextErrors.password = 'Please create a password';
+    if (password !== confirmPassword) nextErrors.confirmPassword = "Passwords don't match";
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
 
     setLoading(true);
     try {
-      await api.post("/auth/signup", {
-        universityEmail: email.trim(),
+      await api.post('/auth/signup', {
+        universityEmail: universityEmail.trim(),
+        universityStudentId: universityStudentId.trim(),
         password,
-        universityStudentId: studentId.trim()
       });
-
-      setStep("verify");
-    } catch (err: any) {
-      const errorCode = err?.response?.data?.error?.code;
-      switch (errorCode) {
-        case "UNSUPPORTED_EMAIL_DOMAIN":
-          setErrorMessage(
-            "This email domain is not supported. Please use your university email."
-          );
-          break;
-        case "CONFLICT":
-          setErrorMessage("An account with this email already exists.");
-          break;
-        case "VALIDATION_ERROR":
-          setErrorMessage("Please check your details and try again.");
-          break;
-        default:
-          setErrorMessage("Registration failed. Please try again.");
+      setStep('verify');
+      setSuccessMessage(null);
+    } catch (error) {
+      const code = getApiErrorCode(error);
+      if (code === 'UNSUPPORTED_EMAIL_DOMAIN') {
+        setErrors({ universityEmail: 'Use your university email' });
+      } else if (code === 'CONFLICT') {
+        setErrors({ universityEmail: 'An account with this email already exists' });
+      } else {
+        setFormError('Registration failed. Please try again.');
       }
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleVerify = async () => {
-    setErrorMessage("");
-
-    if (!verificationToken.trim()) {
-      setErrorMessage("Please enter the verification code.");
+  async function handleVerify() {
+    setErrors({});
+    setFormError(null);
+    if (!token.trim()) {
+      setErrors({ token: 'Please enter the verification code' });
       return;
     }
 
     setLoading(true);
     try {
-      await api.post("/auth/verify-email", {
-        email: email.trim(),
-        token: verificationToken.trim()
+      await api.post('/auth/verify-email', {
+        email: universityEmail.trim(),
+        token: token.trim(),
       });
-
-      Alert.alert("Account Verified", "Your account has been activated. Please sign in.", [
-        { text: "OK", onPress: () => navigation.navigate("SignIn") }
-      ]);
-    } catch (err: any) {
-      const errorCode = err?.response?.data?.error?.code;
-      switch (errorCode) {
-        case "INVALID_VERIFICATION_TOKEN":
-          setErrorMessage("Invalid verification code. Please check and try again.");
-          break;
-        case "NOT_FOUND":
-          setErrorMessage("Account not found. Please sign up again.");
-          break;
-        case "VALIDATION_ERROR":
-          setErrorMessage("Please check your verification details and try again.");
-          break;
-        default:
-          setErrorMessage("Verification failed. Please try again.");
+      setSuccessMessage('Account verified. Please sign in.');
+      setTimeout(() => navigation.navigate('SignIn'), 700);
+    } catch (error) {
+      const code = getApiErrorCode(error);
+      if (code === 'INVALID_VERIFICATION_TOKEN') {
+        setErrors({ token: "That code isn't valid. Please try again" });
+      } else if (code === 'NOT_FOUND') {
+        setErrors({ token: 'Account not found. Please sign up again' });
+      } else {
+        setFormError('Verification failed. Please try again.');
       }
     } finally {
       setLoading(false);
     }
-  };
-
-  const navigateToSignIn = () => {
-    navigation.navigate("SignIn");
-  };
+  }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>{step === "register" ? "Create Account" : "Verify Email"}</Text>
-        <Text style={styles.subtitle}>
-          {step === "register"
-            ? "Use your university email to sign up"
-            : "Enter the verification code sent to your email"}
-        </Text>
-
-        {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
-
-        {step === "register" ? (
-          <>
-            <TextInput
-              style={styles.input}
-              placeholder="University email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
-              editable={!loading}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="University student ID"
-              autoCapitalize="none"
-              value={studentId}
-              onChangeText={setStudentId}
-              editable={!loading}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              editable={!loading}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm password"
-              secureTextEntry
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              editable={!loading}
-            />
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleSignUp}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Sign Up</Text>
-              )}
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <TextInput
-              style={styles.input}
-              placeholder="Verification code"
-              autoCapitalize="none"
-              value={verificationToken}
-              onChangeText={setVerificationToken}
-              editable={!loading}
-            />
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleVerify}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Verify</Text>
-              )}
-            </TouchableOpacity>
-          </>
-        )}
-
-        <TouchableOpacity onPress={navigateToSignIn} style={styles.linkContainer}>
-          <Text style={styles.link}>Already have an account? Sign In</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    <ScreenShell style={styles.screen}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <TopBar onBack={() => (step === 'verify' ? setStep('register') : navigation.goBack())} />
+          <BrandHeader />
+          <StepIndicator step={step === 'register' ? 1 : 2} />
+          {step === 'register' ? (
+            <>
+              <TitleBlock title="Create your account" subtitle="Use your university email to join your campus" />
+              {formError ? <InlineBanner tone="error" text={formError} /> : null}
+              <TextField
+                label="University email"
+                placeholder="you@tongji.edu.cn"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={universityEmail}
+                onChangeText={setUniversityEmail}
+                editable={!loading}
+                error={errors.universityEmail}
+              />
+              <TextField
+                label="Student ID"
+                placeholder="Your university student ID"
+                helper="We use this to verify you're enrolled"
+                value={universityStudentId}
+                onChangeText={setUniversityStudentId}
+                editable={!loading}
+                error={errors.universityStudentId}
+              />
+              <PasswordField
+                label="Password"
+                placeholder="At least 8 characters"
+                value={password}
+                onChangeText={setPassword}
+                visible={passwordVisible}
+                onToggleVisible={() => setPasswordVisible((value) => !value)}
+                editable={!loading}
+                error={errors.password}
+              />
+              <PasswordField
+                label="Confirm password"
+                placeholder="Re-enter password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                visible={confirmVisible}
+                onToggleVisible={() => setConfirmVisible((value) => !value)}
+                editable={!loading}
+                error={errors.confirmPassword}
+              />
+              <PrimaryButton label="Create account" loading={loading} onPress={handleRegister} style={styles.cta} />
+            </>
+          ) : (
+            <>
+              <View style={styles.envelope}>
+                <Text style={styles.envelopeText}>@</Text>
+              </View>
+              <TitleBlock
+                center
+                title="Check your inbox"
+                subtitle={`We sent a verification code to ${universityEmail.trim() || 'your university email'}`}
+              />
+              {successMessage ? <InlineBanner tone="success" text={successMessage} /> : null}
+              {formError ? <InlineBanner tone="error" text={formError} /> : null}
+              <TextField
+                label="Verification code"
+                placeholder="Enter code"
+                value={token}
+                onChangeText={setToken}
+                autoCapitalize="none"
+                keyboardType="number-pad"
+                editable={!loading}
+                error={errors.token}
+                inputStyle={styles.otpInput}
+              />
+              <PrimaryButton label="Verify" loading={loading} onPress={handleVerify} style={styles.cta} />
+              <Pressable style={styles.secondaryLink} onPress={() => setStep('register')} disabled={loading}>
+                <Text style={styles.secondaryText}>Back to account details</Text>
+              </Pressable>
+              <Text style={styles.resendText}>Resend code unavailable</Text>
+            </>
+          )}
+          <Pressable style={styles.signInLink} onPress={() => navigation.navigate('SignIn')}>
+            <Text style={styles.signInText}>Already have an account? Sign in</Text>
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ScreenShell>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 40
+  screen: { backgroundColor: colors.bg },
+  flex: { flex: 1 },
+  content: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 28 },
+  cta: { marginTop: 8 },
+  secondaryLink: { alignItems: 'center', paddingVertical: 14 },
+  secondaryText: { color: colors.text2, fontSize: 14, fontWeight: '900' },
+  signInLink: { alignItems: 'center', paddingVertical: 16 },
+  signInText: { color: colors.primary, fontSize: 14, fontWeight: '900' },
+  envelope: {
+    alignSelf: 'center',
+    width: 80,
+    height: 80,
+    borderRadius: 22,
+    backgroundColor: colors.skySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
   },
-  title: { fontSize: 28, fontWeight: "700", marginBottom: 8, textAlign: "center" },
-  subtitle: {
-    fontSize: 15,
-    color: "#666",
-    marginBottom: 24,
-    textAlign: "center"
-  },
-  error: {
-    color: "#d32f2f",
-    fontSize: 14,
-    marginBottom: 16,
-    textAlign: "center"
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 12
-  },
-  button: {
-    backgroundColor: "#1976d2",
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 8
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  linkContainer: { marginTop: 24, alignItems: "center" },
-  link: { color: "#1976d2", fontSize: 14 }
+  envelopeText: { color: colors.sky, fontSize: 30, fontWeight: '900' },
+  otpInput: { textAlign: 'center', fontSize: 22, letterSpacing: 6, fontWeight: '900' },
+  resendText: { color: colors.text3, fontSize: 12, fontWeight: '800', textAlign: 'center', marginTop: 4 },
 });
-
-export default SignUpScreen;

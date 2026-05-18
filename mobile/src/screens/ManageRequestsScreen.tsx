@@ -1,14 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import api, { getApiErrorMessage } from '../services/api';
+import {
+  EmptyState,
+  InlineBanner,
+  LoadingRows,
+  PrimaryButton,
+  ScreenShell,
+  SectionCard,
+  TopBar,
+  colors,
+} from '../components/InCampusUI';
 
 interface JoinRequestItem {
   requestId: string;
@@ -24,159 +26,185 @@ interface JoinRequestItem {
   };
 }
 
-export const ManageRequestsScreen = ({ route }: any) => {
+type Decision = 'approve' | 'decline';
+
+export const ManageRequestsScreen = ({ route, navigation }: any) => {
   const activityId = route?.params?.activityId;
   const [requests, setRequests] = useState<JoinRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+  const [processing, setProcessing] = useState<Record<string, Decision | undefined>>({});
+  const [decided, setDecided] = useState<Record<string, Decision | undefined>>({});
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  const fetchRequests = useCallback(async () => {
     if (!activityId) {
       setLoading(false);
       return;
     }
-
-    fetchRequests();
-  }, [activityId]);
-
-  const fetchRequests = async () => {
     setLoading(true);
     setErrorMessage(null);
-
     try {
       const response = await api.get<JoinRequestItem[]>(`/activities/${activityId}/requests`);
       setRequests(response.data);
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error) ?? 'Failed to load pending requests.');
+      setErrorMessage(getApiErrorMessage(error) ?? "Couldn't load requests");
     } finally {
       setLoading(false);
     }
-  };
+  }, [activityId]);
 
-  const handleDecision = async (requestId: string, decision: 'approve' | 'decline') => {
-    setProcessingRequestId(requestId);
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
 
+  async function handleDecision(requestId: string, decision: Decision) {
+    if (!activityId) return;
+    setProcessing((prev) => ({ ...prev, [requestId]: decision }));
     try {
       await api.patch(`/activities/${activityId}/requests/${requestId}`, { decision });
-      Alert.alert('Success', `Request ${decision}d successfully.`);
-      setRequests((prev) => prev.filter((request) => request.requestId !== requestId));
+      setDecided((prev) => ({ ...prev, [requestId]: decision }));
+      setTimeout(() => {
+        setRequests((prev) => prev.filter((request) => request.requestId !== requestId));
+        setDecided((prev) => ({ ...prev, [requestId]: undefined }));
+      }, 450);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error) ?? `Failed to ${decision} request.`);
+      setErrorMessage(getApiErrorMessage(error) ?? `Failed to ${decision} request.`);
     } finally {
-      setProcessingRequestId(null);
+      setProcessing((prev) => ({ ...prev, [requestId]: undefined }));
     }
-  };
-
-  const renderItem = ({ item }: { item: JoinRequestItem }) => {
-    const processing = processingRequestId === item.requestId;
-
-    return (
-      <View style={styles.card}>
-        <View style={styles.userInfo}>
-          <Text style={styles.userName}>{item.applicant.displayName}</Text>
-          <Text style={styles.userMeta}>{item.applicant.major}</Text>
-          {item.applicant.shortBio ? (
-            <Text style={styles.userBio}>{item.applicant.shortBio}</Text>
-          ) : null}
-          <Text style={styles.requestDate}>
-            Requested on: {formatRequestDate(item.createdAt)}
-          </Text>
-          <Text style={styles.requestMeta}>
-            Applicant: {item.applicantId} · Status: {formatStatus(item.status)}
-          </Text>
-        </View>
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.button, styles.approveButton, processing && styles.buttonDisabled]}
-            onPress={() => handleDecision(item.requestId, 'approve')}
-            disabled={processing}
-          >
-            <Text style={styles.buttonText}>{processing ? 'Working...' : 'Approve'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.button, styles.declineButton, processing && styles.buttonDisabled]}
-            onPress={() => handleDecision(item.requestId, 'decline')}
-            disabled={processing}
-          >
-            <Text style={styles.buttonText}>{processing ? 'Working...' : 'Decline'}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
+  }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Pending Join Requests</Text>
+    <ScreenShell style={styles.screen}>
+      <TopBar title="Join Requests" onBack={() => navigation.goBack()} rightLabel={activityId ? 'View activity' : undefined} onRight={() => activityId && navigation.navigate('ActivityDetails', { activityId })} />
+      <View style={styles.contextCard}>
+        <Text style={styles.contextTitle}>{activityId ? 'Review pending requests' : 'This screen needs an activity context'}</Text>
+        <Text style={styles.contextBody}>{activityId ? 'Approve or decline each request below.' : 'Open Join Requests from an activity or notification.'}</Text>
+      </View>
       {!activityId ? (
-        <Text style={styles.emptyText}>This screen needs an activity context to load requests.</Text>
+        <View style={styles.content}>
+          <EmptyState title="This screen needs an activity context" text="Open Join Requests from an activity or notification." primaryLabel="Back" onPrimary={() => navigation.goBack()} />
+        </View>
       ) : loading ? (
-        <View style={styles.centeredState}>
-          <ActivityIndicator size="large" color="#0000ff" />
-          <Text style={styles.stateText}>Loading pending requests...</Text>
-        </View>
-      ) : errorMessage ? (
-        <View style={styles.centeredState}>
-          <Text style={styles.errorText}>{errorMessage}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchRequests}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      ) : requests.length === 0 ? (
-        <Text style={styles.emptyText}>No pending requests at the moment.</Text>
+        <View style={styles.content}><LoadingRows count={3} /></View>
       ) : (
         <FlatList
           data={requests}
           keyExtractor={(item) => item.requestId}
-          renderItem={renderItem}
           contentContainerStyle={styles.list}
+          ListHeaderComponent={errorMessage ? <InlineBanner tone="error" text={errorMessage} actionLabel="Retry" onAction={fetchRequests} /> : null}
+          ListEmptyComponent={<EmptyState icon="OK" title="All caught up" text="No pending requests" primaryLabel="View activity" onPrimary={() => navigation.navigate('ActivityDetails', { activityId })} />}
+          renderItem={({ item, index }) => (
+            <JoinRequestCard
+              request={item}
+              index={index}
+              processing={processing[item.requestId]}
+              decided={decided[item.requestId]}
+              onApprove={() => handleDecision(item.requestId, 'approve')}
+              onDecline={() => handleDecision(item.requestId, 'decline')}
+            />
+          )}
         />
       )}
-    </View>
+    </ScreenShell>
   );
 };
 
-function formatRequestDate(value: string): string {
+function JoinRequestCard({
+  request,
+  index,
+  processing,
+  decided,
+  onApprove,
+  onDecline,
+}: {
+  request: JoinRequestItem;
+  index: number;
+  processing?: Decision;
+  decided?: Decision;
+  onApprove: () => void;
+  onDecline: () => void;
+}) {
+  const initial = request.applicant.displayName.trim().charAt(0).toUpperCase() || '?';
+  const avatarColor = AVATAR_COLORS[index % AVATAR_COLORS.length];
+  return (
+    <SectionCard style={[styles.requestCard, decided && styles.requestCardDecided]}>
+      <View style={styles.requestTop}>
+        <View style={[styles.avatar, { backgroundColor: avatarColor.bg }]}><Text style={[styles.avatarText, { color: avatarColor.fg }]}>{initial}</Text></View>
+        <View style={styles.requestInfo}>
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>{request.applicant.displayName}</Text>
+            <Text style={styles.time}>{relativeTime(request.createdAt)}</Text>
+          </View>
+          <Text style={styles.major}>{request.applicant.major}</Text>
+          {request.applicant.shortBio ? <Text style={styles.bio} numberOfLines={2}>{request.applicant.shortBio}</Text> : null}
+        </View>
+      </View>
+      {processing ? (
+        <View style={[styles.processingRow, processing === 'approve' ? styles.processingApprove : styles.processingDecline]}>
+          <ActivityIndicator color={processing === 'approve' ? colors.primary : colors.coral} size="small" />
+          <Text style={[styles.processingText, { color: processing === 'approve' ? colors.primary : colors.coral }]}>{processing === 'approve' ? 'Approving...' : 'Declining...'}</Text>
+        </View>
+      ) : decided ? (
+        <View style={styles.decidedRow}><Text style={styles.decidedText}>{decided === 'approve' ? 'Approved' : 'Declined'}</Text></View>
+      ) : (
+        <View style={styles.actions}>
+          <Pressable style={styles.declineButton} onPress={onDecline}><Text style={styles.declineText}>Decline</Text></Pressable>
+          <PrimaryButton label="Approve" onPress={onApprove} style={styles.approveButton} />
+        </View>
+      )}
+    </SectionCard>
+  );
+}
+
+function relativeTime(value: string): string {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleDateString();
+  if (Number.isNaN(date.getTime())) return 'Recently';
+  const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hours ago`;
+  return `${Math.floor(hours / 24)} days ago`;
 }
 
-function formatStatus(value: string): string {
-  return value.replace(/_/g, ' ');
-}
+const AVATAR_COLORS = [
+  { bg: colors.skySoft, fg: colors.sky },
+  { bg: colors.primarySoft, fg: colors.primary },
+  { bg: colors.coralSoft, fg: colors.coral },
+  { bg: colors.yellowSoft, fg: '#8A5B00' },
+];
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 16 },
-  header: { fontSize: 22, fontWeight: 'bold', marginBottom: 16, color: '#333' },
-  list: { paddingBottom: 16 },
-  centeredState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  stateText: { marginTop: 8, fontSize: 14, color: '#666', textAlign: 'center' },
-  emptyText: { fontSize: 16, color: '#666', textAlign: 'center', marginTop: 32 },
-  errorText: { color: '#b71c1c', fontSize: 15, lineHeight: 21, textAlign: 'center' },
-  retryButton: {
-    marginTop: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#1976d2',
-  },
-  retryButtonText: { color: '#fff', fontWeight: '700' },
-  card: { backgroundColor: '#fff', padding: 16, borderRadius: 8, marginBottom: 12, elevation: 2 },
-  userInfo: { marginBottom: 12 },
-  userName: { fontSize: 18, fontWeight: '600', color: '#000' },
-  userMeta: { fontSize: 14, color: '#1976d2', marginTop: 4 },
-  userBio: { fontSize: 14, color: '#444', marginTop: 6, lineHeight: 20 },
-  requestDate: { fontSize: 14, color: '#666', marginTop: 8 },
-  requestMeta: { fontSize: 12, color: '#888', marginTop: 4, textTransform: 'capitalize' },
-  actionButtons: { flexDirection: 'row', justifyContent: 'space-between' },
-  button: { flex: 1, padding: 10, borderRadius: 6, alignItems: 'center', marginHorizontal: 4 },
-  approveButton: { backgroundColor: '#28a745' },
-  declineButton: { backgroundColor: '#dc3545' },
-  buttonDisabled: { opacity: 0.65 },
-  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  screen: { backgroundColor: colors.bg },
+  content: { padding: 16 },
+  contextCard: { marginHorizontal: 16, marginTop: 8, padding: 16, borderRadius: 18, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+  contextTitle: { color: colors.text, fontSize: 16, fontWeight: '900' },
+  contextBody: { color: colors.text2, fontSize: 13, fontWeight: '600', marginTop: 4 },
+  list: { padding: 16, gap: 12, paddingBottom: 28 },
+  requestCard: { padding: 14 },
+  requestCardDecided: { opacity: 0.56 },
+  requestTop: { flexDirection: 'row', gap: 12 },
+  avatar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 18, fontWeight: '900' },
+  requestInfo: { flex: 1 },
+  nameRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  name: { flex: 1, color: colors.text, fontSize: 16, fontWeight: '900' },
+  time: { color: colors.text3, fontSize: 11, fontWeight: '900' },
+  major: { color: colors.text2, fontSize: 13, fontWeight: '800', marginTop: 2 },
+  bio: { color: colors.text, fontSize: 13, fontWeight: '600', lineHeight: 19, marginTop: 8, opacity: 0.84 },
+  actions: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  declineButton: { flex: 1, minHeight: 52, borderRadius: 16, borderWidth: 1.5, borderColor: colors.coral, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card },
+  declineText: { color: colors.coral, fontSize: 15, fontWeight: '900' },
+  approveButton: { flex: 1 },
+  processingRow: { marginTop: 14, minHeight: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 },
+  processingApprove: { backgroundColor: colors.primarySoft },
+  processingDecline: { backgroundColor: colors.coralSoft },
+  processingText: { fontSize: 13, fontWeight: '900' },
+  decidedRow: { marginTop: 14, minHeight: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.borderSoft },
+  decidedText: { color: colors.text2, fontSize: 13, fontWeight: '900' },
 });

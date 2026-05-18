@@ -1,24 +1,35 @@
 # InCampus Mobile
 
-This workspace now contains a minimal Expo + React Native scaffold around the existing MVP screens.
+This workspace contains the Expo + React Native mobile app for the InCampus MVP
+screens.
 
-## Install
+Use this guide when running the app locally, in iOS Simulator, or on a physical
+iPhone with Expo Go.
 
-From the repository root:
+## Requirements
+
+- Node 20 or 22.
+- npm from the same Node installation.
+- Expo Go compatible with Expo SDK 54.
+- A local backend on port `3000`.
+- ngrok v3 for the backend tunnel when testing on a physical phone.
+
+Avoid Node 25 for Expo/Metro work. Local testing hit Expo/Metro/ngrok startup
+failures with Node 25.
+
+With `nvm`:
 
 ```bash
-npm install
+nvm install 20
+nvm use 20
+node -v
 ```
-
-## Runtime
-
-Use Node 20 or 22 for Expo/Metro work. Avoid Node 25: local testing hit
-Expo/Metro/ngrok startup failures with Node 25.
 
 With Homebrew Node 20:
 
 ```bash
 export PATH="$(brew --prefix node@20)/bin:$PATH"
+node -v
 ```
 
 The mobile workspace is intentionally aligned to Expo SDK 54 because SDK 55
@@ -37,40 +48,96 @@ Current runtime pins:
 - `react-native-screens@4.16.0`
 - `babel-preset-expo@54.0.10`
 
-## Start
+## First Setup
 
-For the most reliable Expo Go path, start the backend from the repository root:
+Run these commands from the repository root:
+
+```bash
+npm install
+npm run migrate
+npm run seed:demo
+```
+
+Demo login accounts:
+
+```text
+demo.host@tongji.edu.cn
+InCampusDemo2026!
+```
+
+```text
+demo.guest@tongji.edu.cn
+InCampusDemo2026!
+```
+
+## Physical iPhone with Expo Go
+
+This is the recommended path when the phone is not reliably reachable through
+the same LAN as the Mac.
+
+Use three terminals.
+
+Terminal 1, from the repository root, start the backend:
 
 ```bash
 npm run dev:backend
 ```
 
-Expose the backend through ngrok v3 or another working tunnel:
+Terminal 2, expose the backend with system ngrok v3:
 
 ```bash
 ngrok http 3000
 ```
 
-Verify the tunnel before starting Expo:
+Copy the HTTPS forwarding URL shown by ngrok. Verify that it reaches the
+backend before starting Expo:
 
 ```bash
 curl https://<backend-tunnel-url>/health
 ```
 
-Then start Expo from inside the mobile workspace:
+Terminal 3, start Expo from the mobile workspace:
 
 ```bash
 cd mobile
 EXPO_PUBLIC_API_BASE_URL=https://<backend-tunnel-url> npx expo start --tunnel --clear
 ```
 
-For a local simulator, this root command is still available:
+Important details:
+
+- Use the backend ngrok base URL, for example `https://abc123.ngrok-free.app`.
+- Do not append `/health` to `EXPO_PUBLIC_API_BASE_URL`.
+- Keep the backend terminal and the ngrok terminal open.
+- Scan the Expo QR code with Expo Go on the iPhone.
+- If login fails after changing URLs, stop Expo and rerun the command with
+  `--clear`.
+
+## iOS Simulator
+
+For the simulator, start the backend locally:
+
+```bash
+npm run dev:backend
+```
+
+Then start Expo with a localhost API URL:
 
 ```bash
 EXPO_PUBLIC_API_BASE_URL=http://localhost:3000 npm run start --workspace mobile
 ```
 
-The LAN device helper is still available:
+Optional simulator shortcut:
+
+```bash
+EXPO_PUBLIC_API_BASE_URL=http://localhost:3000 npm run ios --workspace mobile
+```
+
+## LAN Device Helper
+
+The LAN helper is useful only when the phone can directly reach the Mac on the
+local network. It does not use Expo tunnel mode.
+
+From the repository root:
 
 ```bash
 npm run dev:backend:device
@@ -91,17 +158,6 @@ PowerShell:
 $env:INCAMPUS_DEVICE_HOST="192.168.1.10"; npm run start:device --workspace mobile
 ```
 
-`npm run start:device --workspace mobile` is LAN/IP based. It can fail on
-networks where the phone cannot directly reach the Mac. For unreliable LANs, use
-the backend tunnel plus Expo tunnel flow above.
-
-Optional device shortcuts:
-
-```bash
-npm run ios --workspace mobile
-npm run android --workspace mobile
-```
-
 ## Verify
 
 Type-check the mobile workspace:
@@ -110,7 +166,9 @@ Type-check the mobile workspace:
 npm run typecheck --workspace mobile
 ```
 
-The mobile API client reads `EXPO_PUBLIC_API_BASE_URL`. If it is not set, it falls back to `http://localhost:3000`.
+The mobile API client reads `EXPO_PUBLIC_API_BASE_URL`. If it is not set, it
+falls back to `http://localhost:3000`. Use `mobile/.env.example` as the local
+configuration template.
 
 Examples:
 
@@ -127,12 +185,46 @@ $env:EXPO_PUBLIC_API_BASE_URL="http://192.168.1.10:3000"; npm run start --worksp
 
 Use `localhost` for a local simulator when that is supported by your setup. Use your machine's LAN IP for a physical device.
 
+## Troubleshooting
+
+Check the Node version first:
+
+```bash
+node -v
+```
+
+If it prints Node 25, switch to Node 20 or 22, reinstall dependencies, and retry:
+
+```bash
+nvm use 20
+npm install
+```
+
+Check the system ngrok version for the backend tunnel:
+
+```bash
+ngrok version
+```
+
+It should be ngrok v3. The backend tunnel is separate from Expo's internal
+tunnel package.
+
+If the backend tunnel works but the app cannot log in:
+
+- Confirm `curl https://<backend-tunnel-url>/health` works.
+- Confirm `EXPO_PUBLIC_API_BASE_URL` is exactly the backend tunnel base URL.
+- Restart Expo with `--clear`.
+- Rerun `npm run seed:demo` if the demo accounts are missing.
+
+If Expo Go cannot open the project through LAN mode, use the physical iPhone
+tunnel flow above instead of `npm run start:device --workspace mobile`.
+
 ## Current Validation
 
-The corrected Expo SDK 54 / React Native dependency graph has been confirmed to
-launch in iOS Simulator. Full frontend walkthrough and physical-device QA are
-still pending. This is a runtime/tooling compatibility setup, not frontend
-completion or production readiness.
+The Expo SDK 54 / React Native dependency graph has been confirmed to launch in
+iOS Simulator. The physical iPhone Expo Go startup path works when using Node 20
+or 22, a working backend ngrok v3 URL, and Expo tunnel mode. Full product QA is
+still separate from this runtime/tooling setup.
 
 Known limitations remain:
 

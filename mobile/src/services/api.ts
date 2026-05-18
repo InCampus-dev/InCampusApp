@@ -34,6 +34,18 @@ class ApiRequestError extends Error {
   }
 }
 
+class ApiNetworkError extends Error {
+  public readonly causeError: unknown;
+
+  public constructor(baseUrl: string, causeError: unknown) {
+    super(
+      `Cannot reach the InCampus backend at ${baseUrl}. Check EXPO_PUBLIC_API_BASE_URL and make sure this device can reach the backend.`
+    );
+    this.name = "ApiNetworkError";
+    this.causeError = causeError;
+  }
+}
+
 class ApiClient {
   public async get<T = unknown>(
     path: string,
@@ -72,16 +84,25 @@ class ApiClient {
     options?: ApiRequestOptions
   ): Promise<ApiResponse<T>> {
     const token = await AsyncStorage.getItem("authToken");
-    const response = await fetch(buildUrl(path, options?.params), {
-      method,
-      headers: {
-        Accept: "application/json",
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers
-      },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {})
-    });
+    const baseUrl = getBaseUrl();
+    const requestUrl = buildUrl(path, options?.params, baseUrl);
+    let response: Response;
+
+    try {
+      response = await fetch(requestUrl, {
+        method,
+        headers: {
+          Accept: "application/json",
+          ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...options?.headers
+        },
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {})
+      });
+    } catch (error) {
+      throw new ApiNetworkError(baseUrl, error);
+    }
+
     const responseData = await parseResponse(response);
 
     if (!response.ok) {
@@ -101,17 +122,13 @@ class ApiClient {
 }
 
 function getBaseUrl(): string {
-  const processEnv = (
-    globalThis as {
-      process?: { env?: Record<string, string | undefined> };
-    }
-  ).process?.env;
+  const configuredBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
 
-  return processEnv?.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
+  return configuredBaseUrl || "http://localhost:3000";
 }
 
-function buildUrl(path: string, params?: ApiParams): string {
-  const normalizedBaseUrl = getBaseUrl().replace(/\/+$/, "");
+function buildUrl(path: string, params?: ApiParams, baseUrl = getBaseUrl()): string {
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const queryString = buildQueryString(params);
 
@@ -176,6 +193,10 @@ export function getApiErrorCode(error: unknown): string | undefined {
 }
 
 export function getApiErrorMessage(error: unknown): string | undefined {
+  if (error instanceof ApiNetworkError) {
+    return error.message;
+  }
+
   const envelope = getApiErrorEnvelope(error);
   if (typeof envelope?.error === "string") {
     return envelope.error;

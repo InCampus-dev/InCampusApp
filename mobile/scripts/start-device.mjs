@@ -57,7 +57,11 @@ function spawnCommand(command, args, options) {
 function findLanAddress() {
   const candidates = [];
 
-  for (const entries of Object.values(networkInterfaces())) {
+  for (const [name, entries] of Object.entries(networkInterfaces())) {
+    if (isLikelyVirtualInterface(name)) {
+      continue;
+    }
+
     for (const entry of entries ?? []) {
       if (entry.family === "IPv4" && !entry.internal) {
         candidates.push(entry.address);
@@ -78,5 +82,13 @@ function isLikelyLocalNetworkAddress(address) {
   }
 
   const parts = address.split(".").map((part) => Number(part));
-  return parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31;
+  if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) {
+    return true;
+  }
+
+  return parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127;
+}
+
+function isLikelyVirtualInterface(name) {
+  return /virtualbox|vmware|hyper-v|wsl|docker|loopback|bluetooth/i.test(name);
 }

@@ -92,6 +92,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
   const [creating, setCreating] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const formLocked = creating || success;
 
   const selectedCategory = FALLBACK_CATEGORIES.find((item) => item.id === categoryId);
   const selectedLocation = FALLBACK_LOCATIONS.find((item) => item.id === meetingPointId);
@@ -104,6 +105,10 @@ export const CreateActivityScreen = ({ navigation }: any) => {
   };
 
   const handlePublish = async () => {
+    if (formLocked) {
+      return;
+    }
+
     const nextErrors = validateCreateForm({
       title,
       categoryId,
@@ -162,7 +167,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <CreateTopBar submitting={creating} onCancel={() => navigation.goBack()} />
+      <CreateTopBar topInset={insets.top} submitting={formLocked} onCancel={() => navigation.goBack()} />
 
       <ScrollView
         ref={scrollRef}
@@ -190,7 +195,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
               placeholder="What kind of activity?"
               valueNode={selectedCategory ? <CategoryPill label={selectedCategory.name} compact /> : null}
               onPress={() => setSheetMode('category')}
-              disabled={creating}
+              disabled={formLocked}
             />
           </FieldShell>
 
@@ -202,7 +207,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
               placeholder="Give your activity a name"
               placeholderTextColor={colors.text3}
               maxLength={100}
-              editable={!creating}
+              editable={!formLocked}
             />
             {title.length >= 82 ? <Text style={styles.countText}>{title.length}/100</Text> : null}
           </FieldShell>
@@ -212,21 +217,21 @@ export const CreateActivityScreen = ({ navigation }: any) => {
               placeholder="Pick a date and time"
               valueNode={scheduledDateTime ? <Text style={styles.selectorValue}>{formatDateTimeLabel(scheduledDateTime)}</Text> : null}
               onPress={() => setSheetMode('start')}
-              disabled={creating}
+              disabled={formLocked}
             />
             {scheduledDateTime ? (
               <View style={styles.endTimeRow}>
                 {scheduledEndDateTime ? (
                   <>
-                    <Pressable onPress={() => setSheetMode('end')} disabled={creating}>
+                    <Pressable onPress={() => setSheetMode('end')} disabled={formLocked}>
                       <Text style={styles.endTimeLink}>Ends {formatTime(scheduledEndDateTime)}</Text>
                     </Pressable>
-                    <Pressable onPress={() => setScheduledEndDateTime(null)} disabled={creating}>
+                    <Pressable onPress={() => setScheduledEndDateTime(null)} disabled={formLocked}>
                       <Text style={styles.removeLink}>Remove</Text>
                     </Pressable>
                   </>
                 ) : (
-                  <Pressable onPress={() => setSheetMode('end')} disabled={creating}>
+                  <Pressable onPress={() => setSheetMode('end')} disabled={formLocked}>
                     <Text style={styles.endTimeLink}>Add end time</Text>
                   </Pressable>
                 )}
@@ -239,7 +244,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
               placeholder="Pick a meeting spot"
               valueNode={selectedLocation ? <Text style={styles.selectorValue}>{selectedLocation.name}</Text> : null}
               onPress={() => setSheetMode('location')}
-              disabled={creating}
+              disabled={formLocked}
             />
           </FieldShell>
 
@@ -248,7 +253,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
               value={maxParticipants}
               onChange={setMaxParticipants}
               placeholder="How many people?"
-              disabled={creating}
+              disabled={formLocked}
               error={Boolean(errors.maxParticipants)}
             />
           </FieldShell>
@@ -265,7 +270,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
               maxLength={300}
               multiline
               textAlignVertical="top"
-              editable={!creating}
+              editable={!formLocked}
             />
             <Text style={styles.countText}>{description.length}/300</Text>
           </FieldShell>
@@ -273,7 +278,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
 
         <FormSection step="3" title="Advanced">
           <View style={styles.advancedInner}>
-            <Pressable style={styles.advancedHeader} onPress={() => setAdvancedOpen((value) => !value)} disabled={creating}>
+            <Pressable style={styles.advancedHeader} onPress={() => setAdvancedOpen((value) => !value)} disabled={formLocked}>
               <View>
                 <Text style={styles.advancedTitle}>Advanced options</Text>
                 <Text style={styles.advancedHelp}>Approval, limits, and participant preference</Text>
@@ -288,7 +293,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
                   options={PARTICIPATION_OPTIONS}
                   value={participationMode}
                   onChange={setParticipationMode}
-                  disabled={creating}
+                  disabled={formLocked}
                 />
 
                 {participationMode === 'approval_based' ? (
@@ -301,7 +306,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
                       placeholder="No limit"
                       placeholderTextColor={colors.text3}
                       keyboardType="numeric"
-                      editable={!creating}
+                      editable={!formLocked}
                     />
                     <Text style={styles.helperText}>Limit how many requests can wait at once</Text>
                     <FieldError message={errors.maxRequests} />
@@ -313,7 +318,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
                   options={PREFERENCE_OPTIONS}
                   value={genderPreference}
                   onChange={setGenderPreference}
-                  disabled={creating}
+                  disabled={formLocked}
                 />
               </View>
             ) : null}
@@ -322,7 +327,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
       </ScrollView>
 
       <View style={[styles.stickyBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-        <PrimaryButton label="Publish" loading={creating} disabled={creating} onPress={handlePublish} />
+        <PrimaryButton label="Publish" loading={creating} disabled={formLocked} onPress={handlePublish} />
       </View>
 
       <OptionSheet
@@ -398,9 +403,17 @@ function useFilteredOptions(options: StructuredOptionChoice[], query: string) {
   }, [options, query]);
 }
 
-function CreateTopBar({ submitting, onCancel }: { submitting: boolean; onCancel: () => void }) {
+function CreateTopBar({
+  topInset,
+  submitting,
+  onCancel,
+}: {
+  topInset: number;
+  submitting: boolean;
+  onCancel: () => void;
+}) {
   return (
-    <View style={styles.topBar}>
+    <View style={[styles.topBar, { paddingTop: topInset + 14 }]}>
       <Pressable onPress={onCancel} disabled={submitting} style={styles.cancelButton}>
         <Text style={[styles.cancelText, submitting && styles.cancelTextDisabled]}>Cancel</Text>
       </Pressable>
@@ -835,7 +848,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   topBar: {
-    paddingTop: 54,
     paddingHorizontal: metrics.screenX,
     paddingBottom: 12,
     flexDirection: 'row',

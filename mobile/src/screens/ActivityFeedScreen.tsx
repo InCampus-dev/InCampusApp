@@ -42,6 +42,7 @@ interface ActivityFeedItem {
 }
 
 const ALL_CHIP = 'All';
+const CAMPUS_LABEL = 'Selected campus';
 
 export const ActivityFeedScreen = ({ navigation, route }: any) => {
   const insets = useSafeAreaInsets();
@@ -112,7 +113,11 @@ export const ActivityFeedScreen = ({ navigation, route }: any) => {
 
   return (
     <View style={styles.screen}>
-      <FeedTopBar onAlerts={() => navigation.navigate('NotificationList')} />
+      <FeedTopBar
+        topInset={insets.top}
+        campusLabel={CAMPUS_LABEL}
+        onAlerts={() => navigation.navigate('NotificationList')}
+      />
       <DiscoveryHeader
         chips={categoryChips}
         activeChip={activeCategory}
@@ -152,6 +157,7 @@ export const ActivityFeedScreen = ({ navigation, route }: any) => {
           }
           ListEmptyComponent={
             <EmptyState
+              campusLabel={CAMPUS_LABEL}
               filtered={activities.length > 0}
               onCreate={() => navigation.navigate('CreateActivity')}
               onReset={() => setActiveCategory(ALL_CHIP)}
@@ -178,14 +184,22 @@ export const ActivityFeedScreen = ({ navigation, route }: any) => {
   );
 };
 
-function FeedTopBar({ onAlerts }: { onAlerts: () => void }) {
+function FeedTopBar({
+  topInset,
+  campusLabel,
+  onAlerts,
+}: {
+  topInset: number;
+  campusLabel: string;
+  onAlerts: () => void;
+}) {
   return (
-    <View style={styles.topBar}>
+    <View style={[styles.topBar, { paddingTop: topInset + 14 }]}>
       <View style={styles.brandMark}>
         <Text style={styles.brandMarkText}>iC</Text>
       </View>
       <View style={styles.topTextBlock}>
-        <Text style={styles.campusTitle}>Tongji Jiading</Text>
+        <Text style={styles.campusTitle}>{campusLabel}</Text>
         <View style={styles.trustRow}>
           <Text style={styles.verifiedDot}>✓</Text>
           <Text style={styles.trustText}>Campus only - Verified</Text>
@@ -292,10 +306,12 @@ function ActivityCard({
 }
 
 function EmptyState({
+  campusLabel,
   filtered,
   onCreate,
   onReset,
 }: {
+  campusLabel: string;
   filtered: boolean;
   onCreate: () => void;
   onReset: () => void;
@@ -321,7 +337,7 @@ function EmptyState({
       <Text style={styles.emptyTitle}>No activities yet today</Text>
       <Text style={styles.emptyText}>Be the first to create something on campus</Text>
       <PrimaryButton label="Create Activity" onPress={onCreate} style={styles.emptyButton} />
-      <Text style={styles.emptyFootnote}>Tongji Jiading - campus only</Text>
+      <Text style={styles.emptyFootnote}>{campusLabel} - campus only</Text>
     </View>
   );
 }
@@ -414,7 +430,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   topBar: {
-    paddingTop: 54,
     paddingHorizontal: metrics.screenX,
     paddingBottom: 10,
     flexDirection: 'row',

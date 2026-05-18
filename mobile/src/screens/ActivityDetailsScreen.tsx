@@ -128,6 +128,10 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
   }, [activity, isFull, isHost]);
 
   const handlePrimaryAction = async () => {
+    if (joining || successMessage) {
+      return;
+    }
+
     if (!activity) {
       navigation.reset({ index: 0, routes: [{ name: 'ActivityFeed' }] });
       return;
@@ -161,7 +165,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
   if (loading) {
     return (
       <View style={styles.screen}>
-        <DetailTopBar onBack={() => navigation.goBack()} />
+        <DetailTopBar topInset={insets.top} onBack={() => navigation.goBack()} />
         <DetailLoading bottomInset={insets.bottom} />
       </View>
     );
@@ -170,7 +174,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
   if (!activity) {
     return (
       <View style={styles.screen}>
-        <DetailTopBar onBack={() => navigation.goBack()} />
+        <DetailTopBar topInset={insets.top} onBack={() => navigation.goBack()} />
         <UnavailableState
           error={loadError}
           onRetry={fetchActivityDetails}
@@ -186,6 +190,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
   return (
     <View style={styles.screen}>
       <DetailTopBar
+        topInset={insets.top}
         onBack={() => navigation.goBack()}
         trailing={
           activity.canManageRequests ? (
@@ -255,7 +260,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
         max={activity.maxParticipants}
         ctaLabel={cta.label}
         tone={cta.tone}
-        disabled={cta.disabled}
+        disabled={cta.disabled || Boolean(successMessage)}
         loading={joining}
         onPress={handlePrimaryAction}
       />
@@ -270,14 +275,16 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
 };
 
 function DetailTopBar({
+  topInset,
   onBack,
   trailing,
 }: {
+  topInset: number;
   onBack: () => void;
   trailing?: React.ReactNode;
 }) {
   return (
-    <View style={styles.topBar}>
+    <View style={[styles.topBar, { paddingTop: topInset + 14 }]}>
       <Pressable style={styles.backButton} onPress={onBack}>
         <Text style={styles.backIcon}>‹</Text>
       </Pressable>
@@ -582,7 +589,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   topBar: {
-    paddingTop: 54,
     paddingHorizontal: 8,
     paddingBottom: 10,
     minHeight: 96,

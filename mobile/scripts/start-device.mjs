@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const port = process.env.INCAMPUS_BACKEND_PORT ?? "3000";
 const host = process.env.INCAMPUS_DEVICE_HOST ?? findLanAddress();
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
+const isWindows = process.platform === "win32";
 
 if (!host) {
   console.error(
@@ -20,7 +20,7 @@ const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? `http://${host}:${por
 console.log(`Starting Expo for physical devices with API base URL: ${apiBaseUrl}`);
 console.log("Keep the phone able to reach this host IP; set INCAMPUS_DEVICE_HOST if auto detection picks the wrong one.");
 
-const child = spawn(npxCommand, ["expo", "start", "--lan"], {
+const childOptions = {
   cwd: mobileRoot,
   stdio: "inherit",
   env: {
@@ -28,7 +28,9 @@ const child = spawn(npxCommand, ["expo", "start", "--lan"], {
     EXPO_NO_TELEMETRY: process.env.EXPO_NO_TELEMETRY ?? "1",
     EXPO_PUBLIC_API_BASE_URL: apiBaseUrl
   }
-});
+};
+
+const child = spawnCommand("npx", ["expo", "start", "--lan"], childOptions);
 
 child.on("error", (error) => {
   console.error(`Failed to start Expo device command: ${error.message}`);
@@ -43,6 +45,14 @@ child.on("exit", (code, signal) => {
 
   process.exit(code ?? 0);
 });
+
+function spawnCommand(command, args, options) {
+  if (!isWindows) {
+    return spawn(command, args, options);
+  }
+
+  return spawn("cmd.exe", ["/d", "/s", "/c", [command, ...args].join(" ")], options);
+}
 
 function findLanAddress() {
   const candidates = [];

@@ -150,7 +150,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
       setSuccessMessage(message);
       setTimeout(() => {
         navigation.navigate('ActivityFeed', { refreshAfterJoin: Date.now() });
-      }, 900);
+      }, 1200);
     } catch (error) {
       setJoinError(getApiErrorMessage(error) ?? 'Something went wrong. Try again.');
     } finally {
@@ -174,7 +174,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
         <UnavailableState
           error={loadError}
           onRetry={fetchActivityDetails}
-          onFeed={() => navigation.navigate('ActivityFeed')}
+          onFeed={() => navigation.reset({ index: 0, routes: [{ name: 'ActivityFeed' }] })}
           onAlerts={() => navigation.navigate('NotificationList')}
         />
       </View>
@@ -220,11 +220,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
             <InlineBanner tone="error" text="Something went wrong. Try again." />
           </View>
         ) : null}
-        {successMessage ? (
-          <View style={styles.topBanner}>
-            <InlineBanner tone="success" text={successMessage} />
-          </View>
-        ) : null}
+        {/* success toast rendered as PostActionToast overlay below */}
 
         <View style={styles.headerSection}>
           <View style={styles.headerRow}>
@@ -263,6 +259,12 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
         loading={joining}
         onPress={handlePrimaryAction}
       />
+      {successMessage ? (
+        <PostActionToast
+          message={successMessage}
+          tone={activity.participationMode === 'approval_based' ? 'blue' : 'green'}
+        />
+      ) : null}
     </View>
   );
 };
@@ -335,7 +337,7 @@ function Divider() {
 function DescriptionSection({ text }: { text: string }) {
   return (
     <SectionCard style={styles.section}>
-      <Text style={styles.sectionTitle}>About this activity</Text>
+      <Text style={styles.sectionTitle}>About</Text>
       <Text style={styles.description}>{text}</Text>
     </SectionCard>
   );
@@ -412,10 +414,45 @@ function StickyDetailCTA({
 }) {
   return (
     <View style={[styles.stickyBar, { paddingBottom: Math.max(bottomInset, 10) }]}>
-      <Text style={styles.stickySummary}>
-        {current} of {max} spots filled
-      </Text>
-      <PrimaryButton label={ctaLabel} tone={tone} disabled={disabled} loading={loading} onPress={onPress} />
+      <View style={styles.stickyRow}>
+        <View style={styles.stickySummaryBlock}>
+          <Text style={styles.stickySummaryCount}>
+            {current}
+            <Text style={styles.stickySummaryOf}> of {max}</Text>
+          </Text>
+          <Text style={styles.stickySummaryLabel}>spots filled</Text>
+        </View>
+        <View style={styles.stickyCTAButton}>
+          <PrimaryButton label={ctaLabel} tone={tone} disabled={disabled} loading={loading} onPress={onPress} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function PostActionToast({
+  message,
+  tone,
+}: {
+  message: string;
+  tone: 'green' | 'blue';
+}) {
+  const bg = tone === 'blue' ? colors.sky : colors.primary;
+  return (
+    <View style={styles.toastOverlay}>
+      <View style={[styles.toastCard, { borderColor: `${bg}33` }]}>
+        <View style={[styles.toastIcon, { backgroundColor: bg }]}>
+          <Text style={styles.toastIconText}>✓</Text>
+        </View>
+        <View style={styles.toastContent}>
+          <Text style={[styles.toastTitle, { color: tone === 'blue' ? colors.skyDeep : colors.primaryDeep }]}>
+            {message}
+          </Text>
+          <Text style={styles.toastSub}>
+            {tone === 'blue' ? 'The host will review and let you know.' : 'Returning to your feed…'}
+          </Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -768,7 +805,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.borderSoft,
-    paddingTop: 10,
+    paddingTop: 12,
     paddingHorizontal: metrics.screenX,
     shadowColor: '#101828',
     shadowOpacity: 0.08,
@@ -776,12 +813,77 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
-  stickySummary: {
+  stickyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  stickySummaryBlock: {
+    flexShrink: 0,
+    gap: 2,
+  },
+  stickySummaryCount: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  stickySummaryOf: {
+    color: colors.text3,
+  },
+  stickySummaryLabel: {
     color: colors.text2,
-    fontSize: 13,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  stickyCTAButton: {
+    flex: 1,
+  },
+  toastOverlay: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 96,
+    zIndex: 25,
+  },
+  toastCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#101828',
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 14 },
+    shadowRadius: 28,
+    elevation: 10,
+  },
+  toastIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toastIconText: {
+    color: colors.card,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  toastContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  toastTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  toastSub: {
+    color: colors.text2,
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 1,
   },
   loadingLine: {
     marginTop: 12,

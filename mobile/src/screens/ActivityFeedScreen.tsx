@@ -172,7 +172,6 @@ export const ActivityFeedScreen = ({ navigation, route }: any) => {
       <FeedBottomTabBar
         bottomInset={insets.bottom}
         onCreate={() => navigation.navigate('CreateActivity')}
-        onAlerts={() => navigation.navigate('NotificationList')}
         onMine={() => navigation.navigate('PersonalActivityList')}
       />
     </View>
@@ -355,12 +354,10 @@ function FeedSkeleton({ bottomPadding }: { bottomPadding: number }) {
 function FeedBottomTabBar({
   bottomInset,
   onCreate,
-  onAlerts,
   onMine,
 }: {
   bottomInset: number;
   onCreate: () => void;
-  onAlerts: () => void;
   onMine: () => void;
 }) {
   return (
@@ -368,10 +365,6 @@ function FeedBottomTabBar({
       <TabItem label="Feed" mark="F" active />
       <Pressable style={styles.createTabButton} onPress={onCreate}>
         <Text style={styles.createTabText}>+</Text>
-      </Pressable>
-      <Pressable style={styles.tabItem} onPress={onAlerts}>
-        <Text style={styles.tabMark}>A</Text>
-        <Text style={styles.tabLabel}>Alerts</Text>
       </Pressable>
       <Pressable style={styles.tabItem} onPress={onMine}>
         <Text style={styles.tabMark}>M</Text>

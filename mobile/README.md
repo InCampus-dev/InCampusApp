@@ -111,6 +111,7 @@ npm run typecheck --workspace mobile
 ```
 
 The mobile API client reads `EXPO_PUBLIC_API_BASE_URL`. If it is not set, it falls back to `http://localhost:3000`.
+Use `mobile/.env.example` as the local configuration template.
 
 Examples:
 

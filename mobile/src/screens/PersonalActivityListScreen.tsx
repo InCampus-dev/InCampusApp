@@ -11,6 +11,7 @@ import {
   ScreenShell,
   SectionCard,
   colors,
+  metrics,
 } from '../components/InCampusUI';
 
 type PersonalActivityStatus = 'host' | 'pending_request' | 'confirmed_participant';
@@ -203,7 +204,7 @@ const styles = StyleSheet.create({
   segmentTextActive: { color: colors.text },
   bannerWrap: { paddingHorizontal: 16, marginTop: 10 },
   loadingWrap: { padding: 16 },
-  list: { padding: 16, gap: 10, paddingBottom: 24 },
+  list: { padding: 16, gap: 10, paddingBottom: metrics.bottomTabContentPadding },
   card: { padding: 14 },
   cardMuted: { opacity: 0.82 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginBottom: 8 },

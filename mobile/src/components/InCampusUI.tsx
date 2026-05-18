@@ -44,6 +44,7 @@ export const metrics = {
   radius: 18,
   smallRadius: 12,
   stickyMinHeight: 92,
+  bottomTabContentPadding: 124,
 };
 
 const CATEGORY_STYLE: Record<string, { bg: string; fg: string; dot: string }> = {
@@ -638,6 +639,15 @@ export function LoadingRows({ count = 3 }: { count?: number }) {
   );
 }
 
+export function LoadingFooter({ label = 'Loading more' }: { label?: string }) {
+  return (
+    <View style={shellStyles.loadingFooter}>
+      <ActivityIndicator color={colors.text3} />
+      <Text style={shellStyles.loadingFooterText}>{label}</Text>
+    </View>
+  );
+}
+
 const uiStyles = StyleSheet.create({
   pill: {
     alignSelf: 'flex-start',
@@ -1081,6 +1091,19 @@ const shellStyles = StyleSheet.create({
     color: colors.text2,
     fontSize: 14,
     fontWeight: '900',
+  },
+  loadingFooter: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+  },
+  loadingFooterText: {
+    color: colors.text3,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
   bottomBar: {
     backgroundColor: colors.card,

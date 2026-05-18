@@ -6,10 +6,12 @@ import {
   BottomTabBar,
   EmptyState,
   InlineBanner,
+  LoadingFooter,
   LoadingRows,
   ScreenShell,
   SectionCard,
   colors,
+  metrics,
 } from '../components/InCampusUI';
 
 interface NotificationItem {
@@ -151,7 +153,7 @@ export default function NotificationListScreen({ navigation }: { navigation: any
           onEndReachedThreshold={0.3}
           ListHeaderComponent={errorMessage ? <InlineBanner tone="error" text={errorMessage} actionLabel="Retry" onAction={onRefresh} /> : null}
           ListEmptyComponent={<EmptyState icon="!" title="No notifications yet" text="When students join your activities or your requests get a response, you'll see it here." primaryLabel="Browse activities" onPrimary={() => navigation.navigate('ActivityFeed')} />}
-          ListFooterComponent={loadingMore ? <View style={styles.footer}><ActivityIndicator color={colors.text3} /><Text style={styles.footerText}>Loading more</Text></View> : null}
+          ListFooterComponent={loadingMore ? <LoadingFooter /> : null}
           renderItem={({ item }) => <NotificationCard item={item} loading={tappedId === item.notificationId} onPress={() => handleTapNotification(item.notificationId)} />}
         />
       )}
@@ -225,7 +227,7 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 26, fontWeight: '900', letterSpacing: -0.4 },
   subtitle: { color: colors.text2, fontSize: 13, fontWeight: '700', marginTop: 5 },
   loadingWrap: { padding: 16 },
-  list: { padding: 16, gap: 10, paddingBottom: 24 },
+  list: { padding: 16, gap: 10, paddingBottom: metrics.bottomTabContentPadding },
   card: { padding: 14, flexDirection: 'row', gap: 12, alignItems: 'flex-start', borderLeftWidth: 4 },
   typeIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   typeIconText: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
@@ -235,6 +237,4 @@ const styles = StyleSheet.create({
   time: { color: colors.text3, fontSize: 11, fontWeight: '900' },
   message: { color: colors.text2, fontSize: 13, fontWeight: '600', lineHeight: 19, marginTop: 4 },
   hint: { fontSize: 12, fontWeight: '900', marginTop: 8 },
-  footer: { flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingVertical: 18 },
-  footerText: { color: colors.text3, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
 });

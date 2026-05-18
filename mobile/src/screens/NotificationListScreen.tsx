@@ -1,21 +1,20 @@
-// Task: M06 | Path: mobile/src/screens/NotificationListScreen.tsx
-
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import api, { getApiErrorCode, getApiErrorMessage } from '../services/api';
+import {
+  BottomTabBar,
+  EmptyState,
+  InlineBanner,
+  LoadingRows,
+  ScreenShell,
+  SectionCard,
+  colors,
+} from '../components/InCampusUI';
 
 interface NotificationItem {
   notificationId: string;
-  notificationType: string;
+  notificationType: 'JoinEvent' | 'ApplicationOutcome' | 'ActivityCancellation' | 'LeaveEvent' | 'ActivityReminder' | string;
   notificationTitle: string;
   notificationMessage: string;
   relatedActivityId: string | null;
@@ -31,21 +30,11 @@ interface NotificationContext {
   fallbackReason?: string;
 }
 
-type NotificationListResponse =
-  | NotificationItem[]
-  | {
-      notifications?: NotificationItem[];
-      total?: number;
-    };
-
-type NotificationFallbackReason =
-  | 'TargetActivityUnavailable'
-  | 'BlockRelationshipExists'
-  | 'MissingActivityContext'
-  | 'UnknownNotificationTarget';
+type NotificationListResponse = NotificationItem[] | { notifications?: NotificationItem[]; total?: number; page?: number; limit?: number };
+type NotificationFallbackReason = 'TargetActivityUnavailable' | 'BlockRelationshipExists' | 'MissingActivityContext' | 'UnknownNotificationTarget';
 
 const PAGE_SIZE = 20;
-
+const ROUTES_REQUIRING_ACTIVITY_ID = new Set(['ActivityDetails', 'ManageRequests']);
 const CONTEXT_TYPE_TO_SCREEN: Record<string, string> = {
   ActivityDetails: 'ActivityDetails',
   JoinRequestReview: 'ManageRequests',
@@ -53,8 +42,6 @@ const CONTEXT_TYPE_TO_SCREEN: Record<string, string> = {
   CancelledActivityContext: 'ActivityDetails',
   NotificationFallbackView: 'NotificationFallback',
 };
-
-const ROUTES_REQUIRING_ACTIVITY_ID = new Set(['ActivityDetails', 'ManageRequests']);
 
 export default function NotificationListScreen({ navigation }: { navigation: any }) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -66,35 +53,26 @@ export default function NotificationListScreen({ navigation }: { navigation: any
   const [tappedId, setTappedId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
   useEffect(() => {
     AsyncStorage.getItem('authToken').then((token) => {
-      if (!token) {
-        navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
-      }
+      if (!token) navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
     });
   }, [navigation]);
 
   const fetchNotifications = useCallback(async (pageNum: number, append = false) => {
     setErrorMessage(null);
-
     try {
-      const response = await api.get<NotificationListResponse>('/notifications', {
-        params: { page: pageNum, limit: PAGE_SIZE },
-      });
-      const data = Array.isArray(response.data)
-        ? response.data
-        : response.data.notifications ?? [];
+      const response = await api.get<NotificationListResponse>('/notifications', { params: { page: pageNum, limit: PAGE_SIZE } });
+      const data = Array.isArray(response.data) ? response.data : response.data.notifications ?? [];
       const total = Array.isArray(response.data) ? undefined : response.data.total;
-
-      if (append) {
-        setNotifications((prev) => [...prev, ...data]);
-      } else {
-        setNotifications(data);
-      }
-
+      setNotifications((prev) => append ? [...prev, ...data] : data);
       setHasMore(typeof total === 'number' ? pageNum * PAGE_SIZE < total : data.length === PAGE_SIZE);
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error) ?? 'Could not load notifications.');
+      setErrorMessage(getApiErrorMessage(error) ?? "Couldn't load notifications");
     }
   }, []);
 
@@ -124,10 +102,7 @@ export default function NotificationListScreen({ navigation }: { navigation: any
       const response = await api.get<NotificationContext>(`/notifications/${notificationId}/context`);
       navigateToNotificationContext(response.data);
     } catch (error) {
-      const code = getApiErrorCode(error);
-      navigation.navigate('NotificationFallback', {
-        reason: getFallbackReasonFromErrorCode(code),
-      });
+      navigation.navigate('NotificationFallback', { reason: getFallbackReasonFromErrorCode(getApiErrorCode(error)) });
     } finally {
       setTappedId(null);
     }
@@ -135,146 +110,102 @@ export default function NotificationListScreen({ navigation }: { navigation: any
 
   function navigateToNotificationContext(context: NotificationContext) {
     if (!context.accessible) {
-      navigation.navigate('NotificationFallback', { reason: context.fallbackReason });
+      navigation.navigate('NotificationFallback', { reason: context.fallbackReason ?? 'UnknownNotificationTarget' });
       return;
     }
-
     const screenName = CONTEXT_TYPE_TO_SCREEN[context.contextType];
-    if (!screenName) {
-      navigation.navigate('NotificationFallback', { reason: 'UnknownNotificationTarget' });
+    if (!screenName || screenName === 'NotificationFallback') {
+      navigation.navigate('NotificationFallback', { reason: context.fallbackReason ?? 'UnknownNotificationTarget' });
       return;
     }
-
-    if (screenName === 'NotificationFallback') {
-      navigation.navigate('NotificationFallback', { reason: context.fallbackReason });
-      return;
-    }
-
     if (ROUTES_REQUIRING_ACTIVITY_ID.has(screenName)) {
       if (!context.contextId) {
         navigation.navigate('NotificationFallback', { reason: 'MissingActivityContext' });
         return;
       }
-
       navigation.navigate(screenName, { activityId: context.contextId });
       return;
     }
-
     if (screenName === 'PersonalActivityList') {
-      navigation.navigate('PersonalActivityList', {
-        activityId: context.contextId ?? undefined,
-        source: 'notification',
-      });
+      navigation.navigate('PersonalActivityList', { activityId: context.contextId ?? undefined, source: 'notification' });
       return;
     }
-
     navigation.navigate(screenName);
   }
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.stateText}>Loading notifications...</Text>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Notifications</Text>
-      <Text style={styles.subheader}>
-        Opening a notification is read-only. Deleted, blocked, or unsupported targets go to a safe fallback.
-      </Text>
-
-      {errorMessage ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{errorMessage}</Text>
-          <TouchableOpacity onPress={onRefresh}>
-            <Text style={styles.retryText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-
-      <FlatList
-        data={notifications}
-        keyExtractor={(item) => item.notificationId}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        onEndReached={onEndReached}
-        onEndReachedThreshold={0.3}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.notificationItem}
-            onPress={() => handleTapNotification(item.notificationId)}
-            disabled={tappedId === item.notificationId}
-          >
-            <View style={styles.typePill}>
-              <Text style={styles.typeText}>{formatNotificationType(item.notificationType)}</Text>
-            </View>
-            <View style={styles.notificationContent}>
-              <Text style={styles.notificationTitle}>{item.notificationTitle}</Text>
-              <Text style={styles.notificationMessage} numberOfLines={2}>
-                {item.notificationMessage}
-              </Text>
-              {item.triggeringAccountId ? (
-                <Text style={styles.notificationUser}>
-                  From: {item.triggeringAccountId}
-                </Text>
-              ) : null}
-              <Text style={styles.notificationTime}>{formatTime(item.createdAt)}</Text>
-            </View>
-            {tappedId === item.notificationId ? (
-              <ActivityIndicator size="small" style={styles.itemLoader} />
-            ) : null}
-          </TouchableOpacity>
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>No notifications yet</Text>
-            <Text style={styles.emptyText}>
-              Join requests, approvals, cancellations, and reminders will appear here.
-            </Text>
-          </View>
-        }
-        ListFooterComponent={loadingMore ? <ActivityIndicator style={styles.footer} /> : null}
-      />
-    </View>
+    <ScreenShell padded={false} style={styles.screen}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Alerts</Text>
+        <Text style={styles.subtitle}>Updates from your campus activities</Text>
+      </View>
+      {loading ? (
+        <View style={styles.loadingWrap}><LoadingRows count={4} /></View>
+      ) : (
+        <FlatList
+          data={notifications}
+          keyExtractor={(item) => item.notificationId}
+          contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.3}
+          ListHeaderComponent={errorMessage ? <InlineBanner tone="error" text={errorMessage} actionLabel="Retry" onAction={onRefresh} /> : null}
+          ListEmptyComponent={<EmptyState icon="!" title="No notifications yet" text="When students join your activities or your requests get a response, you'll see it here." primaryLabel="Browse activities" onPrimary={() => navigation.navigate('ActivityFeed')} />}
+          ListFooterComponent={loadingMore ? <View style={styles.footer}><ActivityIndicator color={colors.text3} /><Text style={styles.footerText}>Loading more</Text></View> : null}
+          renderItem={({ item }) => <NotificationCard item={item} loading={tappedId === item.notificationId} onPress={() => handleTapNotification(item.notificationId)} />}
+        />
+      )}
+      <BottomTabBar active="alerts" onFeed={() => navigation.navigate('ActivityFeed')} onCreate={() => navigation.navigate('CreateActivity')} onMine={() => navigation.navigate('Mine')} />
+    </ScreenShell>
   );
 }
 
-function formatTime(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return iso;
-  }
-
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return 'Just now';
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHrs = Math.floor(diffMin / 60);
-  if (diffHrs < 24) return `${diffHrs}h ago`;
-  const diffDays = Math.floor(diffHrs / 24);
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
+function NotificationCard({ item, loading, onPress }: { item: NotificationItem; loading: boolean; onPress: () => void }) {
+  const vis = notificationVisual(item);
+  return (
+    <Pressable onPress={onPress} disabled={loading} style={{ opacity: loading ? 0.6 : 1 }}>
+      <SectionCard style={[styles.card, { borderLeftColor: vis.accent }]}> 
+        <View style={[styles.typeIcon, { backgroundColor: vis.soft }]}><Text style={[styles.typeIconText, { color: vis.accent }]}>{vis.icon}</Text></View>
+        <View style={styles.cardBody}>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardTitle} numberOfLines={1}>{item.notificationTitle}</Text>
+            <Text style={styles.time}>{relativeTime(item.createdAt)}</Text>
+          </View>
+          <Text style={styles.message} numberOfLines={2}>{item.notificationMessage}</Text>
+          <Text style={[styles.hint, { color: vis.accent }]}>{vis.hint}</Text>
+        </View>
+        {loading ? <ActivityIndicator color={vis.accent} size="small" /> : null}
+      </SectionCard>
+    </Pressable>
+  );
 }
 
-function formatNotificationType(type: string): string {
-  switch (type) {
-    case 'JoinEvent':
-      return 'Join';
-    case 'ApplicationOutcome':
-      return 'Outcome';
-    case 'ActivityCancellation':
-      return 'Cancelled';
-    case 'LeaveEvent':
-      return 'Leave';
-    case 'ActivityReminder':
-      return 'Reminder';
-    default:
-      return 'Notice';
+function notificationVisual(item: NotificationItem) {
+  if (item.notificationType === 'JoinEvent') return { accent: colors.sky, soft: colors.skySoft, icon: '+', hint: 'Tap to review' };
+  if (item.notificationType === 'ActivityCancellation') return { accent: colors.coral, soft: colors.coralSoft, icon: 'x', hint: 'Tap to see details' };
+  if (item.notificationType === 'LeaveEvent') return { accent: colors.coral, soft: colors.coralSoft, icon: '-', hint: 'Tap to review' };
+  if (item.notificationType === 'ActivityReminder') return { accent: '#8A5B00', soft: colors.yellowSoft, icon: 't', hint: 'Tap to view' };
+  if (item.notificationType === 'ApplicationOutcome') {
+    const text = `${item.notificationTitle} ${item.notificationMessage}`.toLowerCase();
+    const approved = text.includes('approved') || text.includes('accepted');
+    return approved
+      ? { accent: colors.primary, soft: colors.primarySoft, icon: 'ok', hint: 'Tap to view' }
+      : { accent: colors.text2, soft: colors.borderSoft, icon: 'x', hint: 'Tap to view activities' };
   }
+  return { accent: colors.sky, soft: colors.skySoft, icon: 'i', hint: 'Tap to view' };
+}
+
+function relativeTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
 }
 
 function getFallbackReasonFromErrorCode(code?: string): NotificationFallbackReason {
@@ -289,48 +220,21 @@ function getFallbackReasonFromErrorCode(code?: string): NotificationFallbackReas
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  stateText: { marginTop: 8, fontSize: 14, color: '#666' },
-  header: { fontSize: 22, fontWeight: '700', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 },
-  subheader: { fontSize: 13, color: '#666', paddingHorizontal: 20, paddingBottom: 12, lineHeight: 18 },
-  notificationItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
-  },
-  typePill: {
-    minWidth: 74,
-    borderRadius: 14,
-    backgroundColor: '#eef5ff',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    alignItems: 'center',
-    marginRight: 12,
-    marginTop: 2,
-  },
-  typeText: { fontSize: 12, color: '#1976d2', fontWeight: '700' },
-  notificationContent: { flex: 1 },
-  notificationTitle: { fontSize: 15, fontWeight: '600', color: '#222', marginBottom: 2 },
-  notificationMessage: { fontSize: 14, color: '#555', lineHeight: 19, marginBottom: 4 },
-  notificationUser: { fontSize: 12, color: '#4A90D9', marginBottom: 2 },
-  notificationTime: { fontSize: 12, color: '#999' },
-  itemLoader: { marginLeft: 8, alignSelf: 'center' },
-  emptyContainer: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 24 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#333', marginBottom: 8 },
-  emptyText: { fontSize: 14, color: '#666', lineHeight: 20, textAlign: 'center' },
-  footer: { paddingVertical: 16 },
-  errorBanner: {
-    backgroundColor: '#ffebee',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: '#ffcdd2',
-  },
-  errorText: { color: '#b71c1c', marginBottom: 4 },
-  retryText: { color: '#1976d2', fontWeight: '700' },
+  screen: { backgroundColor: colors.bg, paddingTop: 54, paddingBottom: 84 },
+  header: { paddingHorizontal: 20, paddingTop: 8 },
+  title: { color: colors.text, fontSize: 26, fontWeight: '900', letterSpacing: -0.4 },
+  subtitle: { color: colors.text2, fontSize: 13, fontWeight: '700', marginTop: 5 },
+  loadingWrap: { padding: 16 },
+  list: { padding: 16, gap: 10, paddingBottom: 24 },
+  card: { padding: 14, flexDirection: 'row', gap: 12, alignItems: 'flex-start', borderLeftWidth: 4 },
+  typeIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  typeIconText: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
+  cardBody: { flex: 1 },
+  cardTitleRow: { flexDirection: 'row', gap: 8, alignItems: 'baseline' },
+  cardTitle: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '900' },
+  time: { color: colors.text3, fontSize: 11, fontWeight: '900' },
+  message: { color: colors.text2, fontSize: 13, fontWeight: '600', lineHeight: 19, marginTop: 4 },
+  hint: { fontSize: 12, fontWeight: '900', marginTop: 8 },
+  footer: { flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingVertical: 18 },
+  footerText: { color: colors.text3, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
 });

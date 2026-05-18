@@ -13,6 +13,9 @@
     },
     "android": {
       "package": "com.incampus.mobile"
-    }
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
   }
 }

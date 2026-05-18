@@ -178,7 +178,7 @@ export const ActivityFeedScreen = ({ navigation, route }: any) => {
       <FeedBottomTabBar
         bottomInset={insets.bottom}
         onCreate={() => navigation.navigate('CreateActivity')}
-        onMine={() => navigation.navigate('PersonalActivityList')}
+        onMine={() => navigation.navigate('Mine')}
       />
     </View>
   );

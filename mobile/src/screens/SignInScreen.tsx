@@ -1,19 +1,26 @@
-// Task: M02 | Path: mobile/src/screens/SignInScreen.tsx
-
-import React, { useState } from "react";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import React, { useLayoutEffect, useState } from 'react';
 import {
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import api from "../services/api";
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import api, { getApiErrorCode } from '../services/api';
+import {
+  BrandHeader,
+  InlineBanner,
+  PasswordField,
+  PrimaryButton,
+  ScreenShell,
+  TextField,
+  TitleBlock,
+  colors,
+} from '../components/InCampusUI';
 
 interface SignInResponse {
   accessToken: string;
@@ -21,167 +28,171 @@ interface SignInResponse {
   selectedCampusId: string | null;
 }
 
-const SignInScreen: React.FC = () => {
+export default function SignInScreen() {
   const navigation = useNavigation<any>();
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [universityEmail, setUniversityEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [emailError, setEmailError] = useState<string | undefined>();
+  const [passwordError, setPasswordError] = useState<string | undefined>();
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const handleSignIn = async () => {
-    setErrorMessage("");
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
-    if (!email.trim() || !password.trim()) {
-      setErrorMessage("Email and password are required.");
+  async function handleSignIn() {
+    setEmailError(undefined);
+    setPasswordError(undefined);
+    setFormError(null);
+
+    if (!universityEmail.trim()) {
+      setEmailError('Please enter your university email');
+      return;
+    }
+    if (!password.trim()) {
+      setPasswordError('Please enter your password');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await api.post<SignInResponse>("/auth/signin", {
-        universityEmail: email.trim(),
-        password
+      const response = await api.post<SignInResponse>('/auth/signin', {
+        universityEmail: universityEmail.trim(),
+        password,
       });
-
       const { accessToken, studentAccountId, selectedCampusId } = response.data;
-
-      await AsyncStorage.setItem("authToken", accessToken);
-      await AsyncStorage.setItem("studentAccountId", studentAccountId);
+      await AsyncStorage.setItem('authToken', accessToken);
+      await AsyncStorage.setItem('studentAccountId', studentAccountId);
       if (selectedCampusId) {
-        await AsyncStorage.setItem("selectedCampusId", selectedCampusId);
+        await AsyncStorage.setItem('selectedCampusId', selectedCampusId);
       } else {
-        await AsyncStorage.removeItem("selectedCampusId");
+        await AsyncStorage.removeItem('selectedCampusId');
       }
-
-      if (!selectedCampusId) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "CampusSelection" }]
-        });
+      navigation.reset({
+        index: 0,
+        routes: [{ name: selectedCampusId ? 'ActivityFeed' : 'CampusSelection' }],
+      });
+    } catch (error) {
+      const code = getApiErrorCode(error);
+      if (code === 'INVALID_CREDENTIALS') {
+        setPasswordError('Email or password is incorrect');
+      } else if (code === 'ACCOUNT_NOT_VERIFIED') {
+        setPasswordError('Check your inbox to verify your account');
+      } else if (code === 'ACCOUNT_SUSPENDED' || code === 'ACCOUNT_BANNED') {
+        setFormError('This account cannot sign in right now');
       } else {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "ActivityFeed" }]
-        });
-      }
-    } catch (err: any) {
-      const errorCode = err?.response?.data?.error?.code;
-      switch (errorCode) {
-        case "INVALID_CREDENTIALS":
-          setErrorMessage("Invalid email or password.");
-          break;
-        case "ACCOUNT_NOT_VERIFIED":
-          setErrorMessage("Please verify your email before signing in.");
-          break;
-        case "ACCOUNT_SUSPENDED":
-          setErrorMessage("Your account has been suspended. Please contact support.");
-          break;
-        case "ACCOUNT_BANNED":
-          setErrorMessage("Your account has been banned.");
-          break;
-        default:
-          setErrorMessage("Sign in failed. Please try again.");
+        setFormError('Sign in failed. Please try again.');
       }
     } finally {
       setLoading(false);
     }
-  };
-
-  const navigateToSignUp = () => {
-    navigation.navigate("SignUp");
-  };
+  }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Sign in with your university email</Text>
-
-        {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
-
-        <TextInput
-          style={styles.input}
-          placeholder="University email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-          editable={!loading}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-          editable={!loading}
-        />
-
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleSignIn}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Sign In</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={navigateToSignUp} style={styles.linkContainer}>
-          <Text style={styles.link}>Don't have an account? Sign Up</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    <ScreenShell style={styles.screen}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <BrandHeader />
+          <View style={styles.motifCard}>
+            <Text style={styles.motifText}>
+              College is full of people just like you, looking for the same things you are.
+            </Text>
+            <Text style={styles.motifKicker}>InCampus - built by students, for students</Text>
+            <View style={styles.motifCircle} />
+            <View style={styles.motifSquare} />
+          </View>
+          <TitleBlock title="Welcome back" subtitle="Sign in with your university email" />
+          {formError ? <InlineBanner tone="error" text={formError} /> : null}
+          <TextField
+            label="University email"
+            placeholder="you@tongji.edu.cn"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={universityEmail}
+            onChangeText={setUniversityEmail}
+            editable={!loading}
+            error={emailError}
+          />
+          <PasswordField
+            label="Password"
+            placeholder="Enter your password"
+            value={password}
+            onChangeText={setPassword}
+            visible={passwordVisible}
+            onToggleVisible={() => setPasswordVisible((value) => !value)}
+            editable={!loading}
+            error={passwordError}
+          />
+          <PrimaryButton label="Sign in" loading={loading} onPress={handleSignIn} style={styles.cta} />
+          <Pressable style={styles.secondaryLink} onPress={() => navigation.navigate('SignUp')}>
+            <Text style={styles.secondaryText}>Create account</Text>
+          </Pressable>
+          <View style={styles.trustLine}>
+            <View style={styles.trustDot} />
+            <Text style={styles.trustText}>Only verified students. No profile browsing.</Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ScreenShell>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 40
+  screen: { backgroundColor: colors.bg },
+  flex: { flex: 1 },
+  content: { flexGrow: 1, paddingHorizontal: 24, justifyContent: 'center', paddingBottom: 28 },
+  motifCard: {
+    borderRadius: 20,
+    backgroundColor: '#EDF8F4',
+    padding: 20,
+    marginBottom: 28,
+    overflow: 'hidden',
   },
-  title: { fontSize: 28, fontWeight: "700", marginBottom: 8, textAlign: "center" },
-  subtitle: {
+  motifText: {
+    maxWidth: 245,
+    color: colors.text,
     fontSize: 15,
-    color: "#666",
-    marginBottom: 24,
-    textAlign: "center"
+    lineHeight: 21,
+    fontWeight: '800',
   },
-  error: {
-    color: "#d32f2f",
-    fontSize: 14,
-    marginBottom: 16,
-    textAlign: "center"
+  motifKicker: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginTop: 10,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 12
+  motifCircle: {
+    position: 'absolute',
+    right: -12,
+    top: -16,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.yellow,
+    opacity: 0.5,
   },
-  button: {
-    backgroundColor: "#1976d2",
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 8
+  motifSquare: {
+    position: 'absolute',
+    right: 24,
+    bottom: -22,
+    width: 54,
+    height: 54,
+    borderRadius: 14,
+    backgroundColor: colors.coral,
+    opacity: 0.38,
+    transform: [{ rotate: '20deg' }],
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  linkContainer: { marginTop: 24, alignItems: "center" },
-  link: { color: "#1976d2", fontSize: 14 }
+  cta: { marginTop: 8 },
+  secondaryLink: { alignItems: 'center', paddingVertical: 16 },
+  secondaryText: { color: colors.primary, fontSize: 14, fontWeight: '900' },
+  trustLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 },
+  trustDot: { width: 14, height: 14, borderRadius: 4, backgroundColor: colors.primary },
+  trustText: { color: colors.text2, fontSize: 12, fontWeight: '700' },
 });
-
-export default SignInScreen;

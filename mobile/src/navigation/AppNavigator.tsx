@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { ActivityDetailsScreen } from '../screens/ActivityDetailsScreen';
 import { ActivityFeedScreen } from '../screens/ActivityFeedScreen';
@@ -41,25 +41,6 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-function FeedHeaderActions({ navigation }: { navigation: any }) {
-  return (
-    <View style={styles.headerActions}>
-      <Pressable onPress={() => navigation.navigate('NotificationList')}>
-        <Text style={styles.headerActionText}>Alerts</Text>
-      </Pressable>
-      <Pressable onPress={() => navigation.navigate('PersonalActivityList')}>
-        <Text style={styles.headerActionText}>Mine</Text>
-      </Pressable>
-      <Pressable onPress={() => navigation.navigate('CommunityRules')}>
-        <Text style={styles.headerActionText}>Rules</Text>
-      </Pressable>
-      <Pressable onPress={() => navigation.navigate('CreateActivity')}>
-        <Text style={styles.headerActionText}>Create</Text>
-      </Pressable>
-    </View>
-  );
-}
-
 export default function AppNavigator() {
   return (
     <NavigationContainer>
@@ -90,22 +71,17 @@ export default function AppNavigator() {
         <Stack.Screen
           name="ActivityFeed"
           component={ActivityFeedScreen}
-          options={({ navigation }) => ({
-            title: 'Activity Feed',
-            headerRight: () => <FeedHeaderActions navigation={navigation} />,
-          })}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="ActivityDetails"
           component={ActivityDetailsScreen}
-          options={() => ({
-            title: 'Activity Details',
-          })}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="CreateActivity"
           component={CreateActivityScreen}
-          options={{ title: 'Create Activity' }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="ManageRequests"
@@ -150,15 +126,5 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   screenContent: {
     backgroundColor: '#fff',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  headerActionText: {
-    color: '#1976d2',
-    fontSize: 14,
-    fontWeight: '600',
   },
 });

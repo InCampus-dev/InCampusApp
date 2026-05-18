@@ -50,7 +50,7 @@ const FALLBACK_CATEGORIES: StructuredOptionChoice[] = [
   { id: '87fe4ec4-0d68-45c1-b7c2-0abef2e3ef70', name: 'Lunch' },
   { id: '06390f30-5028-4d1c-8c31-095b893d4534', name: 'Coffee' },
   { id: 'd5f86aa2-7d8a-4c83-8426-d6f6b7b0ad7a', name: 'Study' },
-  { id: '094f2c11-fc93-4b7c-9f95-695de30fd194', name: 'Sport' },
+  { id: '094f2c11-fc93-4b7c-9f95-695de30fd194', name: 'Sports' },
   { id: '8a52a24e-c5b0-4f83-ae5d-0c31a5d998b2', name: 'Language Exchange' },
 ];
 
@@ -149,7 +149,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
           refreshAfterCreate: Date.now(),
           createdActivityId: createdActivity.data?.activityId,
         });
-      }, 850);
+      }, 1200);
     } catch (error) {
       setApiError(getApiErrorMessage(error) ?? 'Could not publish activity. Try again.');
     } finally {
@@ -271,52 +271,54 @@ export const CreateActivityScreen = ({ navigation }: any) => {
           </FieldShell>
         </FormSection>
 
-        <View style={styles.advancedWrap}>
-          <Pressable style={styles.advancedHeader} onPress={() => setAdvancedOpen((value) => !value)} disabled={creating}>
-            <View>
-              <Text style={styles.advancedTitle}>Advanced options</Text>
-              <Text style={styles.advancedHelp}>Approval, limits, and participant preference</Text>
-            </View>
-            <Text style={styles.chevron}>{advancedOpen ? '⌄' : '›'}</Text>
-          </Pressable>
+        <FormSection step="3" title="Advanced">
+          <View style={styles.advancedInner}>
+            <Pressable style={styles.advancedHeader} onPress={() => setAdvancedOpen((value) => !value)} disabled={creating}>
+              <View>
+                <Text style={styles.advancedTitle}>Advanced options</Text>
+                <Text style={styles.advancedHelp}>Approval, limits, and participant preference</Text>
+              </View>
+              <Text style={styles.chevron}>{advancedOpen ? '⌄' : '›'}</Text>
+            </Pressable>
 
-          {advancedOpen ? (
-            <View style={styles.advancedBody}>
-              <Text style={styles.controlLabel}>Who can join</Text>
-              <SegmentedControl<ParticipationMode>
-                options={PARTICIPATION_OPTIONS}
-                value={participationMode}
-                onChange={setParticipationMode}
-                disabled={creating}
-              />
+            {advancedOpen ? (
+              <View style={styles.advancedBody}>
+                <Text style={styles.controlLabel}>Who can join</Text>
+                <SegmentedControl<ParticipationMode>
+                  options={PARTICIPATION_OPTIONS}
+                  value={participationMode}
+                  onChange={setParticipationMode}
+                  disabled={creating}
+                />
 
-              {participationMode === 'approval_based' ? (
-                <View style={styles.advancedField}>
-                  <Text style={styles.controlLabel}>Max pending requests</Text>
-                  <TextInput
-                    style={[styles.input, errors.maxRequests && styles.inputError]}
-                    value={maxRequests}
-                    onChangeText={setMaxRequests}
-                    placeholder="No limit"
-                    placeholderTextColor={colors.text3}
-                    keyboardType="numeric"
-                    editable={!creating}
-                  />
-                  <Text style={styles.helperText}>Limit how many requests can wait at once</Text>
-                  <FieldError message={errors.maxRequests} />
-                </View>
-              ) : null}
+                {participationMode === 'approval_based' ? (
+                  <View style={styles.advancedField}>
+                    <Text style={styles.controlLabel}>Max pending requests</Text>
+                    <TextInput
+                      style={[styles.input, errors.maxRequests && styles.inputError]}
+                      value={maxRequests}
+                      onChangeText={setMaxRequests}
+                      placeholder="No limit"
+                      placeholderTextColor={colors.text3}
+                      keyboardType="numeric"
+                      editable={!creating}
+                    />
+                    <Text style={styles.helperText}>Limit how many requests can wait at once</Text>
+                    <FieldError message={errors.maxRequests} />
+                  </View>
+                ) : null}
 
-              <Text style={[styles.controlLabel, styles.preferenceLabel]}>Participant preference</Text>
-              <ChipControl<GenderPreference>
-                options={PREFERENCE_OPTIONS}
-                value={genderPreference}
-                onChange={setGenderPreference}
-                disabled={creating}
-              />
-            </View>
-          ) : null}
-        </View>
+                <Text style={[styles.controlLabel, styles.preferenceLabel]}>Participant preference</Text>
+                <ChipControl<GenderPreference>
+                  options={PREFERENCE_OPTIONS}
+                  value={genderPreference}
+                  onChange={setGenderPreference}
+                  disabled={creating}
+                />
+              </View>
+            ) : null}
+          </View>
+        </FormSection>
       </ScrollView>
 
       <View style={[styles.stickyBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
@@ -342,7 +344,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
 
       <OptionSheet
         visible={sheetMode === 'location'}
-        title="Choose location"
+        title="Choose meeting spot"
         options={filteredLocations}
         query={searchQuery}
         onQuery={setSearchQuery}
@@ -1030,13 +1032,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
   },
-  advancedWrap: {
-    marginHorizontal: metrics.screenX,
-    marginBottom: 14,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    borderRadius: metrics.radius,
+  advancedInner: {
     overflow: 'hidden',
   },
   advancedHeader: {

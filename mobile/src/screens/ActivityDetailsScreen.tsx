@@ -129,7 +129,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
 
   const handlePrimaryAction = async () => {
     if (!activity) {
-      navigation.navigate('ActivityFeed');
+      navigation.reset({ index: 0, routes: [{ name: 'ActivityFeed' }] });
       return;
     }
 

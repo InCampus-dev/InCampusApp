@@ -1,68 +1,102 @@
 # InCampus
 
-InCampus is a campus-scoped mobile app for reducing isolation and supporting low-pressure student participation in ordinary university life: lunch, coffee, study sessions, sports, language exchange, and small campus activities.
+**InCampus helps university students turn campus life from something they watch into something they can enter.**
 
-First rollout focus: Tongji University, Jiading Campus.
+It is a campus-scoped mobile app for low-pressure participation: lunch, coffee,
+study sessions, sports, language exchange, small activities, and the everyday
+moments where students often want company but do not want the weight of a big
+event.
 
-## Phase 0 Status
+The first rollout target is **Tongji University, Jiading Campus**. The product is
+intentionally not a dating app and not a generic events board. It is a safer,
+campus-bounded layer for hosting, discovering, joining, and moderating ordinary
+student life.
 
-This branch establishes the alpha sprint foundation. It is not feature implementation yet.
+## Why It Matters
 
-Implemented now:
+University isolation is often quiet. Students may be surrounded by people and
+still miss easy ways to start a simple shared moment. InCampus treats that
+problem as a real product and systems challenge:
 
-- Node.js / TypeScript backend workspace.
-- Express backend health route: `GET /health`.
-- Modular monolith package skeletons under `backend/packages/`.
-- Shared TypeScript contracts, enums, auth contexts, middleware placeholders, errors, EventBus, TypeORM config, DB constraint notes, demo seed data, and transaction helper.
-- Contract docs under `docs/`.
-- Folder-only mobile shell under `mobile/`.
-- GitHub Actions CI under `.github/workflows/ci.yml`.
+- Students can discover nearby activities scoped to their campus.
+- Hosts can create activities and manage join requests.
+- Participants can join directly or request approval depending on the activity.
+- Safety, reports, blocks, campus boundaries, and notification context are part
+  of the core model rather than an afterthought.
+- The backend keeps clear module ownership so the MVP can grow without turning
+  into a fragile demo.
 
-Business endpoints are contract-only until feature branches implement them.
+## Current State
 
-## Architecture
+InCampus is currently an **alpha/MVP integration** suitable for guided local
+demos and continued feature work.
 
-InCampus uses one deployable multi-tenant modular monolith.
+Implemented foundation:
 
-- `CampusID` is the tenant boundary.
-- Backend packages represent logical module boundaries, not microservices.
-- The shared persistence layer keeps logical store ownership.
-- Cross-module access must use shared contracts, exported interfaces, or owning-module services.
-- `AuthenticatedAdminContext` is runtime context only. There is no Campus Admin database/store.
-- D&P owns no persistent entities or stores; it reads/orchestrates through the owning modules.
-- NSF is the only writer of notification records.
-- Notification records have no `isRead`, `readAt`, or read/unread state.
-- Pending request withdrawal creates no notification.
-- Cancellation and deletion are distinct.
+- Expo + React Native mobile workspace with the main MVP student flows.
+- Node.js / TypeScript / Express backend organized as a modular monolith.
+- PostgreSQL persistence through TypeORM.
+- Campus-scoped auth, profile, consent, feed, activity detail, join, request,
+  notifications, report, block, and community-rules flows.
+- Demo seed data for Tongji Jiading.
+- Backend smoke checks and GitHub Actions CI with PostgreSQL.
+- Expo Go support aligned to Expo SDK 54.
 
-## Backend Modules
+Known alpha limits:
 
-- Access and Profile (AP)
-- Campus Administration (CA)
-- Hosting and Lifecycle (H&L)
-- Discovery and Participation (D&P)
-- Safety and Moderation (SM)
-- Notifications and System Flow (NSF)
+- Email verification and push delivery are mocked/logged.
+- No production admin UI yet.
+- Some mobile flows still need final physical-device QA and polish.
+- Mobile structured options are not fully dynamic yet.
+- Production hardening is outside the current demo scope.
 
-## Canonical Stores
+For the full evidence trail, read the
+[current state update](docs/incampus-current-state-update-2026-05-17.md), the
+[demo readiness review](docs/demo-readiness-review.md), and the
+[mobile run check](docs/mobile-run-check.md).
 
-- `DS-CA-001` Campus Configuration
-- `DS-CA-002` Campus Structured Options
-- `DS-AP-001` Student Account
-- `DS-AP-002` Student Profile
-- `DS-AP-003` University Identity Rules
-- `DS-HL-001` Activities
-- `DS-HL-002` Activity Participations
-- `DS-SM-001` Block Relationships
-- `DS-SM-002` Report Records
-- `DS-NS-001` Notification Records
+## Repository Map
 
-`DS-CA-002` must be one physical table named `campus_structured_options`, with `optionType = activity_category | campus_location`.
+```text
+.
+|-- backend/        Node.js, Express, TypeScript, TypeORM backend
+|-- mobile/         Expo + React Native mobile app
+|-- docs/           Active contracts, runbooks, QA notes, demo readiness
+|-- Documentation/  Domain documentation, diagrams, requirements, UCRs
+|-- scripts/        Root helper scripts for local/device workflows
+```
 
-## Getting Started
+## Start Here
+
+| Need | Link |
+| --- | --- |
+| Run the project locally | [docs/setup.md](docs/setup.md) |
+| Run the mobile app with Expo Go | [mobile/README.md](mobile/README.md) |
+| Check the mobile QA/runtime status | [docs/mobile-run-check.md](docs/mobile-run-check.md) |
+| Understand backend commands and boundaries | [backend/README.md](backend/README.md) |
+| Follow the integration-owner checklist | [docs/project-runbook.md](docs/project-runbook.md) |
+| Review the API surface | [docs/api-contract.md](docs/api-contract.md) |
+| Review events and notification flow | [docs/event-contract.md](docs/event-contract.md) |
+| Review internal command boundaries | [docs/internal-command-contract.md](docs/internal-command-contract.md) |
+| Review shared error behavior | [docs/error-contract.md](docs/error-contract.md) |
+| Seed demo data | [docs/demo-seed.md](docs/demo-seed.md) |
+| Run backend smoke checks | [docs/backend-smoke-check.md](docs/backend-smoke-check.md) |
+| Walk through demo scenarios | [docs/demo-scenarios.md](docs/demo-scenarios.md) |
+| Read backend-local notes | [backend/docs/README.md](backend/docs/README.md) |
+| Read the domain documentation map | [Documentation/InCampus_Project_Map.md](Documentation/InCampus_Project_Map.md) |
+
+## Quick Start
+
+Use **Node 20 or 22**. Avoid Node 25 for Expo/Metro work; local testing found
+Expo/Metro/ngrok startup failures with Node 25.
+
+From the repository root:
 
 ```bash
 npm install
+cp backend/.env.example backend/.env
+npm run migrate
+npm run seed:demo
 npm run dev:backend
 ```
 
@@ -72,58 +106,101 @@ Backend health check:
 GET http://localhost:3000/health
 ```
 
-For environment variables:
+In another terminal, start the mobile app for an iOS Simulator or local mobile
+runtime:
 
 ```bash
-cp backend/.env.example backend/.env
+EXPO_PUBLIC_API_BASE_URL=http://localhost:3000 npm run start --workspace mobile
 ```
 
-Do not commit `.env` files.
+For physical iPhone or Android testing with Expo Go, use the full guide in
+[mobile/README.md](mobile/README.md). The short version is:
 
-## Checks
+```bash
+npm run dev:backend:device
+npm run start:device --workspace mobile
+```
+
+If LAN mode is unreliable, prefer the tunnel flow documented in the mobile
+README.
+
+Demo accounts:
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Host | `demo.host@tongji.edu.cn` | `InCampusDemo2026!` |
+| Guest | `demo.guest@tongji.edu.cn` | `InCampusDemo2026!` |
+
+## Quality Checks
 
 ```bash
 npm run lint
 npm run build
 npm test
+npm run typecheck --workspace mobile
 ```
 
-## Mobile
+For backend demo verification with a migrated local database:
 
-`mobile/` is currently a folder-only Expo/React Native shell. Expo dependencies were not installed in Phase 0.
+```bash
+npm run seed:demo
+npm run dev:backend
+npm run smoke:demo
+```
 
-See `mobile/README.md` for the intended setup commands.
+## Architecture At A Glance
 
-## Contracts and Setup
+The backend is one deployable, campus-aware modular monolith.
 
-Root `docs/` is the Phase 0 / Phase 1 contract location. `backend/docs/` is only for backend-local notes.
+- `CampusID` is the tenant boundary.
+- Backend packages are logical module boundaries, not microservices.
+- Cross-module access goes through shared contracts, exported interfaces, or
+  owning-module services.
+- Notification records are owned by NSF and have no read/unread state.
+- D&P orchestrates discovery and participation but owns no persistent store.
+- Cancellation and deletion are intentionally distinct.
 
-- API contract: `docs/api-contract.md`
-- Event contract: `docs/event-contract.md`
-- Internal command contract: `docs/internal-command-contract.md`
-- Error contract: `docs/error-contract.md`
-- Demo scenarios: `docs/demo-scenarios.md`
-- Setup notes: `docs/setup.md`
+Core modules:
+
+| Module | Responsibility |
+| --- | --- |
+| AP | Access and Profile |
+| CA | Campus Administration |
+| H&L | Hosting and Lifecycle |
+| D&P | Discovery and Participation |
+| SM | Safety and Moderation |
+| NSF | Notifications and System Flow |
+
+## Dependency Policy
+
+`package-lock.json` is committed on purpose. It makes installs reproducible for
+the team and for CI.
+
+Commit dependency files when:
+
+- `package.json` changes.
+- A real dependency version, resolved package, or workspace install graph
+  changes.
+- The lockfile change is required for CI or another teammate to reproduce the
+  app.
+
+Do not merge lockfile noise when:
+
+- Running `npm install` only adds npm-version metadata.
+- There is no matching `package.json` change and no actual package version
+  change.
+- The diff is caused by using a different local npm/Node version.
+
+For this project, use Node 20 or 22 and run installs from the repository root.
+That keeps the Expo SDK 54 dependency set coherent and avoids unnecessary
+lockfile churn.
 
 ## Workflow
 
-- Work on feature branches only.
-- Do not push directly to `main` or `develop`.
-- Use GitHub Pull Requests.
-- Target `develop` once it exists. If `develop` is still missing, report that the PR target needs to be created or confirmed.
-
-Current Phase 0 branch:
-
-```text
-feature/francesco/phase-0-foundation
-```
-
-## Ownership
-
-- Francesco / `Natizh`: CA, SM, shared infrastructure, CI, DB, admin auth, integration review.
-- Jacopo / `jaacopocoding`: AP, NSF, shared auth contracts, AP mobile flows.
-- Matteo / `MatteoSilvestro`: H&L, D&P, activity mobile flows, transaction-sensitive participation flows.
-
-## Documentation
-
-The source documentation remains in `Documentation/`. The earlier `codingOrganization/` planning folder has been retired from the active repository after the initial work-division phase.
+- Work on feature branches.
+- Open GitHub Pull Requests for review.
+- Keep `backend/.env` and other local secrets out of git.
+- Keep `node_modules`, build output, temporary SQLite indexes, and local logs
+  out of git.
+- Preserve the domain documentation in `Documentation/` and the active
+  implementation contracts in `docs/`.

@@ -88,7 +88,7 @@ export default function ReportSubmissionScreen({ navigation, route }: { navigati
         {successMessage ? <View style={styles.toastWrap}><InlineBanner tone="success" text={successMessage} /></View> : null}
         {missingTarget ? (
           <View style={styles.missingWrap}>
-            <EmptyState title="Debug target missing" text="Normal demo reporting opens from an activity or student profile, with a target already attached." primaryLabel="Back" onPrimary={() => navigation.goBack()} />
+            <EmptyState title="Nothing to report yet" text="Open Report from an activity or student profile, with a target already attached." primaryLabel="Back" onPrimary={() => navigation.goBack()} />
           </View>
         ) : (
           <>

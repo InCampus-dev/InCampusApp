@@ -1,0 +1,30 @@
+# Environment variables and secrets (CRITICAL)
+.env
+.env.local
+.env.*.local
+
+# System files (macOS, Windows)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and Code Editors (VSCode, IntelliJ, etc.)
+.idea/
+.vscode/
+*.swp
+*.swo
+*.suo
+
+# Node Dependencies and Builds (Backend & Mobile)
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+build/
+coverage/
+.tsbuildinfo
+.expo/

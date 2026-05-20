@@ -34,6 +34,10 @@ describe("GET /health", () => {
       path: "/campuses"
     });
     expect(routes).toContainEqual({
+      method: "get",
+      path: "/campuses/:campusId/structured-options"
+    });
+    expect(routes).toContainEqual({
       method: "post",
       path: "/profiles"
     });
@@ -88,6 +92,10 @@ describe("GET /health", () => {
     expect(routes).toContainEqual({
       method: "get",
       path: "/activities/:id"
+    });
+    expect(routes).toContainEqual({
+      method: "get",
+      path: "/activities/:id/profiles/:studentAccountId"
     });
     expect(routes).toContainEqual({
       method: "post",
@@ -215,6 +223,38 @@ describe("GET /health", () => {
     const response = await dispatchAppRequest(app, {
       method: "GET",
       path: "/activities"
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "AUTH_REQUIRED"
+      }
+    });
+  });
+
+  it("requires student auth for GET /campuses/:campusId/structured-options", async () => {
+    const app = createApp();
+
+    const response = await dispatchAppRequest(app, {
+      method: "GET",
+      path: "/campuses/:campusId/structured-options"
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "AUTH_REQUIRED"
+      }
+    });
+  });
+
+  it("requires student auth for GET /activities/:id/profiles/:studentAccountId", async () => {
+    const app = createApp();
+
+    const response = await dispatchAppRequest(app, {
+      method: "GET",
+      path: "/activities/:id/profiles/:studentAccountId"
     });
 
     expect(response.statusCode).toBe(401);

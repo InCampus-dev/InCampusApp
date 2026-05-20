@@ -138,7 +138,7 @@ export default function NotificationListScreen({ navigation }: { navigation: any
   return (
     <ScreenShell padded={false} style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.title}>Alerts</Text>
+        <Text style={styles.title}>Notifications</Text>
         <Text style={styles.subtitle}>Updates from your campus activities</Text>
       </View>
       {loading ? (
@@ -152,12 +152,12 @@ export default function NotificationListScreen({ navigation }: { navigation: any
           onEndReached={onEndReached}
           onEndReachedThreshold={0.3}
           ListHeaderComponent={errorMessage ? <InlineBanner tone="error" text={errorMessage} actionLabel="Retry" onAction={onRefresh} /> : null}
-          ListEmptyComponent={<EmptyState icon="!" title="No notifications yet" text="When students join your activities or your requests get a response, you'll see it here." primaryLabel="Browse activities" onPrimary={() => navigation.navigate('ActivityFeed')} />}
+          ListEmptyComponent={<EmptyState icon="i" title="No notifications yet" text="When students join your activities or your requests get a response, you'll see it here." primaryLabel="Browse activities" onPrimary={() => navigation.navigate('ActivityFeed')} />}
           ListFooterComponent={loadingMore ? <LoadingFooter /> : null}
           renderItem={({ item }) => <NotificationCard item={item} loading={tappedId === item.notificationId} onPress={() => handleTapNotification(item.notificationId)} />}
         />
       )}
-      <BottomTabBar active="alerts" onFeed={() => navigation.navigate('ActivityFeed')} onCreate={() => navigation.navigate('CreateActivity')} onMine={() => navigation.navigate('Mine')} />
+      <BottomTabBar onFeed={() => navigation.navigate('ActivityFeed')} onCreate={() => navigation.navigate('CreateActivity')} onMine={() => navigation.navigate('Mine')} />
     </ScreenShell>
   );
 }

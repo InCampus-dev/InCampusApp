@@ -1,4 +1,5 @@
-import React, { useMemo, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -11,6 +12,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api, { getApiErrorMessage } from '../services/api';
+import {
+  listCampusStructuredOptions,
+  type CampusStructuredOption,
+} from '../services/studentApi';
 import {
   BottomSheet,
   CategoryPill,
@@ -26,11 +31,7 @@ type ParticipationMode = 'open' | 'approval_based';
 type GenderPreference = 'all' | 'male_only' | 'female_only';
 type SheetMode = 'category' | 'location' | 'start' | 'end' | null;
 
-interface StructuredOptionChoice {
-  id: string;
-  name: string;
-  kind?: string;
-}
+type StructuredOptionChoice = CampusStructuredOption;
 
 interface CreatedActivityResponse {
   activityId?: string;
@@ -45,21 +46,6 @@ interface FormErrors {
   maxParticipants?: string;
   maxRequests?: string;
 }
-
-const FALLBACK_CATEGORIES: StructuredOptionChoice[] = [
-  { id: '87fe4ec4-0d68-45c1-b7c2-0abef2e3ef70', name: 'Lunch' },
-  { id: '06390f30-5028-4d1c-8c31-095b893d4534', name: 'Coffee' },
-  { id: 'd5f86aa2-7d8a-4c83-8426-d6f6b7b0ad7a', name: 'Study' },
-  { id: '094f2c11-fc93-4b7c-9f95-695de30fd194', name: 'Sports' },
-  { id: '8a52a24e-c5b0-4f83-ae5d-0c31a5d998b2', name: 'Language Exchange' },
-];
-
-const FALLBACK_LOCATIONS: StructuredOptionChoice[] = [
-  { id: 'f2af15aa-d347-4037-8f1e-f6b4e8616d06', name: 'Library Plaza', kind: 'Study' },
-  { id: '779ae557-ed88-4b1f-9f45-286fa6f32044', name: 'Cafeteria', kind: 'Food' },
-  { id: '17a7563d-0e26-4352-9bde-b0472fe10bb2', name: 'Main Gate', kind: 'Meetup' },
-  { id: 'a15a2c41-b0eb-4135-8f4b-29f4a08bf76c', name: 'Sports Center', kind: 'Sports' },
-];
 
 const PARTICIPATION_OPTIONS: Array<{ label: string; value: ParticipationMode }> = [
   { label: 'Anyone', value: 'open' },
@@ -91,13 +77,56 @@ export const CreateActivityScreen = ({ navigation }: any) => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [creating, setCreating] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [optionsLoading, setOptionsLoading] = useState(true);
+  const [optionsError, setOptionsError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<StructuredOptionChoice[]>([]);
+  const [locations, setLocations] = useState<StructuredOptionChoice[]>([]);
   const [success, setSuccess] = useState(false);
-  const formLocked = creating || success;
+  const formLocked = creating || success || optionsLoading;
 
-  const selectedCategory = FALLBACK_CATEGORIES.find((item) => item.id === categoryId);
-  const selectedLocation = FALLBACK_LOCATIONS.find((item) => item.id === meetingPointId);
-  const filteredCategories = useFilteredOptions(FALLBACK_CATEGORIES, searchQuery);
-  const filteredLocations = useFilteredOptions(FALLBACK_LOCATIONS, searchQuery);
+  const selectedCategory = categories.find((item) => item.optionId === categoryId);
+  const selectedLocation = locations.find((item) => item.optionId === meetingPointId);
+  const filteredCategories = useFilteredOptions(categories, searchQuery);
+  const filteredLocations = useFilteredOptions(locations, searchQuery);
+  const optionsReady = categories.length > 0 && locations.length > 0;
+
+  const loadStructuredOptions = useCallback(async () => {
+    setOptionsLoading(true);
+    setOptionsError(null);
+    try {
+      const campusId = await AsyncStorage.getItem('selectedCampusId');
+      if (!campusId) {
+        setCategories([]);
+        setLocations([]);
+        setOptionsError('Select a campus before creating an activity.');
+        return;
+      }
+
+      const [categoryOptions, locationOptions] = await Promise.all([
+        listCampusStructuredOptions(campusId, { optionType: 'activity_category' }),
+        listCampusStructuredOptions(campusId, { optionType: 'campus_location' }),
+      ]);
+
+      setCategories(categoryOptions.filter((option) => option.isActive));
+      setLocations(locationOptions.filter((option) => option.isActive));
+      setCategoryId((current) =>
+        categoryOptions.some((option) => option.optionId === current && option.isActive) ? current : ''
+      );
+      setMeetingPointId((current) =>
+        locationOptions.some((option) => option.optionId === current && option.isActive) ? current : ''
+      );
+    } catch (error) {
+      setCategories([]);
+      setLocations([]);
+      setOptionsError(getApiErrorMessage(error) ?? 'Could not load campus options.');
+    } finally {
+      setOptionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStructuredOptions();
+  }, [loadStructuredOptions]);
 
   const resetSheet = () => {
     setSheetMode(null);
@@ -122,6 +151,11 @@ export const CreateActivityScreen = ({ navigation }: any) => {
 
     setErrors(nextErrors);
     setApiError(null);
+
+    if (!optionsReady) {
+      setApiError('Choose active campus category and meeting point options before publishing.');
+      return;
+    }
 
     if (Object.keys(nextErrors).length > 0) {
       scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -185,7 +219,22 @@ export const CreateActivityScreen = ({ navigation }: any) => {
         ) : null}
         {apiError ? (
           <View style={styles.bannerWrap}>
-            <InlineBanner tone="error" text="Could not publish activity. Try again." />
+            <InlineBanner tone="error" text={apiError} />
+          </View>
+        ) : null}
+        {optionsLoading ? (
+          <View style={styles.bannerWrap}>
+            <InlineBanner tone="warning" text="Loading campus options..." />
+          </View>
+        ) : null}
+        {optionsError ? (
+          <View style={styles.bannerWrap}>
+            <InlineBanner tone="error" text={optionsError} actionLabel="Retry" onAction={loadStructuredOptions} />
+          </View>
+        ) : null}
+        {!optionsLoading && !optionsError && !optionsReady ? (
+          <View style={styles.bannerWrap}>
+            <InlineBanner tone="warning" text="Campus options are not ready yet. Ask a campus admin to add active categories and meeting points." />
           </View>
         ) : null}
 
@@ -195,7 +244,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
               placeholder="What kind of activity?"
               valueNode={selectedCategory ? <CategoryPill label={selectedCategory.name} compact /> : null}
               onPress={() => setSheetMode('category')}
-              disabled={formLocked}
+              disabled={formLocked || categories.length === 0}
             />
           </FieldShell>
 
@@ -244,7 +293,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
               placeholder="Pick a meeting spot"
               valueNode={selectedLocation ? <Text style={styles.selectorValue}>{selectedLocation.name}</Text> : null}
               onPress={() => setSheetMode('location')}
-              disabled={formLocked}
+              disabled={formLocked || locations.length === 0}
             />
           </FieldShell>
 
@@ -327,7 +376,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
       </ScrollView>
 
       <View style={[styles.stickyBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-        <PrimaryButton label="Publish" loading={creating} disabled={formLocked} onPress={handlePublish} />
+        <PrimaryButton label="Publish" loading={creating} disabled={formLocked || !optionsReady} onPress={handlePublish} />
       </View>
 
       <OptionSheet
@@ -340,7 +389,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
         emptyLabel="No options found"
         renderOptionAccessory={(option) => <CategoryPill label={option.name} compact />}
         onSelect={(option) => {
-          setCategoryId(option.id);
+          setCategoryId(option.optionId);
           setErrors((current) => ({ ...current, categoryId: undefined }));
           resetSheet();
         }}
@@ -355,9 +404,11 @@ export const CreateActivityScreen = ({ navigation }: any) => {
         onQuery={setSearchQuery}
         selectedId={meetingPointId}
         emptyLabel="No options found"
-        renderOptionAccessory={(option) => <Text style={styles.optionKind}>{option.kind}</Text>}
+        renderOptionAccessory={(option) => (
+          <Text style={styles.optionKind}>{option.description ?? 'Meeting point'}</Text>
+        )}
         onSelect={(option) => {
-          setMeetingPointId(option.id);
+          setMeetingPointId(option.optionId);
           setErrors((current) => ({ ...current, meetingPointId: undefined }));
           resetSheet();
         }}
@@ -632,10 +683,10 @@ function OptionSheet({
         <Text style={styles.emptyOptions}>{emptyLabel}</Text>
       ) : (
         options.map((option) => {
-          const selected = option.id === selectedId;
+          const selected = option.optionId === selectedId;
           return (
             <Pressable
-              key={option.id}
+              key={option.optionId}
               style={[styles.optionRow, selected && styles.optionRowSelected]}
               onPress={() => onSelect(option)}
             >
@@ -755,14 +806,16 @@ function validateCreateForm(args: {
   maxRequests: string;
 }): FormErrors {
   const nextErrors: FormErrors = {};
+  const categoryExists = args.categoryId.trim().length > 0;
+  const meetingPointExists = args.meetingPointId.trim().length > 0;
 
   if (!args.title.trim()) {
     nextErrors.title = 'Please give your activity a title';
   }
-  if (!args.categoryId) {
+  if (!categoryExists) {
     nextErrors.categoryId = 'Please choose a category';
   }
-  if (!args.meetingPointId) {
+  if (!meetingPointExists) {
     nextErrors.meetingPointId = 'Please choose a meeting spot';
   }
   if (!args.scheduledDateTime) {

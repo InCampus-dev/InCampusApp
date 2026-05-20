@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import api, { getApiErrorMessage } from '../services/api';
+import { getApiErrorMessage } from '../services/api';
+import { blockStudent } from '../services/studentApi';
 import {
   BottomActionBar,
   EmptyState,
@@ -21,6 +22,7 @@ const BLOCK_EFFECTS = [
 
 export default function BlockUserScreen({ navigation, route }: { navigation: any; route: any }) {
   const targetAccountId = getStringParam(route?.params?.targetAccountId);
+  const returnToActivityId = getStringParam(route?.params?.returnToActivityId);
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -37,9 +39,15 @@ export default function BlockUserScreen({ navigation, route }: { navigation: any
     setSubmitting(true);
     setErrorMessage(null);
     try {
-      await api.post('/blocks', { targetAccountId });
+      await blockStudent(targetAccountId);
       setSuccessMessage('Student blocked.');
-      setTimeout(() => navigation.goBack(), 750);
+      setTimeout(() => {
+        if (returnToActivityId) {
+          navigation.navigate('ActivityFeed', { refreshAfterJoin: Date.now() });
+          return;
+        }
+        navigation.goBack();
+      }, 750);
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error) ?? "Couldn't block this student. Try again.");
     } finally {

@@ -14,6 +14,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BOTTOM_TAB_ITEMS, type BottomTabKey } from '../services/bottomTabs';
 
 export const colors = {
   primary: '#16B978',
@@ -589,28 +590,25 @@ export function BottomTabBar({
   active,
   onFeed,
   onCreate,
-  onAlerts,
   onMine,
 }: {
-  active: 'feed' | 'create' | 'alerts' | 'mine';
+  active?: BottomTabKey;
   onFeed?: () => void;
   onCreate?: () => void;
-  onAlerts?: () => void;
   onMine?: () => void;
 }) {
-  const items = [
-    { key: 'feed' as const, label: 'Feed', icon: '≡', onPress: onFeed },
-    { key: 'create' as const, label: 'Create', icon: '+', onPress: onCreate },
-    { key: 'alerts' as const, label: 'Alerts', icon: '!', onPress: onAlerts },
-    { key: 'mine' as const, label: 'Mine', icon: 'o', onPress: onMine },
-  ];
+  const handlers: Record<BottomTabKey, (() => void) | undefined> = {
+    feed: onFeed,
+    create: onCreate,
+    mine: onMine,
+  };
   const insets = useSafeAreaInsets();
   return (
     <View style={[shellStyles.tabBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-      {items.map((item) => {
+      {BOTTOM_TAB_ITEMS.map((item) => {
         const selected = active === item.key;
         return (
-          <Pressable key={item.key} style={shellStyles.tabItem} onPress={item.onPress}>
+          <Pressable key={item.key} style={shellStyles.tabItem} onPress={handlers[item.key]}>
             <Text style={[shellStyles.tabIcon, selected && shellStyles.tabActive]}>{item.icon}</Text>
             <Text style={[shellStyles.tabLabel, selected && shellStyles.tabActive]}>{item.label}</Text>
           </Pressable>

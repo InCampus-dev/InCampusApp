@@ -106,6 +106,48 @@ describe("CampusOptionsService", () => {
       code: "AUTH_FORBIDDEN"
     });
   });
+
+  it("lists active campus-scoped structured options for the selected student campus", async () => {
+    const store = createCampusOptionsStore();
+    const service = createCampusOptionsService(store);
+
+    const options = await service.listSelectableStructuredOptionsForStudent(
+      { selectedCampusId: "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81" },
+      "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81",
+      {}
+    );
+
+    expect(options).toHaveLength(2);
+    expect(options.every((option) => option.isActive)).toBe(true);
+    expect(options.every((option) => option.campusId === "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81")).toBe(true);
+  });
+
+  it("filters student structured options by optionType", async () => {
+    const service = createCampusOptionsService(createCampusOptionsStore());
+
+    const options = await service.listSelectableStructuredOptionsForStudent(
+      { selectedCampusId: "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81" },
+      "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81",
+      { optionType: CampusStructuredOptionType.CampusLocation }
+    );
+
+    expect(options).toHaveLength(1);
+    expect(options[0]?.optionType).toBe(CampusStructuredOptionType.CampusLocation);
+  });
+
+  it("rejects student structured option reads across campuses", async () => {
+    const service = createCampusOptionsService(createCampusOptionsStore());
+
+    await expect(
+      service.listSelectableStructuredOptionsForStudent(
+        { selectedCampusId: "56ad6143-a1b1-4c40-bc4a-c41795bbcfaf" },
+        "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81",
+        {}
+      )
+    ).rejects.toMatchObject({
+      code: "AUTH_FORBIDDEN"
+    });
+  });
 });
 
 function createCampusOptionsService(store: {

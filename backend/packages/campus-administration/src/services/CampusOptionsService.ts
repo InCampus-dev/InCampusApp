@@ -66,6 +66,35 @@ export class CampusOptionsService implements CampusStructuredOptionLookup {
     return options.map(toCampusStructuredOptionDto);
   }
 
+  public async listSelectableStructuredOptionsForStudent(
+    studentContext: { selectedCampusId?: string | null },
+    campusId: string,
+    filters: {
+      optionType?: unknown;
+    }
+  ) {
+    if (!studentContext.selectedCampusId || studentContext.selectedCampusId !== campusId) {
+      throw new AppError("AUTH_FORBIDDEN", "Student is not authorized for this campus", 403, {
+        authReason: "campus_not_selected"
+      });
+    }
+
+    await this.assertCampusExists(campusId);
+
+    const optionType =
+      filters.optionType === undefined
+        ? undefined
+        : parseCampusStructuredOptionType(filters.optionType);
+
+    const options = await this.campusOptionsRepo.findByCampus({
+      campusId,
+      optionType,
+      includeInactive: false
+    });
+
+    return options.map(toCampusStructuredOptionDto);
+  }
+
   public async createStructuredOption(
     adminContext: AuthenticatedAdminContext,
     campusId: string,

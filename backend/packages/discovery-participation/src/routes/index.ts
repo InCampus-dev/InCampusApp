@@ -54,6 +54,11 @@ export function createDiscoveryParticipationRoutes(
 
   router.get("/activities", studentAuthMiddleware, discoveryController.getFeed);
   router.get("/activities/:id", studentAuthMiddleware, discoveryController.getActivityDetails);
+  router.get(
+    "/activities/:id/profiles/:studentAccountId",
+    studentAuthMiddleware,
+    discoveryController.getActivityContextPublicProfile
+  );
   router.post("/activities/:id/join", studentAuthMiddleware, participationController.joinActivity);
   router.delete(
     "/activities/:id/requests/me",

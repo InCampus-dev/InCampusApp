@@ -1,0 +1,94 @@
+export enum ActivityStatus {
+  Open = "open",
+  Full = "full",
+  Completed = "completed",
+  Cancelled = "cancelled"
+}
+
+export enum ParticipationRecordType {
+  Request = "request",
+  Participation = "participation"
+}
+
+export enum ParticipationStatus {
+  Pending = "pending",
+  Confirmed = "confirmed",
+  Declined = "declined"
+}
+
+export enum PlatformAccessStatus {
+  PendingVerification = "PendingVerification",
+  Active = "Active",
+  Suspended = "Suspended",
+  Banned = "Banned"
+}
+
+export enum VerificationStatus {
+  Pending = "Pending",
+  Verified = "Verified",
+  Rejected = "Rejected",
+  Expired = "Expired"
+}
+
+export enum NotificationType {
+  JoinEvent = "JoinEvent",
+  ApplicationOutcome = "ApplicationOutcome",
+  ActivityCancellation = "ActivityCancellation",
+  LeaveEvent = "LeaveEvent",
+  ActivityReminder = "ActivityReminder"
+}
+
+export enum TargetContextType {
+  JoinRequestReview = "JoinRequestReview",
+  ActivityDetails = "ActivityDetails",
+  CancelledActivityContext = "CancelledActivityContext",
+  PersonalActivityContext = "PersonalActivityContext",
+  NotificationFallbackView = "NotificationFallbackView"
+}
+
+export enum ModerationAction {
+  None = "none",
+  WarnUser = "warn_user",
+  SuspendUser = "suspend_user",
+  BanUser = "ban_user",
+  RemoveActivity = "remove_activity"
+}
+
+export enum ReportTargetType {
+  Student = "student",
+  Activity = "activity"
+}
+
+export enum ReportStatus {
+  PendingReview = "pending_review",
+  Reviewed = "reviewed"
+}
+
+export enum ReviewOutcome {
+  NoAction = "no_action",
+  ActionTaken = "action_taken",
+  Dismissed = "dismissed"
+}
+
+export enum GenderPreference {
+  All = "all",
+  MaleOnly = "male_only",
+  FemaleOnly = "female_only"
+}
+
+export enum StudentProfileGender {
+  Male = "male",
+  Female = "female",
+  Other = "other",
+  PreferNotToSay = "prefer_not_to_say"
+}
+
+export enum ParticipationMode {
+  Open = "open",
+  ApprovalBased = "approval_based"
+}
+
+export enum CampusStructuredOptionType {
+  ActivityCategory = "activity_category",
+  CampusLocation = "campus_location"
+}

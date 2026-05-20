@@ -48,6 +48,28 @@ export class DiscoveryController {
       next(error);
     }
   };
+
+  getActivityContextPublicProfile = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const studentContext = requireCampusSelectedStudentContext(req);
+      const { id: activityId, studentAccountId } = req.params;
+
+      const profile = await this.activityDetailService.getActivityContextPublicProfile(
+        studentContext.studentAccountId,
+        studentContext.selectedCampusId,
+        activityId,
+        studentAccountId
+      );
+
+      res.status(200).json({ data: profile });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 function requireCampusSelectedStudentContext(request: Request): {

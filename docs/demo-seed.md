@@ -38,6 +38,9 @@ x-admin-authorized-campus-ids: <demo campus id>
 - Activities:
   - `[DEMO] Lunch near Library Plaza`, open join.
   - `[DEMO] Language Exchange at Cafeteria`, approval-based.
+  - `[DEMO] Moderation Review Activity`, dedicated to admin report-review and `remove_activity` checks.
+- Report records:
+  - One pending `[DEMO]` report targeting only the moderation review activity.
 
 ## Idempotency Rules
 
@@ -51,8 +54,10 @@ The seed reuses stable demo keys and updates records instead of creating uncontr
 | Account | `universityEmail` |
 | Profile | `studentAccountId` |
 | Activity | `campusId + hostAccountId + title`, where title starts with `[DEMO]` |
+| Report | Stable seeded demo report ID |
 
 Rerunning the seed updates the demo records and resets only participations and notification records attached to the seeded `[DEMO]` activities. It does not delete or mutate non-demo data.
+The seeded admin-demo report is reset by its stable report ID only; non-demo reports are not deleted or overwritten.
 
 ## Start Order
 

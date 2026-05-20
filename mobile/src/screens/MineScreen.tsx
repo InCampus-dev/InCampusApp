@@ -103,7 +103,7 @@ export default function MineScreen({ navigation }: { navigation: any }) {
           <SettingsRow label={signingOut ? 'Signing out...' : 'Sign out'} danger disabled={signingOut} onPress={signOut} last />
         </SettingsGroup>
       </ScrollView>
-      <BottomTabBar active="mine" onFeed={() => navigation.navigate('ActivityFeed')} onCreate={() => navigation.navigate('CreateActivity')} onAlerts={() => navigation.navigate('NotificationList')} />
+      <BottomTabBar active="mine" onFeed={() => navigation.navigate('ActivityFeed')} onCreate={() => navigation.navigate('CreateActivity')} />
     </ScreenShell>
   );
 }

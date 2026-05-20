@@ -183,6 +183,7 @@ export function createApp(args: CreateAppArgs = {}): Express {
       basePath: "/",
       router: createCampusAdministrationRoutes({
         resolveAdminContext,
+        resolveStudentContext,
         adminInsightService,
         campusConfigurationService,
         campusOptionsService

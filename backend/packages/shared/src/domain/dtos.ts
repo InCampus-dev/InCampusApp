@@ -285,6 +285,15 @@ export interface StudentProfileDto {
   updatedAt: string | null;
 }
 
+export interface PublicStudentProfileDto {
+  studentAccountId: StudentAccountId;
+  displayName: string;
+  major: string;
+  interests: string[];
+  languages: string[];
+  shortBio: string | null;
+}
+
 export interface ActivitySummaryDto {
   activityId: ActivityId;
   campusId: CampusId;
@@ -307,8 +316,12 @@ export interface ActivityDetailDto extends ActivitySummaryDto {
   scheduledEndDateTime?: string | null;
   maxRequests?: number | null;
   currentRequestCount: number;
-  hostProfile?: StudentProfileDto;
+  hostProfile?: PublicStudentProfileDto;
   canManageRequests?: boolean;
+  personalActivityStatus?: PersonalActivityRelationship;
+  participationId?: ParticipationId;
+  participationRecordType?: ParticipationRecordType;
+  participationStatus?: ParticipationStatus;
 }
 
 export interface ParticipationDto {
@@ -327,9 +340,6 @@ export type PersonalActivityRelationship =
 
 export interface PersonalActivityListItemDto extends ActivityDetailDto {
   personalActivityStatus: PersonalActivityRelationship;
-  participationId?: ParticipationId;
-  participationRecordType?: ParticipationRecordType;
-  participationStatus?: ParticipationStatus;
 }
 
 export type PersonalActivityListDto = PersonalActivityListItemDto[];

@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 
 import { requireAdminContext } from "../../../shared/src/middleware/adminAuth";
+import { requireStudentContext } from "../../../shared/src/middleware/auth";
 import { CampusOptionsService } from "../services/CampusOptionsService";
 
 export class CampusOptionsController {
@@ -42,6 +43,28 @@ export class CampusOptionsController {
       );
 
       response.status(201).json(structuredOption);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public listStudentSelectableStructuredOptions = async (
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const studentContext = requireStudentContext(request);
+      const structuredOptions =
+        await this.campusOptionsService.listSelectableStructuredOptionsForStudent(
+          studentContext,
+          request.params.campusId,
+          {
+            optionType: request.query.optionType
+          }
+        );
+
+      response.status(200).json(structuredOptions);
     } catch (error) {
       next(error);
     }

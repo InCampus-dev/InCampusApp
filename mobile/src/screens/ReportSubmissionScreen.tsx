@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useLayoutEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import api, { getApiErrorMessage } from '../services/api';
+import { getApiErrorMessage } from '../services/api';
+import { buildSubmitReportPayload, submitReport } from '../services/studentApi';
 import {
   BottomActionBar,
   CategoryPill,
@@ -63,14 +64,14 @@ export default function ReportSubmissionScreen({ navigation, route }: { navigati
         setErrorMessage('Select a campus before submitting a report.');
         return;
       }
-      await api.post('/reports', {
+      await submitReport(buildSubmitReportPayload({
         campusId,
         targetType,
-        targetActivityId: targetType === 'activity' ? targetActivityId : undefined,
-        targetAccountId: targetType === 'student' ? targetAccountId : undefined,
+        targetActivityId,
+        targetAccountId,
         reasonCode,
-        description: description.trim() || undefined,
-      });
+        description,
+      }));
       setSuccessMessage('Report submitted. Campus staff will review it.');
       setTimeout(() => navigation.goBack(), 800);
     } catch (error) {
@@ -87,7 +88,7 @@ export default function ReportSubmissionScreen({ navigation, route }: { navigati
         {successMessage ? <View style={styles.toastWrap}><InlineBanner tone="success" text={successMessage} /></View> : null}
         {missingTarget ? (
           <View style={styles.missingWrap}>
-            <EmptyState title="Nothing to report yet" text="Open Report from an activity or student you'd like to report." primaryLabel="Back" onPrimary={() => navigation.goBack()} />
+            <EmptyState title="Nothing to report yet" text="Open Report from an activity or student profile, with a target already attached." primaryLabel="Back" onPrimary={() => navigation.goBack()} />
           </View>
         ) : (
           <>

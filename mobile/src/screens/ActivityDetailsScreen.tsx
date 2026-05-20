@@ -8,7 +8,15 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api, { getApiErrorMessage } from '../services/api';
+import { getApiErrorMessage } from '../services/api';
+import {
+  getActivityDetails,
+  joinActivity,
+  leaveActivity,
+  withdrawActivityRequest,
+  type ActivityDetailsViewModel,
+} from '../services/studentApi';
+import { getActivityDetailsActionModel } from '../services/activityDetailsActions';
 import {
   CategoryPill,
   InlineBanner,
@@ -24,41 +32,13 @@ import {
 
 type ParticipationMode = 'open' | 'approval_based';
 type GenderPreference = 'all' | 'male_only' | 'female_only';
-type ActivityStatus = 'open' | 'full' | 'completed' | 'cancelled';
-
-interface ActivityDetailsViewModel {
-  activityId: string;
-  title: string;
-  description?: string | null;
-  scheduledDateTime: string;
-  scheduledEndDateTime?: string | null;
-  meetingPointLabel: string;
-  categoryLabel: string;
-  currentParticipantCount: number;
-  maxParticipants: number;
-  hostAccountId: string;
-  status: ActivityStatus;
-  canManageRequests?: boolean;
-  hostProfile?: {
-    displayName: string;
-    major?: string;
-    interests?: string[];
-    languages?: string[];
-    shortBio?: string | null;
-  };
-  genderPreference: GenderPreference;
-  participationMode: ParticipationMode;
-  maxRequests?: number | null;
-  currentRequestCount: number;
-}
-
 export const ActivityDetailsScreen = ({ route, navigation }: any) => {
   const { activityId } = route.params;
   const insets = useSafeAreaInsets();
   const [activity, setActivity] = useState<ActivityDetailsViewModel | null>(null);
   const [studentAccountId, setStudentAccountId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [joining, setJoining] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -67,12 +47,12 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
     setLoading(true);
     setLoadError(null);
     try {
-      const [accountId, response] = await Promise.all([
+      const [accountId, details] = await Promise.all([
         AsyncStorage.getItem('studentAccountId'),
-        api.get<ActivityDetailsViewModel>(`/activities/${activityId}`),
+        getActivityDetails(activityId),
       ]);
       setStudentAccountId(accountId);
-      setActivity(response.data);
+      setActivity(details);
     } catch (error) {
       setActivity(null);
       setLoadError(getApiErrorMessage(error) ?? 'Failed to load activity details.');
@@ -100,35 +80,23 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
     });
   }, [activity?.canManageRequests, activityId, navigation]);
 
-  const isHost = Boolean(studentAccountId && activity?.hostAccountId === studentAccountId);
+  const isHost = Boolean(
+    activity?.personalActivityStatus === 'host' ||
+      (studentAccountId && activity?.hostAccountId === studentAccountId)
+  );
   const isFull = Boolean(
     activity && (activity.status === 'full' || activity.currentParticipantCount >= activity.maxParticipants),
   );
 
   const cta = useMemo(() => {
     if (!activity) {
-      return { label: 'Back to Feed', tone: 'green' as const, disabled: false };
+      return { kind: 'join' as const, label: 'Back to Feed', tone: 'green' as const, disabled: false };
     }
-    if (activity.canManageRequests) {
-      return { label: 'Manage Requests', tone: 'green' as const, disabled: false };
-    }
-    if (isHost) {
-      return { label: 'You are hosting', tone: 'muted' as const, disabled: true };
-    }
-    if (isFull) {
-      return { label: 'Activity Full', tone: 'muted' as const, disabled: true };
-    }
-    if (activity.status !== 'open') {
-      return { label: formatStatus(activity.status), tone: 'muted' as const, disabled: true };
-    }
-    if (activity.participationMode === 'approval_based') {
-      return { label: 'Request to Join', tone: 'blue' as const, disabled: false };
-    }
-    return { label: 'Join', tone: 'green' as const, disabled: false };
-  }, [activity, isFull, isHost]);
+    return getActivityDetailsActionModel(activity, isFull);
+  }, [activity, isFull]);
 
   const handlePrimaryAction = async () => {
-    if (joining || successMessage) {
+    if (actionLoading) {
       return;
     }
 
@@ -146,19 +114,31 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
       return;
     }
 
-    setJoining(true);
+    setActionLoading(true);
     setJoinError(null);
+    setSuccessMessage(null);
     try {
-      await api.post(`/activities/${activityId}/join`);
-      const message = activity.participationMode === 'approval_based' ? 'Request sent!' : "You're in!";
-      setSuccessMessage(message);
-      setTimeout(() => {
-        navigation.navigate('ActivityFeed', { refreshAfterJoin: Date.now() });
-      }, 1200);
+      if (cta.kind === 'pending_request') {
+        await withdrawActivityRequest(activityId);
+        await fetchActivityDetails();
+        setSuccessMessage('Request withdrawn.');
+        return;
+      }
+
+      if (cta.kind === 'confirmed_participant') {
+        await leaveActivity(activityId);
+        await fetchActivityDetails();
+        setSuccessMessage('You left this activity.');
+        return;
+      }
+
+      await joinActivity(activityId);
+      await fetchActivityDetails();
+      setSuccessMessage(activity.participationMode === 'approval_based' ? 'Request sent.' : "You're in.");
     } catch (error) {
       setJoinError(getApiErrorMessage(error) ?? 'Something went wrong. Try again.');
     } finally {
-      setJoining(false);
+      setActionLoading(false);
     }
   };
 
@@ -179,12 +159,13 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
           error={loadError}
           onRetry={fetchActivityDetails}
           onFeed={() => navigation.reset({ index: 0, routes: [{ name: 'ActivityFeed' }] })}
-          onAlerts={() => navigation.navigate('NotificationList')}
+          onNotifications={() => navigation.navigate('NotificationList')}
         />
       </View>
     );
   }
 
+  const relationshipStatus = getRelationshipStatusText(activity);
   const showGuestSafety = !isHost && !activity.canManageRequests;
 
   return (
@@ -237,9 +218,23 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
 
         <InfoBlock activity={activity} />
 
+        {relationshipStatus ? <RelationshipStatusBanner text={relationshipStatus} /> : null}
+
         {activity.description ? <DescriptionSection text={activity.description} /> : null}
 
-        <HostTrustSection host={activity.hostProfile} />
+        <HostTrustSection
+          host={activity.hostProfile}
+          hostAccountId={activity.hostAccountId}
+          onOpenProfile={
+            activity.hostAccountId
+              ? () =>
+                  navigation.navigate('StudentProfile', {
+                    studentAccountId: activity.hostAccountId,
+                    contextActivityId: activity.activityId,
+                  })
+              : undefined
+          }
+        />
 
         {showGuestSafety ? (
           <SafetyActions
@@ -247,9 +242,22 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
               navigation.navigate('ReportSubmission', {
                 targetType: 'activity',
                 targetActivityId: activity.activityId,
+                activityTitle: activity.title,
+                categoryLabel: activity.categoryLabel,
               })
             }
-            onBlock={() => navigation.navigate('BlockUser', { targetAccountId: activity.hostAccountId })}
+            onReportHost={() =>
+              navigation.navigate('ReportSubmission', {
+                targetType: 'student',
+                targetAccountId: activity.hostAccountId,
+              })
+            }
+            onBlock={() =>
+              navigation.navigate('BlockUser', {
+                targetAccountId: activity.hostAccountId,
+                returnToActivityId: activity.activityId,
+              })
+            }
           />
         ) : null}
       </ScrollView>
@@ -260,16 +268,11 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
         max={activity.maxParticipants}
         ctaLabel={cta.label}
         tone={cta.tone}
-        disabled={cta.disabled || Boolean(successMessage)}
-        loading={joining}
+        disabled={cta.disabled}
+        loading={actionLoading}
         onPress={handlePrimaryAction}
       />
-      {successMessage ? (
-        <PostActionToast
-          message={successMessage}
-          tone={activity.participationMode === 'approval_based' ? 'blue' : 'green'}
-        />
-      ) : null}
+      {successMessage ? <PostActionToast message={successMessage} tone={getToastTone(cta.kind)} /> : null}
     </View>
   );
 };
@@ -350,18 +353,30 @@ function DescriptionSection({ text }: { text: string }) {
   );
 }
 
-function HostTrustSection({ host }: { host?: ActivityDetailsViewModel['hostProfile'] }) {
+function RelationshipStatusBanner({ text }: { text: string }) {
+  return (
+    <SectionCard style={styles.relationshipCard}>
+      <Text style={styles.relationshipText}>{text}</Text>
+    </SectionCard>
+  );
+}
+
+function HostTrustSection({
+  host,
+  hostAccountId,
+  onOpenProfile,
+}: {
+  host?: ActivityDetailsViewModel['hostProfile'];
+  hostAccountId: string;
+  onOpenProfile?: () => void;
+}) {
   const name = host?.displayName || 'Verified student';
-  const initial = name.trim().charAt(0).toUpperCase() || 'S';
   const interests = host?.interests?.slice(0, 2) ?? [];
 
   return (
     <SectionCard style={styles.section}>
       <Text style={styles.sectionTitle}>Hosted by</Text>
-      <View style={styles.hostRow}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initial}</Text>
-        </View>
+      <Pressable style={styles.hostRow} onPress={onOpenProfile} disabled={!onOpenProfile}>
         <View style={styles.hostContent}>
           <Text style={styles.hostName}>{name}</Text>
           {host?.major ? <Text style={styles.hostMajor}>{host.major}</Text> : <Text style={styles.hostMajor}>Campus verified</Text>}
@@ -375,13 +390,22 @@ function HostTrustSection({ host }: { host?: ActivityDetailsViewModel['hostProfi
             </View>
           ) : null}
         </View>
-      </View>
+        {hostAccountId ? <Text style={styles.profileChevron}>{'>'}</Text> : null}
+      </Pressable>
       {host?.shortBio ? <Text style={styles.hostBio} numberOfLines={2}>{host.shortBio}</Text> : null}
     </SectionCard>
   );
 }
 
-function SafetyActions({ onReport, onBlock }: { onReport: () => void; onBlock: () => void }) {
+function SafetyActions({
+  onReport,
+  onReportHost,
+  onBlock,
+}: {
+  onReport: () => void;
+  onReportHost: () => void;
+  onBlock: () => void;
+}) {
   return (
     <SectionCard style={styles.safetySection}>
       <View style={styles.trustLine}>
@@ -391,6 +415,9 @@ function SafetyActions({ onReport, onBlock }: { onReport: () => void; onBlock: (
       <View style={styles.safetyButtons}>
         <Pressable style={styles.safetyButton} onPress={onReport}>
           <Text style={styles.safetyButtonText}>Report activity</Text>
+        </Pressable>
+        <Pressable style={styles.safetyButton} onPress={onReportHost}>
+          <Text style={styles.safetyButtonText}>Report host</Text>
         </Pressable>
         <Pressable style={styles.safetyButton} onPress={onBlock}>
           <Text style={styles.safetyButtonText}>Block host</Text>
@@ -497,12 +524,12 @@ function UnavailableState({
   error,
   onRetry,
   onFeed,
-  onAlerts,
+  onNotifications,
 }: {
   error: string | null;
   onRetry: () => void;
   onFeed: () => void;
-  onAlerts: () => void;
+  onNotifications: () => void;
 }) {
   return (
     <View style={styles.unavailable}>
@@ -517,8 +544,8 @@ function UnavailableState({
         It may have been removed or you no longer have access.
       </Text>
       <PrimaryButton label="Back to Feed" onPress={onFeed} style={styles.unavailableButton} />
-      <Pressable style={styles.alertsLink} onPress={onAlerts}>
-        <Text style={styles.alertsLinkText}>Go to Alerts</Text>
+      <Pressable style={styles.alertsLink} onPress={onNotifications}>
+        <Text style={styles.alertsLinkText}>Go to Notifications</Text>
       </Pressable>
     </View>
   );
@@ -574,8 +601,21 @@ function formatGenderPreference(value: GenderPreference): string {
   }
 }
 
-function formatStatus(value: ActivityStatus): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
+function getRelationshipStatusText(activity: ActivityDetailsViewModel): string | null {
+  switch (activity.personalActivityStatus) {
+    case 'host':
+      return 'You are hosting this activity.';
+    case 'pending_request':
+      return 'Pending request';
+    case 'confirmed_participant':
+      return 'Joined';
+    default:
+      return null;
+  }
+}
+
+function getToastTone(kind: string): 'green' | 'blue' {
+  return kind === 'request_to_join' || kind === 'pending_request' ? 'blue' : 'green';
 }
 
 const styles = StyleSheet.create({
@@ -696,6 +736,17 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 14,
   },
+  relationshipCard: {
+    padding: 14,
+    marginBottom: 14,
+    backgroundColor: colors.primaryGhost,
+    borderColor: colors.primarySoft,
+  },
+  relationshipText: {
+    color: colors.primaryDeep,
+    fontSize: 14,
+    fontWeight: '900',
+  },
   sectionTitle: {
     color: colors.text,
     fontSize: 15,
@@ -712,19 +763,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     alignItems: 'center',
-  },
-  avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 17,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: colors.primaryDeep,
-    fontSize: 18,
-    fontWeight: '900',
   },
   hostContent: {
     flex: 1,
@@ -766,6 +804,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 12,
   },
+  profileChevron: {
+    color: colors.text3,
+    fontSize: 18,
+    fontWeight: '900',
+  },
   safetySection: {
     padding: 14,
     marginBottom: 14,
@@ -788,10 +831,12 @@ const styles = StyleSheet.create({
   },
   safetyButtons: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   safetyButton: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: '30%',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,

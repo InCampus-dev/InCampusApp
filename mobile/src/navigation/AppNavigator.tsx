@@ -19,6 +19,7 @@ import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import ReportSubmissionScreen from '../screens/ReportSubmissionScreen';
 import SignInScreen from '../screens/SignInScreen';
 import SignUpScreen from '../screens/SignUpScreen';
+import StudentProfileScreen from '../screens/StudentProfileScreen';
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
 import AdminInsightsScreen from '../screens/admin/AdminInsightsScreen';
 import AdminReportDetailScreen from '../screens/admin/AdminReportDetailScreen';
@@ -42,9 +43,16 @@ export type RootStackParamList = {
   PersonalActivityList: { activityId?: string; source?: string } | undefined;
   CommunityRules: undefined;
   ReportSubmission:
-    | { targetType?: 'student' | 'activity'; targetActivityId?: string; targetAccountId?: string }
+    | {
+        targetType?: 'student' | 'activity';
+        targetActivityId?: string;
+        targetAccountId?: string;
+        activityTitle?: string;
+        categoryLabel?: string;
+      }
     | undefined;
-  BlockUser: { targetAccountId?: string } | undefined;
+  BlockUser: { targetAccountId?: string; returnToActivityId?: string } | undefined;
+  StudentProfile: { studentAccountId: string; contextActivityId: string };
   AdminDashboard: undefined;
   AdminStructuredOptions: undefined;
   AdminReports: undefined;
@@ -135,6 +143,11 @@ export default function AppNavigator() {
           name="BlockUser"
           component={BlockUserScreen}
           options={{ title: 'Block Student' }}
+        />
+        <Stack.Screen
+          name="StudentProfile"
+          component={StudentProfileScreen}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="AdminDashboard"

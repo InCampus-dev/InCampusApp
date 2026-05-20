@@ -116,7 +116,7 @@ export const ActivityFeedScreen = ({ navigation, route }: any) => {
       <FeedTopBar
         topInset={insets.top}
         campusLabel={CAMPUS_LABEL}
-        onAlerts={() => navigation.navigate('NotificationList')}
+        onNotifications={() => navigation.navigate('NotificationList')}
       />
       <DiscoveryHeader
         chips={categoryChips}
@@ -187,11 +187,11 @@ export const ActivityFeedScreen = ({ navigation, route }: any) => {
 function FeedTopBar({
   topInset,
   campusLabel,
-  onAlerts,
+  onNotifications,
 }: {
   topInset: number;
   campusLabel: string;
-  onAlerts: () => void;
+  onNotifications: () => void;
 }) {
   return (
     <View style={[styles.topBar, { paddingTop: topInset + 14 }]}>
@@ -205,8 +205,8 @@ function FeedTopBar({
           <Text style={styles.trustText}>Campus only - Verified</Text>
         </View>
       </View>
-      <Pressable style={styles.alertButton} onPress={onAlerts}>
-        <Text style={styles.alertButtonText}>!</Text>
+      <Pressable style={styles.alertButton} onPress={onNotifications} accessibilityLabel="Notifications">
+        <Text style={styles.alertButtonText}>{'\u{1F514}'}</Text>
       </Pressable>
     </View>
   );
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
   },
   alertButtonText: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '900',
   },
   discovery: {

@@ -5,6 +5,7 @@ import type { AuthenticatedStudentContext } from "../../../shared/src/auth/Authe
 import { PlatformAccessStatus, VerificationStatus } from "../../../shared/src/domain/enums";
 import { AppError } from "../../../shared/src/errors/AppError";
 import { Activity } from "../../../hosting-lifecycle/src/entities/Activity";
+import { Participation } from "../../../hosting-lifecycle/src/entities/Participation";
 import type { StudentProfile } from "../../../access-profile/src/entities/StudentProfile";
 import type { BlockRelationship } from "../../../safety-moderation/src/entities/BlockRelationship";
 import {
@@ -114,6 +115,74 @@ describe("createDiscoveryParticipationRoutes", () => {
     ).not.toBe("Host Student");
   });
 
+  it("returns context-limited public profile data for the activity host", async () => {
+    const harness = await createRoutesHarness({
+      activities: [
+        createActivity({
+          activityId: "activity-001",
+          hostAccountId: "host-001",
+          scheduledDateTime: new Date("2026-05-20T10:00:00.000Z")
+        })
+      ],
+      profiles: [
+        createProfile({
+          studentAccountId: "host-001",
+          displayName: "Ada Lovelace",
+          major: "Computer Science",
+          dateOfBirth: "2001-04-18",
+          gender: StudentProfileGender.PreferNotToSay,
+          interests: ["Robotics"],
+          languages: ["English"],
+          shortBio: "Builder"
+        })
+      ]
+    });
+
+    const response = await dispatchRouterRoute(harness.router, {
+      method: "GET",
+      routePath: "/activities/:id/profiles/:studentAccountId",
+      path: "/activities/activity-001/profiles/host-001"
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.jsonPayload).toEqual({
+      data: {
+        studentAccountId: "host-001",
+        displayName: "Ada Lovelace",
+        major: "Computer Science",
+        interests: ["Robotics"],
+        languages: ["English"],
+        shortBio: "Builder"
+      }
+    });
+  });
+
+  it("rejects context-limited public profile access for non-host students", async () => {
+    const harness = await createRoutesHarness({
+      activities: [
+        createActivity({
+          activityId: "activity-001",
+          hostAccountId: "host-001",
+          scheduledDateTime: new Date("2026-05-20T10:00:00.000Z")
+        })
+      ],
+      profiles: [createProfile({ studentAccountId: "other-001" })]
+    });
+
+    const response = await dispatchRouterRoute(harness.router, {
+      method: "GET",
+      routePath: "/activities/:id/profiles/:studentAccountId",
+      path: "/activities/activity-001/profiles/other-001"
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "NOT_FOUND"
+      }
+    });
+  });
+
 });
 
 async function createRoutesHarness(args: {
@@ -185,11 +254,29 @@ async function createRoutesHarness(args: {
   const router = createDiscoveryParticipationRoutes({
     dataSource: {
       getRepository: vi.fn().mockImplementation((entity) => {
-        if ((entity as { name?: string })?.name !== Activity.name) {
-          throw new Error("Unexpected repository requested by D&P route test");
+        if ((entity as { name?: string })?.name === Activity.name) {
+          return activityRepository;
         }
 
-        return activityRepository;
+        if ((entity as { name?: string })?.name === Participation.name) {
+          return {
+            findOne: vi.fn().mockResolvedValue(null)
+          };
+        }
+
+        if ((entity as { name?: string })?.name === "StudentProfile") {
+          return {
+            findOne: vi.fn(async (query: { where: { studentAccountId: string } }) => {
+              return (
+                profileStore.find(
+                  (studentProfile) => studentProfile.studentAccountId === query.where.studentAccountId
+                ) ?? null
+              );
+            })
+          };
+        }
+
+        throw new Error("Unexpected repository requested by D&P route test");
       })
     } as any,
     resolveStudentContext: async () => studentContext,
@@ -303,7 +390,7 @@ async function dispatchRouterRoute(
     attachCompletionCallback(response, finish);
 
     const dispatchError = (error: unknown): void => {
-      if (!(error instanceof AppError)) {
+      if (!isAppErrorLike(error)) {
         fail(error instanceof Error ? error : new Error("Unhandled route error"));
         return;
       }
@@ -329,6 +416,16 @@ async function dispatchRouterRoute(
   });
 
   return response;
+}
+
+function isAppErrorLike(error: unknown): error is AppError {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "statusCode" in error &&
+      "toEnvelope" in error &&
+      typeof (error as { toEnvelope?: unknown }).toEnvelope === "function"
+  );
 }
 
 function attachCompletionCallback(

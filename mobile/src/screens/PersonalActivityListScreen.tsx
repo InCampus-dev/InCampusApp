@@ -112,7 +112,7 @@ export default function PersonalActivityListScreen({ navigation, route }: { navi
           )}
         />
       )}
-      <BottomTabBar active="mine" onFeed={() => navigation.navigate('ActivityFeed')} onCreate={() => navigation.navigate('CreateActivity')} onAlerts={() => navigation.navigate('NotificationList')} onMine={() => navigation.navigate('Mine')} />
+      <BottomTabBar active="mine" onFeed={() => navigation.navigate('ActivityFeed')} onCreate={() => navigation.navigate('CreateActivity')} onMine={() => navigation.navigate('Mine')} />
     </ScreenShell>
   );
 }

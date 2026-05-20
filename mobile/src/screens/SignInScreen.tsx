@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import api, { getApiErrorCode } from '../services/api';
+import { clearAdminContext, saveDemoAdminContext } from '../services/adminSession';
 import {
   BrandHeader,
   InlineBanner,
@@ -34,6 +35,7 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(false);
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
   const [formError, setFormError] = useState<string | null>(null);
@@ -63,6 +65,7 @@ export default function SignInScreen() {
         password,
       });
       const { accessToken, studentAccountId, selectedCampusId } = response.data;
+      await clearAdminContext();
       await AsyncStorage.setItem('authToken', accessToken);
       await AsyncStorage.setItem('studentAccountId', studentAccountId);
       if (selectedCampusId) {
@@ -87,6 +90,22 @@ export default function SignInScreen() {
       }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDemoAdmin() {
+    setFormError(null);
+    setAdminLoading(true);
+    try {
+      await saveDemoAdminContext();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'AdminDashboard' }],
+      });
+    } catch {
+      setFormError('Could not start admin demo mode. Please try again.');
+    } finally {
+      setAdminLoading(false);
     }
   }
 
@@ -128,7 +147,15 @@ export default function SignInScreen() {
             editable={!loading}
             error={passwordError}
           />
-          <PrimaryButton label="Sign in" loading={loading} onPress={handleSignIn} style={styles.cta} />
+          <PrimaryButton label="Sign in" loading={loading} onPress={handleSignIn} style={styles.cta} disabled={adminLoading} />
+          <PrimaryButton
+            label="Continue as Demo Admin"
+            loading={adminLoading}
+            onPress={handleDemoAdmin}
+            tone="blue"
+            style={styles.adminCta}
+            disabled={loading}
+          />
           <Pressable style={styles.secondaryLink} onPress={() => navigation.navigate('SignUp')}>
             <Text style={styles.secondaryText}>Create account</Text>
           </Pressable>
@@ -190,6 +217,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '20deg' }],
   },
   cta: { marginTop: 8 },
+  adminCta: { marginTop: 10 },
   secondaryLink: { alignItems: 'center', paddingVertical: 16 },
   secondaryText: { color: colors.primary, fontSize: 14, fontWeight: '900' },
   trustLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 },

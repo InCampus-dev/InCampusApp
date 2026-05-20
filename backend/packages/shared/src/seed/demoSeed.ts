@@ -1,10 +1,14 @@
-import type { ActivityId, CampusId, StudentAccountId } from "../domain/dtos";
+import type { ActivityId, CampusId, ReportId, StudentAccountId } from "../domain/dtos";
 import {
   ActivityStatus,
   CampusStructuredOptionType,
   GenderPreference,
+  ModerationAction,
   ParticipationMode,
   PlatformAccessStatus,
+  ReportStatus,
+  ReportTargetType,
+  ReviewOutcome,
   StudentProfileGender,
   VerificationStatus
 } from "../domain/enums";
@@ -27,6 +31,8 @@ export const demoHostProfileId = "8bc2ea96-b3b7-4b15-8c03-1c8b42d5d6d0";
 export const demoGuestProfileId = "b7f2e5f0-f780-4244-b03f-deddb8ffc16f";
 export const demoOpenActivityId: ActivityId = "6b6a4767-5ebf-4d86-b65a-5716f17d9d41";
 export const demoApprovalActivityId: ActivityId = "172ddca6-871d-41ce-ad5e-f7c310b20743";
+export const demoModerationActivityId: ActivityId = "39c9e44a-b351-46d7-8c63-fc20d66a76af";
+export const demoReportId: ReportId = "62d6543c-d6cf-4acf-94ec-66e8c8ac8c10";
 
 // Backward-compatible aliases used by older seed tests/docs.
 export const demoLibraryLocationOptionId = demoLibraryPlazaLocationOptionId;
@@ -101,6 +107,23 @@ export interface DemoActivitySeed {
   status: ActivityStatus;
 }
 
+export interface DemoReportSeed {
+  reportId: ReportId;
+  campusId: CampusId;
+  reporterAccountId: StudentAccountId;
+  targetType: ReportTargetType;
+  targetAccountId: StudentAccountId | null;
+  targetActivityId: ActivityId | null;
+  reasonCode: string;
+  description: string | null;
+  status: ReportStatus;
+  moderationAction: ModerationAction;
+  reviewOutcome: ReviewOutcome | null;
+  reviewNotes: string | null;
+  reviewedByAdminId: string | null;
+  commandDispatchPending: boolean;
+}
+
 export interface DemoSeedData {
   campuses: DemoCampusSeed[];
   campusStructuredOptions: DemoStructuredOptionSeed[];
@@ -108,6 +131,7 @@ export interface DemoSeedData {
   studentAccounts: DemoStudentAccountSeed[];
   studentProfiles: DemoStudentProfileSeed[];
   activities: DemoActivitySeed[];
+  reports: DemoReportSeed[];
 }
 
 export const phase0DemoSeed: DemoSeedData = {
@@ -283,6 +307,42 @@ export const phase0DemoSeed: DemoSeedData = {
       participationMode: ParticipationMode.ApprovalBased,
       genderPreference: GenderPreference.All,
       status: ActivityStatus.Open
+    },
+    {
+      activityId: demoModerationActivityId,
+      campusId: demoCampusId,
+      hostAccountId: demoHostAccountId,
+      title: "[DEMO] Moderation Review Activity",
+      categoryId: demoCategoryCoffeeOptionId,
+      categoryLabel: "Coffee",
+      description: "Dedicated activity for admin report-review and remove_activity demo checks.",
+      startsInHours: 42,
+      durationHours: 1,
+      meetingPointId: demoMainGateLocationOptionId,
+      meetingPointLabel: "Main Gate",
+      maxParticipants: 2,
+      maxRequests: null,
+      participationMode: ParticipationMode.Open,
+      genderPreference: GenderPreference.All,
+      status: ActivityStatus.Open
+    }
+  ],
+  reports: [
+    {
+      reportId: demoReportId,
+      campusId: demoCampusId,
+      reporterAccountId: demoGuestAccountId,
+      targetType: ReportTargetType.Activity,
+      targetAccountId: null,
+      targetActivityId: demoModerationActivityId,
+      reasonCode: "demo_moderation_review",
+      description: "[DEMO] Pending report for Campus Admin review and remove_activity walkthrough.",
+      status: ReportStatus.PendingReview,
+      moderationAction: ModerationAction.None,
+      reviewOutcome: null,
+      reviewNotes: null,
+      reviewedByAdminId: null,
+      commandDispatchPending: false
     }
   ]
 };
@@ -294,6 +354,7 @@ export interface DemoSeedSummary {
   studentAccounts: number;
   studentProfiles: number;
   activities: number;
+  reports: number;
 }
 
 export function summarizeDemoSeed(seed: DemoSeedData = phase0DemoSeed): DemoSeedSummary {
@@ -303,6 +364,7 @@ export function summarizeDemoSeed(seed: DemoSeedData = phase0DemoSeed): DemoSeed
     universityIdentityRules: seed.universityIdentityRules.length,
     studentAccounts: seed.studentAccounts.length,
     studentProfiles: seed.studentProfiles.length,
-    activities: seed.activities.length
+    activities: seed.activities.length,
+    reports: seed.reports.length
   };
 }

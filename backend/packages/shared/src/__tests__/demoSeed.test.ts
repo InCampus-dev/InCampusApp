@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { CampusStructuredOptionType } from "../domain/enums";
+import { CampusStructuredOptionType, ReportStatus, ReportTargetType } from "../domain/enums";
 import {
   demoActivityTitlePrefix,
+  demoModerationActivityId,
   demoPassword,
+  demoReportId,
   phase0DemoSeed,
   summarizeDemoSeed
 } from "../seed/demoSeed";
@@ -26,7 +28,8 @@ describe("phase0DemoSeed", () => {
     ).toHaveLength(4);
     expect(summary.studentAccounts).toBeGreaterThanOrEqual(2);
     expect(summary.studentProfiles).toBeGreaterThanOrEqual(2);
-    expect(summary.activities).toBeGreaterThanOrEqual(2);
+    expect(summary.activities).toBeGreaterThanOrEqual(3);
+    expect(summary.reports).toBeGreaterThanOrEqual(1);
   });
 
   it("uses stable natural keys for idempotent demo seeding", () => {
@@ -58,6 +61,10 @@ describe("phase0DemoSeed", () => {
       ),
       "activity campusId + hostAccountId + title"
     );
+    expectUnique(
+      phase0DemoSeed.reports.map((report) => report.reportId),
+      "report reportId"
+    );
   });
 
   it("marks all seeded activities as explicit demo records", () => {
@@ -74,6 +81,20 @@ describe("phase0DemoSeed", () => {
     expect(
       phase0DemoSeed.studentAccounts.every((account) => account.password === demoPassword)
     ).toBe(true);
+  });
+
+  it("uses a dedicated moderation activity for the seeded admin-review report", () => {
+    const moderationActivity = phase0DemoSeed.activities.find(
+      (activity) => activity.activityId === demoModerationActivityId
+    );
+    const demoReport = phase0DemoSeed.reports.find((report) => report.reportId === demoReportId);
+
+    expect(moderationActivity?.title).toBe("[DEMO] Moderation Review Activity");
+    expect(demoReport).toMatchObject({
+      targetType: ReportTargetType.Activity,
+      targetActivityId: demoModerationActivityId,
+      status: ReportStatus.PendingReview
+    });
   });
 });
 

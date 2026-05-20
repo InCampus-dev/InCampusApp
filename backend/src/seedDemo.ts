@@ -9,11 +9,13 @@ import { CampusStructuredOption } from "../packages/campus-administration/src/en
 import { Activity } from "../packages/hosting-lifecycle/src/entities/Activity";
 import { Participation } from "../packages/hosting-lifecycle/src/entities/Participation";
 import { NotificationRecord } from "../packages/notifications-system-flow/src/entities/NotificationRecord";
+import { ReportRecord } from "../packages/safety-moderation/src/entities/ReportRecord";
 import { AppDataSource } from "../packages/shared/src/config/database";
 import {
   demoActivityTitlePrefix,
   phase0DemoSeed,
   type DemoActivitySeed,
+  type DemoReportSeed,
   type DemoSeedData
 } from "../packages/shared/src/seed/demoSeed";
 
@@ -24,6 +26,7 @@ interface DemoSeedRunSummary {
   studentAccounts: number;
   studentProfiles: number;
   activities: number;
+  reports: number;
   resetDemoActivityIds: string[];
 }
 
@@ -31,6 +34,7 @@ interface SeedContext {
   campusIdBySeedId: Map<string, string>;
   accountIdBySeedId: Map<string, string>;
   optionBySeedId: Map<string, CampusStructuredOption>;
+  activityIdBySeedId: Map<string, string>;
 }
 
 export async function seedDemo(dataSource: DataSource): Promise<DemoSeedRunSummary> {
@@ -39,7 +43,8 @@ export async function seedDemo(dataSource: DataSource): Promise<DemoSeedRunSumma
   const context: SeedContext = {
     campusIdBySeedId: new Map(),
     accountIdBySeedId: new Map(),
-    optionBySeedId: new Map()
+    optionBySeedId: new Map(),
+    activityIdBySeedId: new Map()
   };
 
   const summary: DemoSeedRunSummary = {
@@ -49,6 +54,7 @@ export async function seedDemo(dataSource: DataSource): Promise<DemoSeedRunSumma
     studentAccounts: 0,
     studentProfiles: 0,
     activities: 0,
+    reports: 0,
     resetDemoActivityIds: []
   };
 
@@ -58,6 +64,7 @@ export async function seedDemo(dataSource: DataSource): Promise<DemoSeedRunSumma
   await seedStudentAccounts(dataSource, phase0DemoSeed, context, summary);
   await seedStudentProfiles(dataSource, phase0DemoSeed, context, summary);
   await seedActivities(dataSource, phase0DemoSeed, context, summary);
+  await seedReports(dataSource, phase0DemoSeed, context, summary);
 
   return summary;
 }
@@ -312,9 +319,80 @@ async function seedActivities(
     activity.genderPreference = activitySeed.genderPreference;
     activity.status = activitySeed.status;
 
-    await repo.save(activity);
+    const savedActivity = await repo.save(activity);
+    context.activityIdBySeedId.set(activitySeed.activityId, savedActivity.activityId);
     summary.activities += 1;
   }
+}
+
+async function seedReports(
+  dataSource: DataSource,
+  seed: DemoSeedData,
+  context: SeedContext,
+  summary: DemoSeedRunSummary
+): Promise<void> {
+  const repo = dataSource.getRepository(ReportRecord);
+
+  for (const reportSeed of seed.reports) {
+    const campusId = requireMappedValue(context.campusIdBySeedId, reportSeed.campusId, "campus");
+    const reporterAccountId = requireMappedValue(
+      context.accountIdBySeedId,
+      reportSeed.reporterAccountId,
+      "reporter account"
+    );
+    const targetAccountId = reportSeed.targetAccountId
+      ? requireMappedValue(context.accountIdBySeedId, reportSeed.targetAccountId, "target account")
+      : null;
+    const targetActivityId = reportSeed.targetActivityId
+      ? requireMappedValue(context.activityIdBySeedId, reportSeed.targetActivityId, "target activity")
+      : null;
+    const existingReport = await repo.findOne({
+      where: {
+        reportId: reportSeed.reportId
+      }
+    });
+    const report =
+      existingReport ??
+      repo.create({
+        reportId: reportSeed.reportId
+      });
+
+    applyDemoReportSeed(report, reportSeed, {
+      campusId,
+      reporterAccountId,
+      targetAccountId,
+      targetActivityId
+    });
+
+    await repo.save(report);
+    summary.reports += 1;
+  }
+}
+
+function applyDemoReportSeed(
+  report: ReportRecord,
+  reportSeed: DemoReportSeed,
+  mappedValues: {
+    campusId: string;
+    reporterAccountId: string;
+    targetAccountId: string | null;
+    targetActivityId: string | null;
+  }
+): void {
+  report.campusId = mappedValues.campusId;
+  report.reporterAccountId = mappedValues.reporterAccountId;
+  report.targetType = reportSeed.targetType;
+  report.targetAccountId = mappedValues.targetAccountId;
+  report.targetActivityId = mappedValues.targetActivityId;
+  report.reasonCode = reportSeed.reasonCode;
+  report.description = reportSeed.description;
+  report.status = reportSeed.status;
+  report.reviewedAt = null;
+  report.reviewedByAdminId = reportSeed.reviewedByAdminId;
+  report.moderationAction = reportSeed.moderationAction;
+  report.reviewOutcome = reportSeed.reviewOutcome;
+  report.reviewNotes = reportSeed.reviewNotes;
+  report.commandDispatchPending = reportSeed.commandDispatchPending;
 }
 
 async function resetDemoActivityRelations(

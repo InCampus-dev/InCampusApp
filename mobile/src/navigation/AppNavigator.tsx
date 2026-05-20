@@ -19,6 +19,12 @@ import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import ReportSubmissionScreen from '../screens/ReportSubmissionScreen';
 import SignInScreen from '../screens/SignInScreen';
 import SignUpScreen from '../screens/SignUpScreen';
+import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+import AdminInsightsScreen from '../screens/admin/AdminInsightsScreen';
+import AdminReportDetailScreen from '../screens/admin/AdminReportDetailScreen';
+import AdminReportsScreen from '../screens/admin/AdminReportsScreen';
+import AdminStructuredOptionsScreen from '../screens/admin/AdminStructuredOptionsScreen';
+import type { AdminReportListItem } from '../services/adminApi';
 
 export type RootStackParamList = {
   SignIn: undefined;
@@ -39,6 +45,11 @@ export type RootStackParamList = {
     | { targetType?: 'student' | 'activity'; targetActivityId?: string; targetAccountId?: string }
     | undefined;
   BlockUser: { targetAccountId?: string } | undefined;
+  AdminDashboard: undefined;
+  AdminStructuredOptions: undefined;
+  AdminReports: undefined;
+  AdminReportDetail: { reportId: string; reportSummary?: AdminReportListItem };
+  AdminInsights: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -124,6 +135,31 @@ export default function AppNavigator() {
           name="BlockUser"
           component={BlockUserScreen}
           options={{ title: 'Block Student' }}
+        />
+        <Stack.Screen
+          name="AdminDashboard"
+          component={AdminDashboardScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AdminStructuredOptions"
+          component={AdminStructuredOptionsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AdminReports"
+          component={AdminReportsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AdminReportDetail"
+          component={AdminReportDetailScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AdminInsights"
+          component={AdminInsightsScreen}
+          options={{ headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

@@ -785,7 +785,7 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 28,
     lineHeight: 34,
-    fontWeight: '900',
+    fontWeight: '800',
     letterSpacing: -0.8,
     marginTop: 18,
   },
@@ -842,11 +842,11 @@ const styles = StyleSheet.create({
   relationshipCard: {
     padding: 14,
     marginBottom: 14,
-    backgroundColor: colors.primaryGhost,
-    borderColor: colors.primarySoft,
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
   },
   relationshipText: {
-    color: colors.primaryDeep,
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '900',
   },

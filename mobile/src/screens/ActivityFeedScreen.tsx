@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 17,
     lineHeight: 22,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   metaRow: {
     flexDirection: 'row',

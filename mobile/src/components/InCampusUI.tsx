@@ -238,7 +238,7 @@ export function PrimaryButton({
     <Pressable
       style={({ pressed }) => [
         uiStyles.primaryButton,
-        { backgroundColor, opacity: disabled ? 0.68 : pressed ? 0.86 : 1 },
+        { backgroundColor: disabled ? '#B8BFC8' : backgroundColor, opacity: pressed ? 0.86 : 1 },
         style,
       ]}
       onPress={onPress}

@@ -49,7 +49,7 @@ export default function ConsentSettingsScreen({ navigation }: { navigation: any 
               value={consentEnabled}
               onValueChange={setConsentEnabled}
               disabled={submitting}
-              trackColor={{ false: '#D0D5DD', true: colors.primary }}
+              trackColor={{ false: '#D0D5DD', true: colors.primaryGreen }}
               thumbColor={colors.card}
             />
           </View>
@@ -75,14 +75,14 @@ const styles = StyleSheet.create({
   motif: { width: 84, height: 84, borderRadius: 24, backgroundColor: colors.coralSoft, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 24 },
   motifInner: { width: 42, height: 42, borderRadius: 21, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.coral },
   toggleCard: { borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card, borderRadius: 18, padding: 18 },
-  toggleCardActive: { borderColor: colors.primary },
+  toggleCardActive: { borderColor: colors.primaryGreen },
   toggleTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   toggleTextCol: { flex: 1 },
   toggleTitle: { color: colors.text, fontSize: 16, fontWeight: '900', lineHeight: 21 },
   toggleHelper: { color: colors.text2, fontSize: 13, fontWeight: '600', marginTop: 6, lineHeight: 19 },
   detailBox: { backgroundColor: colors.bg, borderRadius: 12, padding: 12, marginTop: 14, gap: 6 },
   detailLine: { color: colors.text2, fontSize: 12, fontWeight: '600', lineHeight: 17 },
-  detailKey: { color: colors.primary, fontWeight: '900' },
+  detailKey: { color: colors.primaryGreenPressed, fontWeight: '900' },
   detailKeyMuted: { color: colors.text3, fontWeight: '900' },
   skipLink: { alignItems: 'center', paddingVertical: 12 },
   skipText: { color: colors.text2, fontSize: 14, fontWeight: '900' },

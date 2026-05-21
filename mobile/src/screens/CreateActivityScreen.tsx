@@ -23,7 +23,9 @@ import {
   InlineBanner,
   PrimaryButton,
   SectionCard,
+  type CategoryColor,
   colors,
+  crCat,
   metrics,
 } from '../components/InCampusUI';
 
@@ -86,6 +88,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
 
   const selectedCategory = categories.find((item) => item.optionId === categoryId);
   const selectedLocation = locations.find((item) => item.optionId === meetingPointId);
+  const accent = crCat(selectedCategory?.name);
   const filteredCategories = useFilteredOptions(categories, searchQuery);
   const filteredLocations = useFilteredOptions(locations, searchQuery);
   const optionsReady = categories.length > 0 && locations.length > 0;
@@ -238,7 +241,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
           </View>
         ) : null}
 
-        <FormSection step="1" title="What and where">
+        <FormSection step="1" title="What and where" accent={accent}>
           <FieldShell label="Category" error={errors.categoryId}>
             <SelectorField
               placeholder="What kind of activity?"
@@ -308,7 +311,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
           </FieldShell>
         </FormSection>
 
-        <FormSection step="2" title="Description" sub="optional">
+        <FormSection step="2" title="Description" sub="optional" accent={accent}>
           <FieldShell label="Description" last>
             <TextInput
               style={styles.textArea}
@@ -325,7 +328,7 @@ export const CreateActivityScreen = ({ navigation }: any) => {
           </FieldShell>
         </FormSection>
 
-        <FormSection step="3" title="Advanced">
+        <FormSection step="3" title="Advanced" accent={accent}>
           <View style={styles.advancedInner}>
             <Pressable style={styles.advancedHeader} onPress={() => setAdvancedOpen((value) => !value)} disabled={formLocked}>
               <View>
@@ -376,7 +379,13 @@ export const CreateActivityScreen = ({ navigation }: any) => {
       </ScrollView>
 
       <View style={[styles.stickyBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-        <PrimaryButton label="Publish" loading={creating} disabled={formLocked || !optionsReady} onPress={handlePublish} />
+        <PrimaryButton
+          label="Publish"
+          loading={creating}
+          disabled={formLocked || !optionsReady}
+          onPress={handlePublish}
+          style={styles.publishButton}
+        />
       </View>
 
       <OptionSheet
@@ -478,21 +487,38 @@ function FormSection({
   step,
   title,
   sub,
+  accent,
   children,
 }: {
   step: string;
   title: string;
   sub?: string;
+  accent?: CategoryColor | null;
   children: React.ReactNode;
 }) {
   return (
     <View style={styles.sectionWrap}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.stepBadge}>STEP {step}</Text>
+        <Text
+          style={[
+            styles.stepBadge,
+            accent && { backgroundColor: accent.bg, color: accent.fg, borderColor: accent.bg },
+          ]}
+        >
+          STEP {step}
+        </Text>
         <Text style={styles.sectionTitle}>{title}</Text>
         {sub ? <Text style={styles.sectionSub}>- {sub}</Text> : null}
       </View>
-      <SectionCard style={styles.formCard}>{children}</SectionCard>
+      <SectionCard
+        style={[
+          styles.formCard,
+          accent && { backgroundColor: accent.tint, borderColor: `${accent.bg}33` },
+        ]}
+      >
+        {accent ? <View style={[styles.sectionAccentStrip, { backgroundColor: accent.bg }]} /> : null}
+        <View style={accent && styles.formCardAccentContent}>{children}</View>
+      </SectionCard>
     </View>
   );
 }
@@ -970,6 +996,19 @@ const styles = StyleSheet.create({
   },
   formCard: {
     overflow: 'hidden',
+    position: 'relative',
+  },
+  sectionAccentStrip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    borderTopLeftRadius: metrics.radius,
+    borderTopRightRadius: metrics.radius,
+  },
+  formCardAccentContent: {
+    marginTop: 4,
   },
   fieldShell: {
     padding: 14,
@@ -1209,6 +1248,14 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
+  publishButton: {
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.22,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 18,
+    elevation: 4,
+  },
   sheetSearch: {
     minHeight: 46,
     borderRadius: 14,
@@ -1288,6 +1335,11 @@ const styles = StyleSheet.create({
   dateChoiceActive: {
     borderColor: colors.primary,
     backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.22,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 14,
+    elevation: 3,
   },
   dateChoiceDay: {
     color: colors.text,
@@ -1331,6 +1383,11 @@ const styles = StyleSheet.create({
   },
   sheetConfirm: {
     marginTop: 18,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.22,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 18,
+    elevation: 4,
   },
   clearDateButton: {
     alignItems: 'center',

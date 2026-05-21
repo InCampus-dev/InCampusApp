@@ -10,6 +10,7 @@ import {
   LoadingRows,
   ScreenShell,
   SectionCard,
+  categoryStyle,
   colors,
   metrics,
 } from '../components/InCampusUI';
@@ -112,7 +113,7 @@ export default function PersonalActivityListScreen({ navigation, route }: { navi
           )}
         />
       )}
-      <BottomTabBar active="mine" onFeed={() => navigation.navigate('ActivityFeed')} onCreate={() => navigation.navigate('CreateActivity')} onMine={() => navigation.navigate('Mine')} />
+      <BottomTabBar active="account" onFeed={() => navigation.navigate('ActivityFeed')} onCreate={() => navigation.navigate('CreateActivity')} onAccount={() => navigation.navigate('Mine')} />
     </ScreenShell>
   );
 }
@@ -126,23 +127,27 @@ function SegmentButton({ label, active, onPress }: { label: string; active: bool
 }
 
 function PersonalActivityCard({ activity, muted, onPress }: { activity: PersonalActivityItem; muted?: boolean; onPress: () => void }) {
+  const cat = categoryStyle(activity.categoryLabel);
   return (
     <Pressable onPress={onPress}>
-      <SectionCard style={[styles.card, muted && styles.cardMuted]}>
-        <View style={styles.cardTop}>
-          {activity.categoryLabel ? <CategoryPill label={activity.categoryLabel} compact /> : <View />}
-          <PersonalStatusBadge value={activity.personalActivityStatus} />
-        </View>
-        <Text style={styles.cardTitle}>{activity.title}</Text>
-        {activity.scheduledDateTime ? <Text style={styles.meta}>{formatDateTime(activity.scheduledDateTime)}</Text> : null}
-        {activity.meetingPointLabel ? <Text style={styles.meta}>{activity.meetingPointLabel}</Text> : null}
-        {typeof activity.currentParticipantCount === 'number' && typeof activity.maxParticipants === 'number' ? (
-          <View style={styles.participantRow}>
-            <View style={styles.participantTrack}><View style={[styles.participantFill, { width: `${Math.min(100, (activity.currentParticipantCount / Math.max(activity.maxParticipants, 1)) * 100)}%` }]} /></View>
-            <Text style={styles.participantText}>{activity.currentParticipantCount}/{activity.maxParticipants} joined</Text>
+      <SectionCard style={[styles.card, { borderLeftColor: cat.bg }, muted && styles.cardMuted]}>
+        <View pointerEvents="none" style={[styles.categoryOverlay, { backgroundColor: cat.bg }]} />
+        <View style={styles.cardContent}>
+          <View style={styles.cardTop}>
+            {activity.categoryLabel ? <CategoryPill label={activity.categoryLabel} compact /> : <View />}
+            <PersonalStatusBadge value={activity.personalActivityStatus} />
           </View>
-        ) : null}
-        {activity.status && activity.status !== 'open' ? <LifecycleBadge value={activity.status} /> : null}
+          <Text style={styles.cardTitle}>{activity.title}</Text>
+          {activity.scheduledDateTime ? <Text style={styles.meta}>{formatDateTime(activity.scheduledDateTime)}</Text> : null}
+          {activity.meetingPointLabel ? <Text style={styles.meta}>{activity.meetingPointLabel}</Text> : null}
+          {typeof activity.currentParticipantCount === 'number' && typeof activity.maxParticipants === 'number' ? (
+            <View style={styles.participantRow}>
+              <View style={styles.participantTrack}><View style={[styles.participantFill, { width: `${Math.min(100, (activity.currentParticipantCount / Math.max(activity.maxParticipants, 1)) * 100)}%` }]} /></View>
+              <Text style={styles.participantText}>{activity.currentParticipantCount}/{activity.maxParticipants} joined</Text>
+            </View>
+          ) : null}
+          {activity.status && activity.status !== 'open' ? <LifecycleBadge value={activity.status} /> : null}
+        </View>
       </SectionCard>
     </Pressable>
   );
@@ -152,9 +157,9 @@ function PersonalStatusBadge({ value }: { value?: string }) {
   const config = value === 'host'
     ? { label: 'Host', bg: colors.yellowSoft, fg: '#8A5B00' }
     : value === 'pending_request'
-      ? { label: 'Pending', bg: colors.skySoft, fg: colors.sky }
+      ? { label: 'Pending', bg: colors.primarySoft, fg: colors.primary }
       : value === 'confirmed_participant'
-        ? { label: 'Joined', bg: colors.primarySoft, fg: colors.primary }
+        ? { label: 'Joined', bg: colors.successSoft, fg: colors.primaryGreenPressed }
         : { label: 'Activity', bg: colors.borderSoft, fg: colors.text2 };
   return <Text style={[styles.statusBadge, { backgroundColor: config.bg, color: config.fg }]}>{config.label}</Text>;
 }
@@ -205,7 +210,9 @@ const styles = StyleSheet.create({
   bannerWrap: { paddingHorizontal: 16, marginTop: 10 },
   loadingWrap: { padding: 16 },
   list: { padding: 16, gap: 10, paddingBottom: metrics.bottomTabContentPadding },
-  card: { padding: 14 },
+  card: { padding: 14, borderLeftWidth: 4, position: 'relative', overflow: 'hidden' },
+  categoryOverlay: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '60%', opacity: 0.08 },
+  cardContent: { position: 'relative' },
   cardMuted: { opacity: 0.82 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginBottom: 8 },
   cardTitle: { color: colors.text, fontSize: 17, fontWeight: '900', lineHeight: 22 },
@@ -213,7 +220,7 @@ const styles = StyleSheet.create({
   statusBadge: { overflow: 'hidden', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, fontSize: 11, fontWeight: '900' },
   participantRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
   participantTrack: { flex: 1, height: 5, borderRadius: 999, backgroundColor: colors.borderSoft, overflow: 'hidden' },
-  participantFill: { height: '100%', borderRadius: 999, backgroundColor: colors.primary },
+  participantFill: { height: '100%', borderRadius: 999, backgroundColor: colors.primaryGreen },
   participantText: { color: colors.text2, fontSize: 11, fontWeight: '900' },
   lifecycleBadge: { alignSelf: 'flex-start', marginTop: 10, overflow: 'hidden', borderRadius: 7, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: colors.borderSoft, color: colors.text2, fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
   lifecycleCancelled: { backgroundColor: colors.dangerSoft, color: colors.danger },

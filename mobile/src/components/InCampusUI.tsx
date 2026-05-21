@@ -14,24 +14,35 @@ import {
   ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BOTTOM_TAB_ITEMS, type BottomTabKey } from '../services/bottomTabs';
 
 export const colors = {
-  primary: '#16B978',
-  primaryDeep: '#0F9963',
-  primarySoft: '#E6F7EF',
-  primaryGhost: '#F1FBF6',
+  primary: '#1E2D7A',
+  primaryPressed: '#15215C',
+  primaryDeep: '#15215C',
+  primarySoft: '#E8EAF5',
+  primaryGhost: '#F5F6FB',
+  green: '#16C172',
+  greenDeep: '#0E9B59',
+  greenSoft: '#D6F4E3',
+  primaryGreen: '#16C172',
+  primaryGreenPressed: '#0E9B59',
+  successSoft: '#D6F4E3',
   sky: '#4DA3FF',
+  skyBlue: '#4DA3FF',
   skyDeep: '#1E63C8',
   skySoft: '#E8F2FF',
-  coral: '#FF6B5F',
-  coralDeep: '#C0382E',
-  coralSoft: '#FFE9E6',
-  yellow: '#FFD166',
-  yellowSoft: '#FFF5DB',
-  bg: '#F7F8FA',
+  coral: '#FF6B3D',
+  coralDeep: '#D04A1F',
+  coralSoft: '#FFDACB',
+  yellow: '#FFC233',
+  warmYellow: '#FFC233',
+  yellowSoft: '#FFEDB8',
+  warmYellowSoft: '#FFEDB8',
+  bg: '#F4F5FA',
+  background: '#F4F5FA',
   card: '#FFFFFF',
-  text: '#1F2933',
+  text: '#1F2444',
+  textPrimary: '#1F2444',
   text2: '#667085',
   text3: '#98A0AB',
   border: '#E5E7EB',
@@ -48,18 +59,24 @@ export const metrics = {
   bottomTabContentPadding: 124,
 };
 
-const CATEGORY_STYLE: Record<string, { bg: string; fg: string; dot: string }> = {
-  Lunch: { bg: '#FFF5DB', fg: '#9A6B00', dot: '#FFD166' },
-  Study: { bg: '#E8F2FF', fg: '#1E63C8', dot: '#4DA3FF' },
-  'Language Exchange': { bg: '#FFE9E6', fg: '#C0382E', dot: '#FF6B5F' },
-  Sports: { bg: '#E6F7EF', fg: '#0F7E54', dot: '#16B978' },
-  Sport: { bg: '#E6F7EF', fg: '#0F7E54', dot: '#16B978' },
-  Social: { bg: '#F1EBFF', fg: '#5B3FBF', dot: '#9D88F0' },
-  Coffee: { bg: '#FFEFE2', fg: '#A4501B', dot: '#FF9E5C' },
+export type CategoryColor = { bg: string; fg: string; dot: string; tint: string };
+
+const CATEGORY_STYLE: Record<string, CategoryColor> = {
+  Lunch: { bg: '#FFC233', fg: '#5C3A00', dot: '#5C3A00', tint: '#FFF4DA' },
+  Study: { bg: '#5B7BFF', fg: '#FFFFFF', dot: '#FFFFFF', tint: '#E5EAFF' },
+  'Language Exchange': { bg: '#FF7A4D', fg: '#FFFFFF', dot: '#FFFFFF', tint: '#FFE5D9' },
+  Sport: { bg: '#2DD685', fg: '#FFFFFF', dot: '#FFFFFF', tint: '#DAF7E8' },
+  Sports: { bg: '#2DD685', fg: '#FFFFFF', dot: '#FFFFFF', tint: '#DAF7E8' },
+  Social: { bg: '#A989FF', fg: '#FFFFFF', dot: '#FFFFFF', tint: '#ECE3FF' },
+  Coffee: { bg: '#FFA463', fg: '#FFFFFF', dot: '#FFFFFF', tint: '#FFE8D5' },
 };
 
 export function categoryStyle(label?: string) {
-  return CATEGORY_STYLE[label ?? ''] ?? { bg: '#EEF0F3', fg: '#37414D', dot: '#667085' };
+  return CATEGORY_STYLE[label ?? ''] ?? { bg: '#EEF0F3', fg: '#37414D', dot: '#667085', tint: '#F4F5FA' };
+}
+
+export function crCat(label?: string): CategoryColor | null {
+  return CATEGORY_STYLE[label ?? ''] ?? null;
 }
 
 export function CategoryPill({ label, compact = false }: { label: string; compact?: boolean }) {
@@ -77,8 +94,8 @@ export function CategoryPill({ label, compact = false }: { label: string; compac
 export function ModeBadge({ mode }: { mode: 'open' | 'approval_based' }) {
   const isOpen = mode === 'open';
   return (
-    <View style={[uiStyles.badge, { backgroundColor: isOpen ? colors.primarySoft : colors.skySoft }]}>
-      <Text style={[uiStyles.badgeText, { color: isOpen ? colors.primaryDeep : colors.skyDeep }]}>
+    <View style={[uiStyles.badge, { backgroundColor: isOpen ? colors.successSoft : colors.primarySoft }]}>
+      <Text style={[uiStyles.badgeText, { color: isOpen ? colors.primaryGreenPressed : colors.primary }]}>
         {isOpen ? 'Open' : 'Approval'}
       </Text>
     </View>
@@ -127,7 +144,7 @@ export function InlineBanner({
 }) {
   const palette =
     tone === 'success'
-      ? { bg: colors.primaryGhost, border: colors.primarySoft, text: colors.primaryDeep }
+      ? { bg: colors.successSoft, border: colors.primaryGreen, text: colors.primaryGreenPressed }
       : tone === 'error'
         ? { bg: colors.dangerSoft, border: '#F8C9CB', text: colors.danger }
         : { bg: colors.yellowSoft, border: '#F3D99B', text: '#8A5B00' };
@@ -198,7 +215,7 @@ export function PrimaryButton({
   onPress,
   disabled,
   loading,
-  tone = 'green',
+  tone = 'blue',
   style,
 }: {
   label: string;
@@ -210,18 +227,18 @@ export function PrimaryButton({
 }) {
   const backgroundColor =
     tone === 'blue'
-      ? colors.sky
+      ? colors.primary
       : tone === 'danger'
         ? colors.danger
         : tone === 'muted'
           ? '#D9DEE6'
-          : colors.primary;
+          : colors.green;
 
   return (
     <Pressable
       style={({ pressed }) => [
         uiStyles.primaryButton,
-        { backgroundColor, opacity: disabled ? 0.68 : pressed ? 0.86 : 1 },
+        { backgroundColor: disabled ? '#B8BFC8' : backgroundColor, opacity: pressed ? 0.86 : 1 },
         style,
       ]}
       onPress={onPress}
@@ -272,7 +289,7 @@ export function FieldError({ message }: { message?: string }) {
   return <Text style={uiStyles.fieldError}>{message}</Text>;
 }
 
-export function ProgressStrip({ current, max }: { current: number; max: number }) {
+export function ProgressStrip({ current, max, full = false }: { current: number; max: number; full?: boolean }) {
   const total = Math.min(Math.max(max, 1), 8);
   const filled = Math.min(current, total);
   return (
@@ -282,7 +299,7 @@ export function ProgressStrip({ current, max }: { current: number; max: number }
           key={index}
           style={[
             uiStyles.progressDot,
-            index < filled ? uiStyles.progressDotFilled : uiStyles.progressDotEmpty,
+            index < filled ? (full ? uiStyles.progressDotFull : uiStyles.progressDotFilled) : uiStyles.progressDotEmpty,
           ]}
         />
       ))}
@@ -506,7 +523,7 @@ export function Chip({
 function chipTone(tone: 'green' | 'blue' | 'coral' | 'yellow' | 'muted') {
   switch (tone) {
     case 'blue':
-      return { bg: colors.skySoft, fg: colors.sky };
+      return { bg: colors.primarySoft, fg: colors.primary };
     case 'coral':
       return { bg: colors.coralSoft, fg: colors.coral };
     case 'yellow':
@@ -515,7 +532,7 @@ function chipTone(tone: 'green' | 'blue' | 'coral' | 'yellow' | 'muted') {
       return { bg: colors.borderSoft, fg: colors.text2 };
     case 'green':
     default:
-      return { bg: colors.primarySoft, fg: colors.primary };
+      return { bg: colors.successSoft, fg: colors.primaryGreenPressed };
   }
 }
 
@@ -527,6 +544,7 @@ export function EmptyState({
   secondaryLabel,
   onPrimary,
   onSecondary,
+  primaryTone = 'blue',
 }: {
   icon?: string;
   title: string;
@@ -535,6 +553,7 @@ export function EmptyState({
   secondaryLabel?: string;
   onPrimary?: () => void;
   onSecondary?: () => void;
+  primaryTone?: 'green' | 'blue' | 'muted' | 'danger';
 }) {
   return (
     <View style={shellStyles.emptyCard}>
@@ -544,7 +563,7 @@ export function EmptyState({
       <Text style={shellStyles.emptyTitle}>{title}</Text>
       {text ? <Text style={shellStyles.emptyText}>{text}</Text> : null}
       {primaryLabel ? (
-        <PrimaryButton label={primaryLabel} onPress={onPrimary} style={shellStyles.emptyPrimary} />
+        <PrimaryButton label={primaryLabel} onPress={onPrimary} tone={primaryTone} style={shellStyles.emptyPrimary} />
       ) : null}
       {secondaryLabel ? (
         <Pressable style={shellStyles.emptySecondary} onPress={onSecondary}>
@@ -565,7 +584,7 @@ export function InlineSpinnerButton({
   loadingLabel,
   loading,
   onPress,
-  tone = 'green',
+  tone = 'blue',
   disabled,
 }: {
   label: string;
@@ -586,34 +605,87 @@ export function InlineSpinnerButton({
   );
 }
 
+export type BottomTabKey = 'feed' | 'create' | 'account';
+
+const BOTTOM_TAB_ITEMS: Array<{ key: BottomTabKey; label: string; fab?: boolean }> = [
+  { key: 'feed', label: 'Feed' },
+  { key: 'create', label: 'Create', fab: true },
+  { key: 'account', label: 'Account' },
+];
+
 export function BottomTabBar({
   active,
   onFeed,
   onCreate,
+  onAccount,
   onMine,
 }: {
   active?: BottomTabKey;
   onFeed?: () => void;
   onCreate?: () => void;
+  onAccount?: () => void;
   onMine?: () => void;
 }) {
   const handlers: Record<BottomTabKey, (() => void) | undefined> = {
     feed: onFeed,
     create: onCreate,
-    mine: onMine,
+    account: onAccount ?? onMine,
   };
   const insets = useSafeAreaInsets();
   return (
-    <View style={[shellStyles.tabBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+    <View style={[shellStyles.tabBar, { paddingBottom: Math.max(insets.bottom, 18) }]}>
       {BOTTOM_TAB_ITEMS.map((item) => {
         const selected = active === item.key;
+        if (item.fab) {
+          return (
+            <Pressable key={item.key} style={shellStyles.tabCreateWrap} onPress={handlers[item.key]}>
+              <View style={shellStyles.tabFab}>
+                <PlusGlyph size={28} color={colors.card} />
+              </View>
+              <Text style={shellStyles.tabCreateLabel}>{item.label}</Text>
+            </Pressable>
+          );
+        }
         return (
           <Pressable key={item.key} style={shellStyles.tabItem} onPress={handlers[item.key]}>
-            <Text style={[shellStyles.tabIcon, selected && shellStyles.tabActive]}>{item.icon}</Text>
+            {item.key === 'feed' ? (
+              <FeedLinesGlyph color={selected ? colors.primary : '#94A3B8'} />
+            ) : (
+              <AccountUserGlyph color={selected ? colors.primary : '#94A3B8'} />
+            )}
             <Text style={[shellStyles.tabLabel, selected && shellStyles.tabActive]}>{item.label}</Text>
           </Pressable>
         );
       })}
+    </View>
+  );
+}
+
+function FeedLinesGlyph({ color }: { color: string }) {
+  return (
+    <View style={shellStyles.feedLinesIcon}>
+      {[0, 1, 2].map((index) => (
+        <View key={index} style={[shellStyles.feedLine, { borderColor: color }]} />
+      ))}
+    </View>
+  );
+}
+
+function AccountUserGlyph({ color }: { color: string }) {
+  return (
+    <View style={shellStyles.accountIcon}>
+      <View style={[shellStyles.accountHead, { borderColor: color }]} />
+      <View style={[shellStyles.accountShoulders, { borderColor: color }]} />
+    </View>
+  );
+}
+
+function PlusGlyph({ size, color }: { size: number; color: string }) {
+  const thickness = 2.8;
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ position: 'absolute', width: thickness, height: size - 8, borderRadius: thickness, backgroundColor: color }} />
+      <View style={{ position: 'absolute', width: size - 8, height: thickness, borderRadius: thickness, backgroundColor: color }} />
     </View>
   );
 }
@@ -804,7 +876,10 @@ const uiStyles = StyleSheet.create({
     borderRadius: 3,
   },
   progressDotFilled: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.green,
+  },
+  progressDotFull: {
+    backgroundColor: colors.coral,
   },
   progressDotEmpty: {
     backgroundColor: colors.border,
@@ -1120,31 +1195,95 @@ const shellStyles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    height: 90,
     backgroundColor: colors.card,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 8,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 11,
+    paddingHorizontal: 30,
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    shadowColor: '#101828',
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: -4 },
+    shadowRadius: 18,
+    elevation: 10,
   },
   tabItem: {
+    width: 76,
     alignItems: 'center',
-    gap: 2,
-    minWidth: 64,
-  },
-  tabIcon: {
-    color: colors.text3,
-    fontSize: 20,
-    fontWeight: '900',
-    lineHeight: 22,
+    justifyContent: 'center',
+    gap: 5,
+    paddingTop: 5,
   },
   tabLabel: {
-    color: colors.text3,
-    fontSize: 10,
-    fontWeight: '900',
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '700',
   },
   tabActive: {
     color: colors.primary,
   },
+  tabCreateWrap: {
+    alignItems: 'center',
+    gap: 4,
+    width: 76,
+    transform: [{ translateY: -22 }],
+  },
+  tabFab: {
+    width: 62,
+    height: 62,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    borderWidth: 5,
+    borderColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOpacity: 0.32,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 22,
+    elevation: 12,
+  },
+  tabCreateLabel: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  feedLinesIcon: {
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    gap: 2.8,
+  },
+  feedLine: {
+    width: 18,
+    height: 3.2,
+    borderRadius: 1.6,
+    borderWidth: 1.6,
+    alignSelf: 'center',
+  },
+  accountIcon: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+  },
+  accountHead: {
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    borderWidth: 2.2,
+    marginTop: 5.5,
+  },
+  accountShoulders: {
+    width: 18,
+    height: 8,
+    borderTopWidth: 2.2,
+    borderLeftWidth: 2.2,
+    borderRightWidth: 2.2,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    marginTop: 2.5,
+  },
 });
-

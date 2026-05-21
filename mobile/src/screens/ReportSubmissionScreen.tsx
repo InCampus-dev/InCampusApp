@@ -134,7 +134,7 @@ export default function ReportSubmissionScreen({ navigation, route }: { navigati
             </ScrollView>
             <BottomActionBar>
               {errorMessage ? <InlineBanner tone="error" text={errorMessage} actionLabel="Retry" onAction={handleSubmit} /> : null}
-              <PrimaryButton label="Submit report" loading={submitting} disabled={!reasonCode} onPress={handleSubmit} />
+              <PrimaryButton label="Submit report" loading={submitting} disabled={!reasonCode} onPress={handleSubmit} style={styles.submitButton} />
               <Pressable style={styles.cancelLink} onPress={() => navigation.goBack()} disabled={submitting}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </Pressable>
@@ -187,8 +187,8 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 132 },
   sectionLabel: { color: colors.text, fontSize: 14, fontWeight: '900', marginTop: 18, marginBottom: 10 },
   targetCard: { padding: 14, flexDirection: 'row', gap: 12, alignItems: 'center' },
-  targetIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: colors.skySoft, alignItems: 'center', justifyContent: 'center' },
-  targetIconText: { color: colors.sky, fontSize: 16, fontWeight: '900' },
+  targetIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: colors.primary, borderWidth: 2, borderColor: colors.primaryGreen, alignItems: 'center', justifyContent: 'center' },
+  targetIconText: { color: colors.card, fontSize: 16, fontWeight: '900' },
   targetIconMuted: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.borderSoft, alignItems: 'center', justifyContent: 'center' },
   targetIconMutedText: { color: colors.text3, fontSize: 16, fontWeight: '900' },
   targetTextCol: { flex: 1, gap: 4 },
@@ -209,6 +209,7 @@ const styles = StyleSheet.create({
   reassuranceTitle: { color: colors.text, fontSize: 13, fontWeight: '800', lineHeight: 19 },
   reassuranceBody: { color: colors.text2, fontSize: 12, fontWeight: '600', marginTop: 4 },
   guidelinesLink: { color: colors.primary, fontSize: 13, fontWeight: '900', marginTop: 10 },
+  submitButton: { shadowColor: colors.primary, shadowOpacity: 0.22, shadowOffset: { width: 0, height: 6 }, shadowRadius: 16, elevation: 4 },
   cancelLink: { alignItems: 'center', paddingVertical: 10 },
   cancelText: { color: colors.text2, fontSize: 14, fontWeight: '900' },
 });

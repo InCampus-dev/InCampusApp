@@ -26,12 +26,13 @@ import AdminReportDetailScreen from '../screens/admin/AdminReportDetailScreen';
 import AdminReportsScreen from '../screens/admin/AdminReportsScreen';
 import AdminStructuredOptionsScreen from '../screens/admin/AdminStructuredOptionsScreen';
 import type { AdminReportListItem } from '../services/adminApi';
+import { navigationRef } from './rootNavigation';
 
 export type RootStackParamList = {
   SignIn: undefined;
   SignUp: undefined;
   CampusSelection: undefined;
-  ProfileSetup: undefined;
+  ProfileSetup: { mode?: 'create' | 'edit' } | undefined;
   ConsentSettings: undefined;
   ActivityFeed: { refreshAfterCreate?: number; refreshAfterJoin?: number; createdActivityId?: string } | undefined;
   ActivityDetails: { activityId: string; canManageRequests?: boolean };
@@ -64,7 +65,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         initialRouteName="SignIn"
         screenOptions={{

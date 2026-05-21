@@ -87,6 +87,14 @@ export class InMemoryEventBus implements EventBus {
       return;
     }
 
-    await Promise.all([...handlersForType].map((handler) => handler(event)));
+    const results = await Promise.allSettled(
+      [...handlersForType].map((handler) => Promise.resolve().then(() => handler(event)))
+    );
+
+    results.forEach((result) => {
+      if (result.status === "rejected") {
+        console.error(`[EventBus] Handler failed for ${event.eventType}`, result.reason);
+      }
+    });
   }
 }

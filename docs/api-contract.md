@@ -1,7 +1,6 @@
 # API Contract
 
-Phase 0 defines alpha client-facing routes only. The backend currently implements only `GET /health`.
-Business routes below are contracts for later feature work.
+Phase 0 defines alpha client-facing routes. The route catalogue below reflects the current implemented demo surface and should be checked against source before larger contract changes.
 
 ## Contract Rules
 
@@ -21,12 +20,13 @@ Business routes below are contracts for later feature work.
 | POST | `/auth/verify-email` | AP | None | `VerifyEmailRequestDto` | `AccountActivatedDto` | `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT` |
 | POST | `/auth/signin` | AP | None | `SignInRequestDto` | `AuthenticatedResponseDto` | `AUTH_FORBIDDEN`, `ACCOUNT_NOT_VERIFIED`, `ACCOUNT_SUSPENDED`, `ACCOUNT_BANNED` |
 | GET | `/campuses` | AP reads CA | Student | none | `CampusSummaryDto[]` | `AUTH_REQUIRED`, `NOT_FOUND` |
+| GET | `/campuses/{campusId}/structured-options` | CA | Student | query params | `CampusStructuredOptionDto[]` | `AUTH_REQUIRED`, `AUTH_FORBIDDEN`, `NOT_FOUND` |
 | PATCH | `/accounts/me/campus` | AP | Student | `SelectCampusRequestDto` | `CampusAssociatedDto` | `AUTH_REQUIRED`, `NOT_FOUND`, `CAMPUS_SCOPE_VIOLATION` |
 | PATCH | `/accounts/me/consent` | AP | Student | `UpdateConsentRequestDto` | `ConsentUpdatedDto` | `AUTH_REQUIRED`, `VALIDATION_ERROR` |
 | POST | `/profiles` | AP | Student | `CreateProfileRequestDto` | `StudentProfileDto` | `AUTH_REQUIRED`, `VALIDATION_ERROR`, `CONFLICT` |
 | GET | `/profiles/me` | AP | Student | none | `StudentProfileDto` | `AUTH_REQUIRED`, `NOT_FOUND` |
 | PATCH | `/profiles/me` | AP | Student | `UpdateProfileRequestDto` | `StudentProfileDto` | `AUTH_REQUIRED`, `VALIDATION_ERROR`, `NOT_FOUND` |
-| GET | `/profiles/{studentAccountId}` | AP reads SM | Student | path params | `StudentProfileDto` | `AUTH_REQUIRED`, `NOT_FOUND`, `BLOCK_RELATIONSHIP_EXISTS` |
+| GET | `/activities/{activityId}/profiles/{studentAccountId}` | D&P reads AP/SM | Student | path params | `PublicStudentProfileDto` | `AUTH_REQUIRED`, `AUTH_FORBIDDEN`, `NOT_FOUND`, `BLOCK_RELATIONSHIP_EXISTS`, `TARGET_UNAVAILABLE` |
 | POST | `/admin/campuses` | CA | Admin | `CreateCampusRequestDto` | `CampusCreatedDto` | `AUTH_REQUIRED`, `AUTH_FORBIDDEN`, `VALIDATION_ERROR`, `CONFLICT` |
 | GET | `/admin/campuses/{campusId}/structured-options` | CA | Admin | query params | `CampusStructuredOptionDto[]` | `AUTH_REQUIRED`, `AUTH_FORBIDDEN`, `NOT_FOUND` |
 | POST | `/admin/campuses/{campusId}/structured-options` | CA | Admin | `CreateStructuredOptionRequestDto` | `CampusStructuredOptionDto` | `AUTH_REQUIRED`, `AUTH_FORBIDDEN`, `VALIDATION_ERROR`, `CONFLICT` |

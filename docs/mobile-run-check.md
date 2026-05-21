@@ -1,6 +1,6 @@
 # Mobile Run Check
 
-Updated: 2026-05-18
+Updated: 2026-05-21
 
 This checklist verifies the current mobile app after the Expo Go compatibility
 alignment to Expo SDK 54. Do not use old roadmap PR numbers as status evidence.
@@ -105,16 +105,16 @@ plus Expo tunnel. Do not use Node 25.
 | Sign in | Implemented | Sign in with the host or guest seeded account. |
 | Sign up | Partial | Flow exists, but email verification delivery is console/mock based. |
 | Campus selection | Implemented | If selected campus is missing, select Tongji Jiading and confirm token refresh. |
-| Profile setup | Implemented | Seeded accounts already have profiles; profile create/update remains available. |
+| Profile setup/edit | Implemented | Seeded accounts already have profiles; onboarding creates profiles and Mine > Edit profile updates via `PATCH /profiles/me`. |
 | Consent settings | Implemented | Toggle consent and continue to feed. |
-| Create activity | Implemented, partial | `POST /activities` is wired, but category/location options still rely on demo-seed fallback IDs instead of fully dynamic mobile structured-options loading. |
+| Create activity | Implemented | `POST /activities` is wired and category/location options load from the student-safe structured-options endpoint. |
 | Feed refresh, T10 | Implemented, QA pending | Create or join an activity and verify the feed refreshes; also pull to refresh. |
-| Activity detail and join, T11 | Implemented, QA pending | Open seeded `[DEMO]` activities and verify open join plus approval request behavior. |
+| Activity detail and join, T11 | Implemented, QA pending | Open seeded `[DEMO]` activities and verify open join, approval request, withdraw request, and leave activity behavior. |
 | Manage requests, T12 | Implemented, QA pending | Sign in as host, open an approval-based activity, and approve/decline a pending request. |
 | Notifications, T13 | Implemented records/context, push mocked | Verify list, context routing, and fallback routing after backend smoke creates records. |
 | Personal activities, T14 | Implemented, QA pending | Open My Activities and verify `GET /profiles/me/activities` data appears in upcoming/history. |
-| Report/block/community rules, T15 | Implemented, QA pending | Submit a report, block a host/student where available, and open community rules. |
-| Loading/error/empty states, T18 | Implemented, QA pending | Check offline backend, empty lists, retry buttons, and spinners. |
+| Report/block/community rules, T15 | Implemented, QA pending | Submit a report, open contextual student profile, block a host/student where available, and open community rules. |
+| Loading/error/empty states, T18 | Implemented, QA pending | Check offline backend, empty lists, retry buttons, spinners, and expired-token reset to Sign In. |
 
 ## Manual Demo Path
 
@@ -125,10 +125,10 @@ plus Expo tunnel. Do not use Node 25.
 5. Start Expo from `mobile/` with `EXPO_PUBLIC_API_BASE_URL=https://<backend-tunnel-url> npx expo start --tunnel --clear`.
 6. Sign in as guest and confirm campus/profile/consent path reaches Activity Feed.
 7. Open seeded `[DEMO]` activities from feed.
-8. Try open join and approval-based request.
+8. Try open join, approval-based request, withdraw request, and leave joined activity.
 9. Sign in as host and verify manage requests.
 10. Open notifications after the smoke script or manual join/request creates notification records.
-11. Open My Activities, Community Rules, Report, and Block flows.
+11. Open My Activities, Community Rules, Report, Block, Student Profile, Mine campus label, and Edit Profile flows.
 
 ## Not Yet Claimed
 
@@ -137,12 +137,10 @@ plus Expo tunnel. Do not use Node 25.
 - Physical iPhone/Android Expo Go QA has not been completed in this pass.
 - General mobile UI is not final and still needs polish.
 - Some mobile flows are still MVP/partial.
-- Dynamic structured options are not fully wired in mobile.
 - Some report/block contexts are still MVP fallback/manual.
 - Push delivery is still mock/log; only notification records and context routing are verified.
 - Email verification delivery is still mock/console; use seeded accounts for demos.
-- Mobile withdraw pending request and leave joined activity UI is missing.
 - Reminder scheduler is missing.
-- No admin UI exists for campus/options or report review workflows.
-- Admin auth production flow is missing.
+- Demo admin UI exists for campus/options, reports, and insights; admin auth production flow is missing.
+- EventBus handler isolation is implemented with `Promise.allSettled`; production observability around handler failures is still minimal.
 - Production hardening remains out of scope.

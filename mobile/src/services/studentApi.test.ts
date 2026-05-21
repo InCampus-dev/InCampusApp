@@ -3,7 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@react-native-async-storage/async-storage', () => ({
   default: {
     getItem: vi.fn().mockResolvedValue(null),
+    multiRemove: vi.fn().mockResolvedValue(undefined),
   },
+}));
+
+vi.mock('../navigation/rootNavigation', () => ({
+  resetToSignIn: vi.fn(),
 }));
 
 import {

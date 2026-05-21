@@ -19,11 +19,18 @@ interface ProfileResponse {
   shortBio?: string | null;
 }
 
+interface CampusResponse {
+  campusId: string;
+  campusName?: string | null;
+  universityName?: string | null;
+}
+
 export default function MineScreen({ navigation }: { navigation: any }) {
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [missingProfile, setMissingProfile] = useState(false);
+  const [campusLabel, setCampusLabel] = useState('Campus selected');
   const [signingOut, setSigningOut] = useState(false);
 
   useLayoutEffect(() => {
@@ -49,7 +56,28 @@ export default function MineScreen({ navigation }: { navigation: any }) {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { fetchProfile(); }, [fetchProfile]));
+  const fetchCampusLabel = useCallback(async () => {
+    setCampusLabel('Campus selected');
+    try {
+      const selectedCampusId = await AsyncStorage.getItem('selectedCampusId');
+      if (!selectedCampusId) {
+        return;
+      }
+
+      const response = await api.get<CampusResponse[]>('/campuses');
+      const selectedCampus = response.data.find((campus) => campus.campusId === selectedCampusId);
+      if (selectedCampus) {
+        setCampusLabel(formatCampusLabel(selectedCampus));
+      }
+    } catch {
+      setCampusLabel('Campus selected');
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    fetchProfile();
+    fetchCampusLabel();
+  }, [fetchCampusLabel, fetchProfile]));
 
   async function signOut() {
     setSigningOut(true);
@@ -73,7 +101,7 @@ export default function MineScreen({ navigation }: { navigation: any }) {
         ) : missingProfile ? (
           <EmptyState title="Complete your profile" text="Add your name, major, and a short bio so others can find you." primaryLabel="Set up profile" onPrimary={() => navigation.navigate('ProfileSetup')} />
         ) : profile ? (
-          <ProfileCard profile={profile} />
+          <ProfileCard profile={profile} campusLabel={campusLabel} />
         ) : null}
 
         <Pressable onPress={() => navigation.navigate('PersonalActivityList')}>
@@ -88,8 +116,8 @@ export default function MineScreen({ navigation }: { navigation: any }) {
         </Pressable>
 
         <SettingsGroup title="Account">
-          <SettingsRow label="Edit profile" value="" onPress={() => navigation.navigate('ProfileSetup')} />
-          <SettingsRow label="Campus" value="Campus selected" disabled />
+          <SettingsRow label="Edit profile" value="" onPress={() => navigation.navigate('ProfileSetup', { mode: 'edit' })} />
+          <SettingsRow label="Campus" value={campusLabel} disabled />
           <SettingsRow label="Consent settings" onPress={() => navigation.navigate('ConsentSettings')} last />
         </SettingsGroup>
         <SettingsGroup title="Community">
@@ -108,7 +136,7 @@ export default function MineScreen({ navigation }: { navigation: any }) {
   );
 }
 
-function ProfileCard({ profile }: { profile: ProfileResponse }) {
+function ProfileCard({ profile, campusLabel }: { profile: ProfileResponse; campusLabel: string }) {
   const initials = profile.displayName.trim().split(/\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || '?';
   return (
     <SectionCard style={styles.profileCard}>
@@ -117,13 +145,24 @@ function ProfileCard({ profile }: { profile: ProfileResponse }) {
         <Text style={styles.profileName}>{profile.displayName}</Text>
         {profile.major ? <Text style={styles.profileMajor}>{profile.major}</Text> : null}
         <View style={styles.badgeRow}>
-          <Text style={styles.campusBadge}>Tongji - Jiading</Text>
+          <Text style={styles.campusBadge} numberOfLines={1}>{campusLabel}</Text>
           <Text style={styles.verifiedBadge}>Verified student</Text>
         </View>
         {profile.shortBio ? <Text style={styles.bio} numberOfLines={1}>{profile.shortBio}</Text> : null}
       </View>
     </SectionCard>
   );
+}
+
+function formatCampusLabel(campus: CampusResponse): string {
+  const campusName = campus.campusName?.trim();
+  const universityName = campus.universityName?.trim();
+
+  if (universityName && campusName) {
+    return `${universityName} / ${campusName}`;
+  }
+
+  return campusName || universityName || 'Campus selected';
 }
 
 function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
@@ -159,7 +198,7 @@ const styles = StyleSheet.create({
   profileName: { color: colors.text, fontSize: 20, fontWeight: '900' },
   profileMajor: { color: colors.text2, fontSize: 13, fontWeight: '800', marginTop: 3 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 9 },
-  campusBadge: { overflow: 'hidden', borderRadius: 999, backgroundColor: colors.skySoft, color: colors.sky, paddingHorizontal: 9, paddingVertical: 4, fontSize: 11, fontWeight: '900' },
+  campusBadge: { flexShrink: 1, overflow: 'hidden', borderRadius: 999, backgroundColor: colors.skySoft, color: colors.sky, paddingHorizontal: 9, paddingVertical: 4, fontSize: 11, fontWeight: '900' },
   verifiedBadge: { overflow: 'hidden', borderRadius: 999, backgroundColor: colors.primarySoft, color: colors.primary, paddingHorizontal: 9, paddingVertical: 4, fontSize: 11, fontWeight: '900' },
   bio: { color: colors.text2, fontSize: 12, fontWeight: '700', marginTop: 10 },
   primaryActionCard: { padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 },

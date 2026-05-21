@@ -35,6 +35,16 @@ const INTEREST_TAGS = ['Sports', 'Lunch', 'Coffee', 'Study', 'Language Exchange'
 const LANGUAGE_TAGS = ['Chinese', 'English', 'Japanese', 'French', 'Spanish', 'German', 'Korean'];
 const DEFAULT_BIRTH_DATE = new Date(2003, 0, 1);
 
+interface StudentProfileResponse {
+  displayName: string;
+  major: string;
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  interests?: string[];
+  languages?: string[];
+  shortBio?: string | null;
+}
+
 function formatDateOnly(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -46,7 +56,23 @@ function formatDateLabel(date: Date) {
   return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-export default function ProfileSetupScreen({ navigation }: { navigation: any }) {
+function parseDateOnly(value?: string | null): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const [year, month, day] = value.slice(0, 10).split('-').map((part) => Number.parseInt(part, 10));
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export default function ProfileSetupScreen({ navigation, route }: { navigation: any; route?: { params?: { mode?: 'create' | 'edit' } } }) {
+  const requestedMode = route?.params?.mode === 'edit' ? 'edit' : 'create';
+  const [mode, setMode] = useState<'create' | 'edit'>(requestedMode);
   const [displayName, setDisplayName] = useState('');
   const [major, setMajor] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
@@ -58,7 +84,11 @@ export default function ProfileSetupScreen({ navigation }: { navigation: any }) 
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(requestedMode === 'edit');
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
+  const isEditMode = mode === 'edit';
+  const formLocked = submitting || loadingProfile;
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -69,6 +99,52 @@ export default function ProfileSetupScreen({ navigation }: { navigation: any }) 
       if (!token) navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
     });
   }, [navigation]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (requestedMode !== 'edit') {
+      setLoadingProfile(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    async function loadProfile() {
+      setLoadingProfile(true);
+      setApiError(null);
+      setWarningMessage(null);
+
+      try {
+        const response = await api.get<StudentProfileResponse>('/profiles/me');
+        if (cancelled) return;
+        setDisplayName(response.data.displayName ?? '');
+        setMajor(response.data.major ?? '');
+        setDateOfBirth(parseDateOnly(response.data.dateOfBirth));
+        setGender(response.data.gender ?? null);
+        setInterests(Array.isArray(response.data.interests) ? response.data.interests : []);
+        setLanguages(Array.isArray(response.data.languages) ? response.data.languages : []);
+        setShortBio(response.data.shortBio ?? '');
+      } catch (error) {
+        if (cancelled) return;
+        const code = getApiErrorCode(error);
+        if (code === 'NOT_FOUND' || code === 'ProfileNotFound') {
+          setMode('create');
+          setWarningMessage("We couldn't find your existing profile. Create one here to return to Mine.");
+        } else {
+          setApiError('Could not load profile. Please try again.');
+        }
+      } finally {
+        if (!cancelled) setLoadingProfile(false);
+      }
+    }
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [requestedMode]);
 
   function toggleTag(value: string, selected: string[], setter: (next: string[]) => void) {
     setter(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value]);
@@ -101,22 +177,39 @@ export default function ProfileSetupScreen({ navigation }: { navigation: any }) 
         displayName: displayName.trim(),
         major: major.trim(),
       };
-      if (dateOfBirth) payload.dateOfBirth = formatDateOnly(dateOfBirth);
-      if (gender) payload.gender = gender;
-      if (interests.length > 0) payload.interests = interests;
-      if (languages.length > 0) payload.languages = languages;
-      if (shortBio.trim()) payload.shortBio = shortBio.trim();
-      await api.post('/profiles', payload);
-      setSuccessMessage('Profile created');
-      setTimeout(() => navigation.navigate('ConsentSettings'), 650);
+      if (isEditMode) {
+        payload.dateOfBirth = dateOfBirth ? formatDateOnly(dateOfBirth) : null;
+        payload.gender = gender ?? null;
+        payload.interests = interests;
+        payload.languages = languages;
+        payload.shortBio = shortBio.trim() ? shortBio.trim() : null;
+        await api.patch('/profiles/me', payload);
+        setSuccessMessage('Profile saved');
+        setTimeout(() => navigation.reset({ index: 0, routes: [{ name: 'Mine' }] }), 650);
+      } else {
+        if (dateOfBirth) payload.dateOfBirth = formatDateOnly(dateOfBirth);
+        if (gender) payload.gender = gender;
+        if (interests.length > 0) payload.interests = interests;
+        if (languages.length > 0) payload.languages = languages;
+        if (shortBio.trim()) payload.shortBio = shortBio.trim();
+        await api.post('/profiles', payload);
+        setSuccessMessage('Profile created');
+        setTimeout(() => {
+          if (requestedMode === 'edit') {
+            navigation.reset({ index: 0, routes: [{ name: 'Mine' }] });
+          } else {
+            navigation.navigate('ConsentSettings');
+          }
+        }, 650);
+      }
     } catch (error) {
       const code = getApiErrorCode(error);
-      if (code === 'CONFLICT' || code === 'ProfileAlreadyExists') {
-        navigation.reset({ index: 0, routes: [{ name: 'ActivityFeed' }] });
+      if (!isEditMode && (code === 'CONFLICT' || code === 'ProfileAlreadyExists')) {
+        navigation.reset({ index: 0, routes: [{ name: requestedMode === 'edit' ? 'Mine' : 'ActivityFeed' }] });
       } else if (code === 'MissingMandatoryFields') {
         setErrors({ displayName: 'Please add your name', major: 'Please add your major' });
       } else {
-        setApiError('Could not create profile. Please try again.');
+        setApiError(isEditMode ? 'Could not save profile. Please try again.' : 'Could not create profile. Please try again.');
       }
     } finally {
       setSubmitting(false);
@@ -127,16 +220,21 @@ export default function ProfileSetupScreen({ navigation }: { navigation: any }) 
     <ScreenShell padded={false} style={styles.screen}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <TitleBlock title="Set up your profile" subtitle="Only shown to other students in activity contexts" />
+          <TitleBlock
+            title={isEditMode ? 'Edit your profile' : 'Set up your profile'}
+            subtitle={isEditMode ? 'Keep your student profile up to date' : 'Only shown to other students in activity contexts'}
+          />
+          {loadingProfile ? <InlineBanner tone="warning" text="Loading your profile..." /> : null}
           {successMessage ? <InlineBanner tone="success" text={successMessage} /> : null}
+          {warningMessage ? <InlineBanner tone="warning" text={warningMessage} /> : null}
           {apiError ? <InlineBanner tone="error" text={apiError} /> : null}
           <SectionCard style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>About you</Text>
               <Text style={styles.requiredBadge}>Required</Text>
             </View>
-            <TextField label="Your name" placeholder="How others will see you" value={displayName} onChangeText={setDisplayName} editable={!submitting} error={errors.displayName} />
-            <TextField label="Major" placeholder="Mechanical Engineering" value={major} onChangeText={setMajor} editable={!submitting} error={errors.major} />
+            <TextField label="Your name" placeholder="How others will see you" value={displayName} onChangeText={setDisplayName} editable={!formLocked} error={errors.displayName} />
+            <TextField label="Major" placeholder="Mechanical Engineering" value={major} onChangeText={setMajor} editable={!formLocked} error={errors.major} />
           </SectionCard>
 
           <SectionCard style={styles.sectionCard}>
@@ -147,9 +245,9 @@ export default function ProfileSetupScreen({ navigation }: { navigation: any }) 
             <Text style={styles.fieldLabel}>Date of birth</Text>
             <Pressable
               accessibilityRole="button"
-              disabled={submitting}
+              disabled={formLocked}
               onPress={() => setDatePickerVisible(true)}
-              style={[styles.dateField, errors.dateOfBirth && styles.dateFieldError, submitting && styles.dateFieldDisabled]}
+              style={[styles.dateField, errors.dateOfBirth && styles.dateFieldError, formLocked && styles.dateFieldDisabled]}
             >
               <Text style={[styles.dateFieldText, !dateOfBirth && styles.dateFieldPlaceholder]}>
                 {dateOfBirth ? formatDateLabel(dateOfBirth) : 'Pick your date of birth'}
@@ -169,11 +267,11 @@ export default function ProfileSetupScreen({ navigation }: { navigation: any }) 
                 {Platform.OS === 'ios' ? (
                   <View style={styles.datePickerActions}>
                     {dateOfBirth ? (
-                      <Pressable onPress={() => setDateOfBirth(null)} disabled={submitting}>
+                      <Pressable onPress={() => setDateOfBirth(null)} disabled={formLocked}>
                         <Text style={styles.clearDateText}>Clear</Text>
                       </Pressable>
                     ) : <View />}
-                    <Pressable onPress={() => setDatePickerVisible(false)} disabled={submitting}>
+                    <Pressable onPress={() => setDatePickerVisible(false)} disabled={formLocked}>
                       <Text style={styles.doneDateText}>Done</Text>
                     </Pressable>
                   </View>
@@ -181,7 +279,7 @@ export default function ProfileSetupScreen({ navigation }: { navigation: any }) 
               </View>
             ) : null}
             {dateOfBirth && Platform.OS !== 'ios' ? (
-              <Pressable onPress={() => setDateOfBirth(null)} disabled={submitting} style={styles.clearDateButton}>
+              <Pressable onPress={() => setDateOfBirth(null)} disabled={formLocked} style={styles.clearDateButton}>
                 <Text style={styles.clearDateText}>Clear date</Text>
               </Pressable>
             ) : null}
@@ -195,20 +293,20 @@ export default function ProfileSetupScreen({ navigation }: { navigation: any }) 
                   tone="blue"
                   compact
                   onPress={() => setGender(gender === option.value ? null : option.value)}
-                  disabled={submitting}
+                  disabled={formLocked}
                 />
               ))}
             </View>
             <Text style={styles.fieldLabel}>Interests</Text>
             <View style={styles.chipWrap}>
               {INTEREST_TAGS.map((tag) => (
-                <Chip key={tag} label={tag} selected={interests.includes(tag)} onPress={() => toggleTag(tag, interests, setInterests)} disabled={submitting} />
+                <Chip key={tag} label={tag} selected={interests.includes(tag)} onPress={() => toggleTag(tag, interests, setInterests)} disabled={formLocked} />
               ))}
             </View>
             <Text style={styles.fieldLabel}>Languages</Text>
             <View style={styles.chipWrap}>
               {LANGUAGE_TAGS.map((tag) => (
-                <Chip key={tag} label={tag} selected={languages.includes(tag)} tone="coral" onPress={() => toggleTag(tag, languages, setLanguages)} disabled={submitting} />
+                <Chip key={tag} label={tag} selected={languages.includes(tag)} tone="coral" onPress={() => toggleTag(tag, languages, setLanguages)} disabled={formLocked} />
               ))}
             </View>
             <TextField
@@ -218,14 +316,14 @@ export default function ProfileSetupScreen({ navigation }: { navigation: any }) 
               onChangeText={setShortBio}
               multiline
               maxLength={150}
-              editable={!submitting}
+              editable={!formLocked}
               inputStyle={styles.bioInput}
             />
             {shortBio.length > 130 ? <FieldError message={`${shortBio.length}/150`} /> : <Text style={styles.countText}>{shortBio.length}/150</Text>}
           </SectionCard>
         </ScrollView>
         <BottomActionBar>
-          <PrimaryButton label="Create profile" loading={submitting} onPress={handleSubmit} />
+          <PrimaryButton label={isEditMode ? 'Save profile' : 'Create profile'} loading={submitting || loadingProfile} disabled={loadingProfile} onPress={handleSubmit} />
         </BottomActionBar>
       </KeyboardAvoidingView>
     </ScreenShell>

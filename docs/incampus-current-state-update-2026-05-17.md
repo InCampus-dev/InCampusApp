@@ -3,6 +3,7 @@
 Data analisi: 2026-05-17
 Base analizzata: branch `fix/jacopo-mobile-qa-bugs` / PR #40, basata su `origin/main` dopo PR #38 e PR #39
 Aggiornamento documento: include il QA mobile Jacopo J1 e i fix mobile Jacopo J2 presenti in PR #40
+Aggiornamento 2026-05-21: `main` include PR #48 e il pass demo stabilization per edit profile, campus badge Mine, 401 session expiry e isolamento EventBus.
 
 ## Sintesi Esecutiva
 
@@ -10,7 +11,7 @@ InCampus e' oggi una alpha/MVP integration abbastanza avanzata: backend modulare
 
 Il progetto e' adatto a una demo alpha guidata con backend locale, seed demo e mobile Expo. PR #37 ha aggiunto un comando ripetibile `npm run migrate`, ha riallineato i documenti readiness/runbook/checklist, e ha configurato CI con Postgres per migrazioni, seed demo, backend startup e smoke check. PR #38 ha aggiornato gli script device rendendoli cross-platform. PR #39 ha aggiunto questo current-state snapshot in `docs/` e ha ritirato la vecchia cartella `codingOrganization/`. PR #40 aggiunge `docs/mobile-qa-buglist.md` e corregge i bug confermati nelle schermate mobile di Jacopo. L'aggiornamento Expo successivo e' limitato alla compatibilita' runtime/tooling: lancio app confermato in iOS Simulator, con walkthrough frontend completo e QA fisica iPhone ancora pendenti.
 
-Non e' ancora production-ready: email verification reale, push delivery reale, scheduler reminder, UI admin, structured options dinamiche mobile, UI withdraw/leave e verifica fisica iPhone/Android restano aperti. La CI Postgres migrate/seed/smoke e' stata confermata su GitHub per PR #39; il percorso device Expo Go resta da validare manualmente su iPhone/Android reali.
+Non e' ancora production-ready: email verification reale, push delivery reale, scheduler reminder, admin auth production-grade e verifica fisica iPhone/Android restano aperti. La CI Postgres migrate/seed/smoke e' stata confermata su GitHub per PR #39; il percorso device Expo Go resta da validare manualmente su iPhone/Android reali. Dopo PR #48 il mobile usa structured options dinamiche, espone withdraw/leave, mostra profili studente contestuali e ha schermate admin demo.
 
 ## Stato Repository
 
@@ -92,7 +93,7 @@ Implementato:
 Limiti:
 
 - Email verification e' ancora mock/console, non invio email reale.
-- Mobile ha create/read profile e consent, ma non una UX completa di edit profile.
+- Mobile ha create/read/update profile e consent; l'edit profile da Mine usa `PATCH /profiles/me`.
 
 ### Campus Administration
 
@@ -114,9 +115,9 @@ Route principali:
 
 Limiti:
 
-- Non esiste UI admin.
-- Admin auth resta header-based/demo, non un sistema staff completo.
-- Il mobile create activity usa fallback option seed, non carica ancora queste structured options dinamicamente.
+- Esiste UI admin demo per options, report e insight, ma non un sistema staff completo.
+- Admin auth resta header-based/demo.
+- Il mobile create activity carica structured options dinamiche dal route student-safe.
 
 ### Hosting & Lifecycle
 
@@ -186,7 +187,7 @@ DTO personal activity attuale:
 
 Limiti:
 
-- Mobile non espone ancora pulsanti withdraw pending request o leave joined activity.
+- Mobile espone withdraw pending request e leave joined activity in Activity Details.
 - Filtri feed mobile restano basilari.
 
 ### Safety & Moderation
@@ -219,8 +220,8 @@ Mobile presente:
 Limiti:
 
 - Report/block mobile sono MVP utility screens: in alcuni casi richiedono inserimento manuale ID se manca contesto profilo.
-- Non esiste ancora una `StudentProfileScreen` da cui aprire report/block con contesto ricco.
-- Non esiste UI admin mobile/web per review report.
+- `StudentProfileScreen` mostra profili contestuali da activity e apre report/block con target studente.
+- Esiste UI admin demo per review report; production admin auth resta fuori scope.
 
 ### Notifications & System Flow
 
@@ -298,31 +299,37 @@ Route presenti:
 - `CommunityRules`.
 - `ReportSubmission`.
 - `BlockUser`.
+- `StudentProfile`.
+- `AdminDashboard`.
+- `AdminStructuredOptions`.
+- `AdminReports`.
+- `AdminReportDetail`.
+- `AdminInsights`.
 
 Screen principali e stato:
 
 - `SignInScreen`: signin backend, salva token e naviga nel flusso.
 - `SignUpScreen`: signup backend, flusso email verification ancora mock lato backend.
 - `CampusSelectionScreen`: selezione campus e token refresh.
-- `ProfileSetupScreen`: crea profilo minimo.
+- `ProfileSetupScreen`: crea profilo minimo in onboarding e aggiorna profilo esistente da Mine.
 - `ConsentSettingsScreen`: aggiorna consenso campus insight; `Skip for now` forza esplicitamente `campusInsightSharingConsent: false`.
 - `ActivityFeedScreen`: `GET /activities`, usa `selectedCampusId`, pull-to-refresh, reload on focus, refresh dopo create/join, highlight `Just created`.
-- `CreateActivityScreen`: valida form, chiama `POST /activities`, naviga al feed con `refreshAfterCreate` e `createdActivityId`.
-- `ActivityDetailsScreen`: `GET /activities/:id`, mostra host profile, direct join/request via `POST /activities/:id/join`, espone manage requests se host, e azioni report/block.
+- `CreateActivityScreen`: valida form, carica structured options dinamiche, chiama `POST /activities`, naviga al feed con `refreshAfterCreate` e `createdActivityId`.
+- `ActivityDetailsScreen`: `GET /activities/:id`, mostra host profile, direct join/request via `POST /activities/:id/join`, withdraw/leave quando applicabile, espone manage requests se host, e azioni report/block.
 - `ManageRequestsScreen`: `GET /activities/:id/requests`, approve/decline via `PATCH /activities/:id/requests/:requestId`, usa DTO forte applicant.
 - `NotificationListScreen`: `GET /notifications`, paginazione, tap su notification context e navigazione verso detail/manage/personal/fallback; inoltra il fallback reason quando il context resolver fallisce.
 - `NotificationFallbackScreen`: safe fallback per target non disponibili con messaggi specifici per `TargetActivityUnavailable`, `BlockRelationshipExists`, `MissingActivityContext` e `UnknownNotificationTarget`.
 - `PersonalActivityListScreen`: `GET /profiles/me/activities`, split upcoming/history, supporta flat response o response gia' splittata.
 - `CommunityRulesScreen`: `GET /community-rules`, fallback locale se API non disponibile, empty-state esplicito se il backend risponde con `sections: []`.
+- `StudentProfileScreen`: `GET /activities/:activityId/profiles/:studentAccountId`, mostra profilo pubblico contestuale e apre report/block studente.
 - `ReportSubmissionScreen`: `POST /reports`, valida a runtime route params opzionali e accetta solo target `activity` o `student`.
 - `BlockUserScreen`: `POST /blocks`, valida a runtime `targetAccountId` opzionale prima di usarlo nel form.
+- `MineScreen`: `GET /profiles/me`, edit profile, My Activities, sign out e campus badge risolto da `GET /campuses` quando disponibile.
+- Admin demo screens: dashboard, structured options, report list/detail/review e insight.
 
 Limiti mobile ancora reali:
 
-- `CreateActivityScreen` usa fallback hardcoded per category/location UUID dal demo seed. Serve endpoint/UX student-facing per structured options oppure uso controllato dell'admin structured options endpoint.
-- Non ci sono test mobile.
-- Non ci sono UI withdraw/leave.
-- Non c'e' edit profile UX completa.
+- I test mobile restano leggeri e concentrati su servizi/helper, non screen integration.
 - Report/block sono accessibili ma ancora spartani.
 - Header feed contiene molte azioni testuali (`Alerts`, `Mine`, `Rules`, `Create`) e non e' un design definitivo.
 - Non e' stata verificata qui una run Expo manuale su device fisico con backend reale e DB reale.
@@ -340,6 +347,7 @@ Limiti mobile ancora reali:
 - Parsifica JSON/text.
 - Unwrap automatico response `{ data: ... }`.
 - Espone helper errori: `getApiErrorCode`, `getApiErrorMessage`, `getApiErrorDetails`.
+- Su 401 student session scaduta/invalidata, pulisce `authToken`, `studentAccountId`, `selectedCampusId` e resetta a `SignIn`; sono esclusi auth pubblica e richieste admin.
 
 Questo file e' load-bearing per quasi tutti gli screen mobile.
 
@@ -482,6 +490,7 @@ npm run start:device --workspace mobile
 npm run ios --workspace mobile
 npm run android --workspace mobile
 npm run typecheck --workspace mobile
+npm run test --workspace mobile
 ```
 
 Expo dependency check:
@@ -498,7 +507,8 @@ EXPO_NO_TELEMETRY=1 npm exec --workspace mobile -- expo install --check
 | `npm run typecheck --workspace mobile` | Pass |
 | `npm run build` | Pass |
 | `npm run lint` | Pass |
-| `npm test` | Pass: 29 file test, 220 test |
+| `npm test` | Pass: 30 file test, 236 test |
+| `npm run test --workspace mobile` | Pass: 5 file test, 18 test |
 | `node --check scripts/start-backend-device.mjs` | Pass |
 | `node --check mobile/scripts/start-device.mjs` | Pass |
 | `npm run migrate` | Pass: DB gia' migrato, 0 migrazioni applicate nell'ultima run |
@@ -507,7 +517,7 @@ EXPO_NO_TELEMETRY=1 npm exec --workspace mobile -- expo install --check
 
 Nota Expo: il precedente `expo install --check` era passato usando dependency map locale per sandbox offline, ma non e' stato rieseguito durante il pass PR #40.
 
-Nota PR #40: i fix mobile Jacopo sono stati verificati con `npm run typecheck --workspace mobile` durante il pass J2/review. Questo aggiornamento documento non introduce codice eseguibile.
+Nota stabilization 2026-05-21: sono stati rieseguiti `git diff --check`, `npm run lint`, `npm run build`, `npm test`, `npm run typecheck --workspace mobile` e `npm run test --workspace mobile`.
 
 ## Readiness Matrix Aggiornata
 
@@ -516,23 +526,23 @@ Nota PR #40: i fix mobile Jacopo sono stati verificati con `npm run typecheck --
 | Health | Done | N/A | Yes | `GET /health`. |
 | Signup/signin | Done | Done | Partial | Email reale assente, seeded signin consigliato. |
 | Campus selection | Done | Done | Yes/Partial | Token refresh implementato; dipende da seed/DB. |
-| Profile setup/read | Done | Done | Yes/Partial | Create/read mobile; edit UX non completa. |
+| Profile setup/read/edit | Done | Done | Yes/Partial | Create onboarding e edit da Mine presenti. |
 | Consent settings | Done | Done | Yes | Consent toggle mobile presente. |
-| Create activity | Done | Done/Partial | Partial | Chiamata reale, ma options mobile hardcoded al seed. |
+| Create activity | Done | Done | Partial | Chiamata reale con structured options dinamiche. |
 | Feed | Done | Done/Partial | Partial | Lettura e refresh presenti, filtri limitati. |
 | Activity detail | Done | Done/Partial | Partial | Join/report/block/manage entry presenti, UX MVP. |
 | Direct join | Done | Done | Partial | Richiede verifica Expo + DB live per demo end-to-end. |
 | Approval request | Done | Done | Partial | Request create via join endpoint. |
 | Manage requests | Done | Done | Partial | DTO forte implementato; richiede scenario live con host/guest. |
-| Withdraw request | Done | Missing | Backend only | Manca UI mobile. |
-| Leave joined activity | Done | Missing | Backend only | Manca UI mobile. |
+| Withdraw request | Done | Done | Partial | UI presente in Activity Details; richiede QA live. |
+| Leave joined activity | Done | Done | Partial | UI presente in Activity Details; richiede QA live. |
 | Personal activity list | Done | Done/Partial | Partial | Split upcoming/history lato mobile, UX MVP. |
 | Notifications list/context | Done | Done/Partial | Partial | Records/context/fallback; fallback reason visibile; push reale assente. |
 | Community rules | Done | Done/Partial | Partial | Mobile fallback statico se API fallisce; empty-state per lista vuota. |
-| Report activity/student | Done | Done/Partial | Partial | MVP screen, target ID manuale se manca contesto; route params sanificati. |
-| Block user | Done | Done/Partial | Partial | MVP screen, target ID manuale se manca contesto; route param sanificato. |
-| Admin report review | Done | Missing | Backend only | Nessuna UI admin. |
-| Admin campus/options | Done | Missing | Backend only | Nessuna UI admin/student-facing options. |
+| Report activity/student | Done | Done/Partial | Partial | MVP screen, route params sanificati; StudentProfile fornisce contesto studente. |
+| Block user | Done | Done/Partial | Partial | MVP screen, route param sanificato; StudentProfile puo' aprire block contestuale. |
+| Admin report review | Done | Demo UI | Partial | UI admin demo presente; auth production assente. |
+| Admin campus/options | Done | Demo UI | Partial | UI admin demo e student structured options presenti; auth production assente. |
 | Reminder | Partial | N/A | No | Handler testato, scheduler assente. |
 | Physical device Expo Go | N/A | Tooling done | Partial | Script e deps pronti; run manuale device non eseguita qui. |
 
@@ -546,6 +556,7 @@ Backend:
 - `backend/src/demoSmokeCheck.ts`: smoke check demo end-to-end backend.
 - `backend/packages/shared/src/domain/dtos.ts`: DTO pubblici condivisi.
 - `backend/packages/shared/src/domain/enums.ts`: enum canonici.
+- `backend/packages/shared/src/events/EventBus.ts`: publish in-memory con isolamento handler via `Promise.allSettled`.
 - `backend/packages/shared/src/seed/demoSeed.ts`: dati demo Tongji.
 - `backend/packages/hosting-lifecycle/src/services/ActivityLifecycleService.ts`: create/update/delete/cancel lifecycle.
 - `backend/packages/hosting-lifecycle/src/services/JoinRequestManagementService.ts`: list/review join requests.
@@ -558,11 +569,16 @@ Backend:
 Mobile:
 
 - `mobile/src/navigation/AppNavigator.tsx`: route inventory e stack.
-- `mobile/src/services/api.ts`: client API centrale.
+- `mobile/src/services/api.ts`: client API centrale e gestione 401 student session expiry.
+- `mobile/src/services/authSession.ts`: cleanup storage student auth.
+- `mobile/src/navigation/rootNavigation.ts`: reset globale minimo a `SignIn`.
 - `mobile/src/screens/ActivityFeedScreen.tsx`: feed, refresh, highlight create.
-- `mobile/src/screens/CreateActivityScreen.tsx`: create activity reale con fallback options.
-- `mobile/src/screens/ActivityDetailsScreen.tsx`: detail, join/request, report/block, manage requests entry.
+- `mobile/src/screens/CreateActivityScreen.tsx`: create activity reale con structured options dinamiche.
+- `mobile/src/screens/ActivityDetailsScreen.tsx`: detail, join/request, withdraw/leave, report/block, manage requests entry.
 - `mobile/src/screens/ManageRequestsScreen.tsx`: approve/decline con DTO forte.
+- `mobile/src/screens/ProfileSetupScreen.tsx`: create onboarding e edit profile da Mine.
+- `mobile/src/screens/MineScreen.tsx`: personal hub, campus badge reale/neutral, edit profile.
+- `mobile/src/screens/StudentProfileScreen.tsx`: profilo pubblico contestuale e safety actions.
 - `mobile/src/screens/NotificationListScreen.tsx`: notification list/context routing.
 - `mobile/src/screens/PersonalActivityListScreen.tsx`: upcoming/history personal list.
 - `mobile/src/screens/CommunityRulesScreen.tsx`: rules.
@@ -599,7 +615,7 @@ Questi file costituiscono la documentazione operativa corrente per demo readines
 - `docs/backend-smoke-check.md`.
 - `docs/demo-seed.md`.
 
-I documenti mantengono esplicitamente aperti: device fisico, T20 final QA/sign-off, email reale, push reale, scheduler reminder, admin UI/auth reale, structured options dinamiche mobile e withdraw/leave UI. La CI remota DB-backed e' stata confermata su PR #39.
+I documenti mantengono esplicitamente aperti: device fisico, T20 final QA/sign-off, email reale, push reale, scheduler reminder, admin auth reale e hardening production. Structured options dinamiche mobile e withdraw/leave UI sono presenti dopo PR #48. La CI remota DB-backed e' stata confermata su PR #39.
 
 ## Aggiornamenti PR Recenti
 
@@ -610,21 +626,20 @@ I documenti mantengono esplicitamente aperti: device fisico, T20 final QA/sign-o
 - PR #38: mantiene invariati i caveat di validazione; il tooling device e' pronto, ma la run fisica iPhone/Android resta da eseguire davvero.
 - PR #40: aggiunge `docs/mobile-qa-buglist.md` come buglist QA Jacopo J1.
 - PR #40: corregge il consenso `Skip for now`, il fallback notification reason, l'empty-state community rules, la copy history personal activities e la sanificazione runtime dei route params in report/block.
+- PR #48: completa il flusso demo studente con structured options dinamiche, metadata relationship in ActivityDetails, withdraw/leave, StudentProfileScreen, report/block context piu' pulito e test leggeri mobile/backend.
+- Demo stabilization 2026-05-21: aggiunge edit profile da Mine, campus badge Mine reale/neutral, gestione 401 student session expiry e isolamento EventBus handler.
 
 ## Rischi E Gap Principali
 
 Priorita' alta:
 
-- Caricare structured options reali nel mobile create activity invece dei fallback seed hardcoded.
-- Implementare UI mobile per withdraw pending request e leave joined activity.
 - Fare una run manuale Expo Go su device fisico con backend e DB reali.
 - Verificare su Windows/PowerShell il percorso device cross-platform.
+- Fare QA live mirato per profile edit, expired token, withdraw/leave e campus badge Mine.
 
 Priorita' media:
 
-- Aggiungere test mobile almeno per API client/navigation-critical screens.
-- Aggiungere profile/detail context per report/block senza ID manuale.
-- Aggiungere edit profile UX.
+- Estendere test mobile oltre helper/service test verso navigation-critical screens.
 - Rendere feed filters e empty/error states piu' vicini alla demo finale.
 
 Priorita' futura/production:
@@ -642,4 +657,4 @@ Usa questo file come stato operativo aggiornato, ma verifica sempre DTO e route 
 
 Non reintrodurre mock nascosti nei flussi gia' collegati al backend. Se una demo non funziona, preferisci correggere client/API alignment o documentare il gap invece di simulare dati. Per mobile, preserva i route name attuali in `AppNavigator`. Per backend, non cambiare DTO o enum senza controllare impatto su mobile, test e docs.
 
-Conclusione: il progetto e' in buono stato per una demo alpha guidata, soprattutto con migrate + seed + smoke + Expo device tooling e il primo pass QA mobile Jacopo corretto. Non e' ancora una beta chiusa: mancano alcune UX secondarie, verifica device reale, e i servizi production-grade (email, push, scheduler, admin UI, hardening) non sono completi.
+Conclusione: il progetto e' in buono stato per una demo alpha guidata, soprattutto con migrate + seed + smoke + Expo device tooling, PR #48 e il pass stabilization. Non e' ancora una beta chiusa: mancano verifica device reale e servizi production-grade (email, push, scheduler, admin auth reale, hardening).

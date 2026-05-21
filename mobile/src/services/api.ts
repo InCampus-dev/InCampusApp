@@ -1,4 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { resetToSignIn } from "../navigation/rootNavigation";
+import { clearStudentAuthSession } from "./authSession";
 
 type ApiMethod = "GET" | "POST" | "PATCH" | "DELETE";
 type ApiParams = Record<string, string | number | boolean | null | undefined>;
@@ -20,6 +22,13 @@ interface ApiErrorEnvelope {
     details?: Record<string, unknown>;
   };
 }
+
+const SESSION_EXPIRED_MESSAGE = "Session expired. Please sign in again.";
+const STUDENT_AUTH_EXCLUDED_PATHS = new Set([
+  "/auth/signin",
+  "/auth/signup",
+  "/auth/verify-email"
+]);
 
 class ApiRequestError extends Error {
   public readonly response: {
@@ -106,6 +115,12 @@ class ApiClient {
     const responseData = await parseResponse(response);
 
     if (!response.ok) {
+      if (response.status === 401 && shouldHandleStudentSessionExpiry(path, options?.headers)) {
+        await clearStudentAuthSession();
+        resetToSignIn();
+        throw new ApiRequestError(response.status, responseData, SESSION_EXPIRED_MESSAGE);
+      }
+
       throw new ApiRequestError(
         response.status,
         responseData,
@@ -119,6 +134,32 @@ class ApiClient {
       status: response.status
     };
   }
+}
+
+function shouldHandleStudentSessionExpiry(path: string, headers?: Record<string, string>): boolean {
+  const normalizedPath = normalizePath(path);
+  if (STUDENT_AUTH_EXCLUDED_PATHS.has(normalizedPath)) {
+    return false;
+  }
+
+  if (normalizedPath.startsWith("/admin/")) {
+    return false;
+  }
+
+  return !containsAdminHeaders(headers);
+}
+
+function normalizePath(path: string): string {
+  const pathOnly = path.split("?")[0] ?? path;
+  return pathOnly.startsWith("/") ? pathOnly : `/${pathOnly}`;
+}
+
+function containsAdminHeaders(headers?: Record<string, string>): boolean {
+  if (!headers) {
+    return false;
+  }
+
+  return Object.keys(headers).some((key) => key.toLowerCase().startsWith("x-admin-"));
 }
 
 function getBaseUrl(): string {
@@ -197,12 +238,16 @@ export function getApiErrorMessage(error: unknown): string | undefined {
     return error.message;
   }
 
+  if (error instanceof ApiRequestError && error.message === SESSION_EXPIRED_MESSAGE) {
+    return error.message;
+  }
+
   const envelope = getApiErrorEnvelope(error);
   if (typeof envelope?.error === "string") {
     return envelope.error;
   }
 
-  return envelope?.error?.message;
+  return envelope?.error?.message ?? (error instanceof Error ? error.message : undefined);
 }
 
 export function getApiErrorDetails(error: unknown): Record<string, unknown> | undefined {

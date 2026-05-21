@@ -51,6 +51,23 @@ describe('api session expiry handling', () => {
     expect(getApiErrorCode(caughtError)).toBe('AUTH_REQUIRED');
   });
 
+  it('does not clear student session for AUTH_REQUIRED with missing_selected_campus reason', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(401, {
+        error: {
+          code: 'AUTH_REQUIRED',
+          message: 'Campus selection is required',
+          details: { authReason: 'missing_selected_campus' },
+        },
+      })
+    );
+
+    await expect(api.get('/profiles/me')).rejects.toThrow('Campus selection is required');
+
+    expect(asyncStorageMock.multiRemove).not.toHaveBeenCalled();
+    expect(resetToSignInMock).not.toHaveBeenCalled();
+  });
+
   it('does not clear student session for public auth 401 responses', async () => {
     vi.mocked(fetch).mockResolvedValue(
       jsonResponse(401, {

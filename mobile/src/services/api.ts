@@ -115,7 +115,14 @@ class ApiClient {
     const responseData = await parseResponse(response);
 
     if (!response.ok) {
-      if (response.status === 401 && shouldHandleStudentSessionExpiry(path, options?.headers)) {
+      const envelope = responseData as ApiErrorEnvelope;
+      const authReason = typeof envelope?.error === "object" ? envelope.error?.details?.authReason : undefined;
+
+      if (
+        response.status === 401 &&
+        shouldHandleStudentSessionExpiry(path, options?.headers) &&
+        authReason !== "missing_selected_campus"
+      ) {
         await clearStudentAuthSession();
         resetToSignIn();
         throw new ApiRequestError(response.status, responseData, SESSION_EXPIRED_MESSAGE);

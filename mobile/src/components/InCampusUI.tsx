@@ -21,13 +21,16 @@ export const colors = {
   primaryDeep: '#15215C',
   primarySoft: '#E8EAF5',
   primaryGhost: '#F5F6FB',
+  green: '#16C172',
+  greenDeep: '#0E9B59',
+  greenSoft: '#D6F4E3',
   primaryGreen: '#16C172',
   primaryGreenPressed: '#0E9B59',
   successSoft: '#D6F4E3',
-  sky: '#1E2D7A',
-  skyBlue: '#1E2D7A',
-  skyDeep: '#15215C',
-  skySoft: '#E8EAF5',
+  sky: '#4DA3FF',
+  skyBlue: '#4DA3FF',
+  skyDeep: '#1E63C8',
+  skySoft: '#E8F2FF',
   coral: '#FF6B3D',
   coralDeep: '#D04A1F',
   coralSoft: '#FFDACB',
@@ -56,18 +59,24 @@ export const metrics = {
   bottomTabContentPadding: 124,
 };
 
-const CATEGORY_STYLE: Record<string, { bg: string; fg: string; dot: string }> = {
-  Lunch: { bg: '#FFEDB8', fg: '#7A4A00', dot: '#FFC233' },
-  Study: { bg: '#E8EAF5', fg: '#1E2D7A', dot: '#5B7BFF' },
-  'Language Exchange': { bg: '#FFDACB', fg: '#D04A1F', dot: '#FF6B3D' },
-  Sport: { bg: '#D6F4E3', fg: '#0E9B59', dot: '#16C172' },
-  Sports: { bg: '#D6F4E3', fg: '#0E9B59', dot: '#16C172' },
-  Social: { bg: '#F1EBFF', fg: '#5B3FBF', dot: '#A989FF' },
-  Coffee: { bg: '#FFDACB', fg: '#A4501B', dot: '#FFA463' },
+export type CategoryColor = { bg: string; fg: string; dot: string; tint: string };
+
+const CATEGORY_STYLE: Record<string, CategoryColor> = {
+  Lunch: { bg: '#FFC233', fg: '#5C3A00', dot: '#5C3A00', tint: '#FFF4DA' },
+  Study: { bg: '#5B7BFF', fg: '#FFFFFF', dot: '#FFFFFF', tint: '#E5EAFF' },
+  'Language Exchange': { bg: '#FF7A4D', fg: '#FFFFFF', dot: '#FFFFFF', tint: '#FFE5D9' },
+  Sport: { bg: '#2DD685', fg: '#FFFFFF', dot: '#FFFFFF', tint: '#DAF7E8' },
+  Sports: { bg: '#2DD685', fg: '#FFFFFF', dot: '#FFFFFF', tint: '#DAF7E8' },
+  Social: { bg: '#A989FF', fg: '#FFFFFF', dot: '#FFFFFF', tint: '#ECE3FF' },
+  Coffee: { bg: '#FFA463', fg: '#FFFFFF', dot: '#FFFFFF', tint: '#FFE8D5' },
 };
 
 export function categoryStyle(label?: string) {
-  return CATEGORY_STYLE[label ?? ''] ?? { bg: '#EEF0F3', fg: '#37414D', dot: '#667085' };
+  return CATEGORY_STYLE[label ?? ''] ?? { bg: '#EEF0F3', fg: '#37414D', dot: '#667085', tint: '#F4F5FA' };
+}
+
+export function crCat(label?: string): CategoryColor | null {
+  return CATEGORY_STYLE[label ?? ''] ?? null;
 }
 
 export function CategoryPill({ label, compact = false }: { label: string; compact?: boolean }) {
@@ -223,7 +232,7 @@ export function PrimaryButton({
         ? colors.danger
         : tone === 'muted'
           ? '#D9DEE6'
-          : colors.primaryGreen;
+          : colors.green;
 
   return (
     <Pressable
@@ -280,7 +289,7 @@ export function FieldError({ message }: { message?: string }) {
   return <Text style={uiStyles.fieldError}>{message}</Text>;
 }
 
-export function ProgressStrip({ current, max }: { current: number; max: number }) {
+export function ProgressStrip({ current, max, full = false }: { current: number; max: number; full?: boolean }) {
   const total = Math.min(Math.max(max, 1), 8);
   const filled = Math.min(current, total);
   return (
@@ -290,7 +299,7 @@ export function ProgressStrip({ current, max }: { current: number; max: number }
           key={index}
           style={[
             uiStyles.progressDot,
-            index < filled ? uiStyles.progressDotFilled : uiStyles.progressDotEmpty,
+            index < filled ? (full ? uiStyles.progressDotFull : uiStyles.progressDotFilled) : uiStyles.progressDotEmpty,
           ]}
         />
       ))}
@@ -598,10 +607,10 @@ export function InlineSpinnerButton({
 
 export type BottomTabKey = 'feed' | 'create' | 'account';
 
-const BOTTOM_TAB_ITEMS: Array<{ key: BottomTabKey; label: string; icon: string; fab?: boolean }> = [
-  { key: 'feed', label: 'Feed', icon: 'F' },
-  { key: 'create', label: 'Create', icon: '+', fab: true },
-  { key: 'account', label: 'Account', icon: 'M' },
+const BOTTOM_TAB_ITEMS: Array<{ key: BottomTabKey; label: string; fab?: boolean }> = [
+  { key: 'feed', label: 'Feed' },
+  { key: 'create', label: 'Create', fab: true },
+  { key: 'account', label: 'Account' },
 ];
 
 export function BottomTabBar({
@@ -631,8 +640,7 @@ export function BottomTabBar({
           return (
             <Pressable key={item.key} style={shellStyles.tabCreateWrap} onPress={handlers[item.key]}>
               <View style={shellStyles.tabFab}>
-                <View style={shellStyles.tabFabPlusVertical} />
-                <View style={shellStyles.tabFabPlusHorizontal} />
+                <PlusGlyph size={28} color={colors.card} />
               </View>
               <Text style={shellStyles.tabCreateLabel}>{item.label}</Text>
             </Pressable>
@@ -640,11 +648,44 @@ export function BottomTabBar({
         }
         return (
           <Pressable key={item.key} style={shellStyles.tabItem} onPress={handlers[item.key]}>
-            <Text style={[shellStyles.tabIcon, selected && shellStyles.tabActive]}>{item.icon}</Text>
+            {item.key === 'feed' ? (
+              <FeedLinesGlyph color={selected ? colors.primary : '#94A3B8'} />
+            ) : (
+              <AccountUserGlyph color={selected ? colors.primary : '#94A3B8'} />
+            )}
             <Text style={[shellStyles.tabLabel, selected && shellStyles.tabActive]}>{item.label}</Text>
           </Pressable>
         );
       })}
+    </View>
+  );
+}
+
+function FeedLinesGlyph({ color }: { color: string }) {
+  return (
+    <View style={shellStyles.feedLinesIcon}>
+      {[0, 1, 2].map((index) => (
+        <View key={index} style={[shellStyles.feedLine, { borderColor: color }]} />
+      ))}
+    </View>
+  );
+}
+
+function AccountUserGlyph({ color }: { color: string }) {
+  return (
+    <View style={shellStyles.accountIcon}>
+      <View style={[shellStyles.accountHead, { borderColor: color }]} />
+      <View style={[shellStyles.accountShoulders, { borderColor: color }]} />
+    </View>
+  );
+}
+
+function PlusGlyph({ size, color }: { size: number; color: string }) {
+  const thickness = 2.8;
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ position: 'absolute', width: thickness, height: size - 8, borderRadius: thickness, backgroundColor: color }} />
+      <View style={{ position: 'absolute', width: size - 8, height: thickness, borderRadius: thickness, backgroundColor: color }} />
     </View>
   );
 }
@@ -835,7 +876,10 @@ const uiStyles = StyleSheet.create({
     borderRadius: 3,
   },
   progressDotFilled: {
-    backgroundColor: colors.primaryGreen,
+    backgroundColor: colors.green,
+  },
+  progressDotFull: {
+    backgroundColor: colors.coral,
   },
   progressDotEmpty: {
     backgroundColor: colors.border,
@@ -1151,74 +1195,95 @@ const shellStyles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    minHeight: 82,
+    height: 90,
     backgroundColor: colors.card,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 4,
-    paddingHorizontal: 28,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 11,
+    paddingHorizontal: 30,
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    shadowColor: '#101828',
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: -4 },
+    shadowRadius: 18,
+    elevation: 10,
   },
   tabItem: {
+    width: 76,
     alignItems: 'center',
-    gap: 2,
-    minWidth: 64,
-    paddingVertical: 4,
-  },
-  tabIcon: {
-    color: colors.text3,
-    fontSize: 20,
-    fontWeight: '900',
-    lineHeight: 22,
+    justifyContent: 'center',
+    gap: 5,
+    paddingTop: 5,
   },
   tabLabel: {
-    color: colors.text3,
-    fontSize: 10,
-    fontWeight: '900',
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '700',
   },
   tabActive: {
     color: colors.primary,
   },
   tabCreateWrap: {
     alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 12,
-    transform: [{ translateY: -14 }],
+    gap: 4,
+    width: 76,
+    transform: [{ translateY: -22 }],
   },
   tabFab: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
+    width: 62,
+    height: 62,
+    borderRadius: 20,
     backgroundColor: colors.primary,
-    borderWidth: 3,
+    borderWidth: 5,
     borderColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: colors.primary,
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 18,
-    elevation: 8,
-  },
-  tabFabPlusVertical: {
-    position: 'absolute',
-    width: 2.6,
-    height: 22,
-    borderRadius: 2,
-    backgroundColor: colors.card,
-  },
-  tabFabPlusHorizontal: {
-    position: 'absolute',
-    width: 22,
-    height: 2.6,
-    borderRadius: 2,
-    backgroundColor: colors.card,
+    shadowOpacity: 0.32,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 22,
+    elevation: 12,
   },
   tabCreateLabel: {
     color: colors.primary,
-    fontSize: 10,
-    fontWeight: '900',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  feedLinesIcon: {
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    gap: 2.8,
+  },
+  feedLine: {
+    width: 18,
+    height: 3.2,
+    borderRadius: 1.6,
+    borderWidth: 1.6,
+    alignSelf: 'center',
+  },
+  accountIcon: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+  },
+  accountHead: {
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    borderWidth: 2.2,
+    marginTop: 5.5,
+  },
+  accountShoulders: {
+    width: 18,
+    height: 8,
+    borderTopWidth: 2.2,
+    borderLeftWidth: 2.2,
+    borderRightWidth: 2.2,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    marginTop: 2.5,
   },
 });

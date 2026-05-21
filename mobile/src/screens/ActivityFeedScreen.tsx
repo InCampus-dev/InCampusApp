@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -13,15 +14,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api, { getApiErrorMessage } from '../services/api';
 import {
+  BottomTabBar,
   CategoryPill,
   InlineBanner,
   ModeBadge,
   PrimaryButton,
-  ProgressStrip,
   SectionCard,
   SkeletonBlock,
-  StatusBadge,
   TinyIcon,
+  categoryStyle,
   colors,
   metrics,
 } from '../components/InCampusUI';
@@ -167,18 +168,18 @@ export const ActivityFeedScreen = ({ navigation, route }: any) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => fetchActivities('refresh')}
-              tintColor={colors.primaryGreen}
-              colors={[colors.primaryGreen]}
+              tintColor={colors.green}
+              colors={[colors.green]}
             />
           }
           showsVerticalScrollIndicator={false}
         />
       )}
 
-      <FeedBottomTabBar
-        bottomInset={insets.bottom}
+      <BottomTabBar
+        active="feed"
         onCreate={() => navigation.navigate('CreateActivity')}
-        onMine={() => navigation.navigate('Mine')}
+        onAccount={() => navigation.navigate('Mine')}
       />
     </View>
   );
@@ -195,19 +196,20 @@ function FeedTopBar({
 }) {
   return (
     <View style={[styles.topBar, { paddingTop: topInset + 14 }]}>
-      <View style={styles.brandMark}>
-        <Text style={styles.brandMarkText}>iC</Text>
-      </View>
-      <View style={styles.topTextBlock}>
-        <Text style={styles.campusTitle}>{campusLabel}</Text>
-        <View style={styles.trustRow}>
+      <Image
+        source={require('../../assets/incampus-wordmark.png')}
+        style={styles.wordmark}
+        resizeMode="contain"
+      />
+      <View style={styles.topRightCluster}>
+        <View style={styles.campusPill}>
           <Text style={styles.verifiedDot}>✓</Text>
-          <Text style={styles.trustText}>Campus only - Verified</Text>
+          <Text style={styles.campusPillText}>Campus only - Verified</Text>
         </View>
+        <Pressable style={styles.alertButton} onPress={onNotifications} accessibilityLabel="Notifications">
+          <Text style={styles.alertButtonText}>⌁</Text>
+        </Pressable>
       </View>
-      <Pressable style={styles.alertButton} onPress={onNotifications} accessibilityLabel="Notifications">
-        <Text style={styles.alertButtonText}>{'\u{1F514}'}</Text>
-      </Pressable>
     </View>
   );
 }
@@ -263,6 +265,8 @@ function ActivityCard({
   highlighted: boolean;
   onPress: () => void;
 }) {
+  const cs = categoryStyle(activity.categoryLabel);
+  const isFull = activity.status === 'full' || activity.currentParticipantCount >= activity.maxParticipants;
   return (
     <Pressable
       onPress={onPress}
@@ -272,21 +276,27 @@ function ActivityCard({
         pressed && styles.activityCardPressed,
       ]}
     >
-      <View style={styles.cardTopRow}>
-        <CategoryPill label={activity.categoryLabel} compact />
-        <StatusBadge status={activity.status} />
-      </View>
-      {highlighted ? <Text style={styles.justCreated}>Just created</Text> : null}
-      <Text style={styles.cardTitle} numberOfLines={2}>
-        {activity.title}
-      </Text>
-      <View style={styles.metaRow}>
-        <View style={styles.metaItem}>
-          <TinyIcon label="T" />
-          <Text style={styles.metaText}>{formatSmartDateTime(activity.scheduledDateTime)}</Text>
+      <View style={[styles.coverBand, { backgroundColor: cs.bg }]}>
+        <View style={styles.coverLeft}>
+          <View style={styles.coverPill}>
+            <View style={[styles.coverPillDot, { backgroundColor: cs.dot }]} />
+            <Text style={[styles.coverPillText, { color: cs.fg }]} numberOfLines={1}>
+              {activity.categoryLabel.toUpperCase()}
+            </Text>
+          </View>
         </View>
-        <View style={styles.metaItem}>
-          <TinyIcon label="P" />
+        <View style={styles.coverRight}>
+          {highlighted ? <Text style={[styles.coverBadge, styles.newBadge]}>NEW</Text> : null}
+          {isFull ? <Text style={[styles.coverBadge, styles.fullBadge]}>FULL</Text> : null}
+          <Text style={[styles.coverTime, { color: cs.fg }]}>◷ {formatSmartDateTime(activity.scheduledDateTime)}</Text>
+        </View>
+      </View>
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle} numberOfLines={2}>
+          {activity.title}
+        </Text>
+        <View style={styles.metaRow}>
+          <TinyIcon label="P" color={colors.text2} />
           <Text style={styles.metaText} numberOfLines={1}>
             {activity.meetingPointLabel}
           </Text>
@@ -294,7 +304,7 @@ function ActivityCard({
       </View>
       <View style={styles.cardFooter}>
         <View style={styles.joinedBlock}>
-          <ProgressStrip current={activity.currentParticipantCount} max={activity.maxParticipants} />
+          <SeatStrip current={activity.currentParticipantCount} max={activity.maxParticipants} />
           <Text style={styles.joinedText}>
             {activity.currentParticipantCount}/{activity.maxParticipants} joined
           </Text>
@@ -302,6 +312,21 @@ function ActivityCard({
         <ModeBadge mode={activity.participationMode} />
       </View>
     </Pressable>
+  );
+}
+
+function SeatStrip({ current, max }: { current: number; max: number }) {
+  const total = Math.min(Math.max(max, 1), 8);
+  const filled = Math.min(current, total);
+  return (
+    <View style={styles.seatStrip}>
+      {Array.from({ length: total }).map((_, index) => (
+        <View
+          key={index}
+          style={[styles.seatDot, { backgroundColor: index < filled ? colors.green : colors.border }]}
+        />
+      ))}
+    </View>
   );
 }
 
@@ -367,42 +392,6 @@ function FeedSkeleton({ bottomPadding }: { bottomPadding: number }) {
   );
 }
 
-function FeedBottomTabBar({
-  bottomInset,
-  onCreate,
-  onMine,
-}: {
-  bottomInset: number;
-  onCreate: () => void;
-  onMine: () => void;
-}) {
-  return (
-    <View style={[styles.tabBar, { paddingBottom: Math.max(bottomInset, 18) }]}>
-      <TabItem label="Feed" mark="F" active />
-      <Pressable style={styles.createTabWrap} onPress={onCreate}>
-        <View style={styles.createTabButton}>
-          <View style={styles.createPlusVertical} />
-          <View style={styles.createPlusHorizontal} />
-        </View>
-        <Text style={styles.createTabLabel}>Create</Text>
-      </Pressable>
-      <Pressable style={styles.tabItem} onPress={onMine}>
-        <Text style={styles.tabMark}>M</Text>
-        <Text style={styles.tabLabel}>Account</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function TabItem({ label, mark, active }: { label: string; mark: string; active?: boolean }) {
-  return (
-    <View style={styles.tabItem}>
-      <Text style={[styles.tabMark, active && styles.tabMarkActive]}>{mark}</Text>
-      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
-    </View>
-  );
-}
-
 function formatSmartDateTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -438,50 +427,36 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: colors.bg,
   },
-  brandMark: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
-    elevation: 2,
+  wordmark: {
+    width: 84,
+    height: 28,
   },
-  brandMarkText: {
-    color: colors.card,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  topTextBlock: {
-    flex: 1,
-    marginLeft: 10,
-  },
-  campusTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  trustRow: {
-    marginTop: 2,
+  topRightCluster: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
+  },
+  campusPill: {
+    height: 28,
+    borderRadius: 999,
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  campusPillText: {
+    color: colors.primaryDeep,
+    fontSize: 11.5,
+    fontWeight: '800',
   },
   verifiedDot: {
-    color: colors.sky,
+    color: colors.primary,
     fontSize: 12,
     fontWeight: '900',
-  },
-  trustText: {
-    color: colors.sky,
-    fontSize: 11,
-    fontWeight: '700',
   },
   alertButton: {
     width: 42,
@@ -565,52 +540,101 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderSoft,
     borderRadius: metrics.radius,
-    padding: 14,
     marginBottom: 12,
     shadowColor: '#101828',
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 8,
     elevation: 1,
+    overflow: 'hidden',
   },
   activityCardHighlighted: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryGhost,
+    borderColor: colors.green,
+    shadowColor: colors.green,
+    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 24,
+    elevation: 3,
   },
   activityCardPressed: {
     transform: [{ scale: 0.99 }],
   },
-  cardTopRow: {
+  coverBand: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
   },
-  justCreated: {
-    color: colors.primaryDeep,
+  coverLeft: {
+    flex: 1,
+    minWidth: 0,
+  },
+  coverPill: {
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  coverPillDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  coverPillText: {
+    flexShrink: 1,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  coverRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+  },
+  coverTime: {
     fontSize: 12,
     fontWeight: '900',
-    marginTop: 8,
+  },
+  coverBadge: {
+    overflow: 'hidden',
+    borderRadius: 5,
+    backgroundColor: colors.card,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
+  newBadge: {
+    color: colors.greenDeep,
+  },
+  fullBadge: {
+    color: colors.coral,
+  },
+  cardBody: {
+    backgroundColor: colors.card,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   cardTitle: {
     color: colors.text,
     fontSize: 17,
     lineHeight: 22,
     fontWeight: '900',
-    marginTop: 12,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    marginTop: 10,
-  },
-  metaItem: {
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 6,
-    flexShrink: 1,
+    marginTop: 8,
   },
   metaText: {
     color: colors.text2,
@@ -620,9 +644,10 @@ const styles = StyleSheet.create({
   },
   cardFooter: {
     borderTopWidth: 1,
+    borderStyle: 'dashed',
     borderTopColor: colors.borderSoft,
-    marginTop: 14,
-    paddingTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -638,6 +663,16 @@ const styles = StyleSheet.create({
     color: colors.text2,
     fontSize: 13,
     fontWeight: '800',
+  },
+  seatStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  seatDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   emptyState: {
     flex: 1,
@@ -706,92 +741,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  tabBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    minHeight: 82,
-    backgroundColor: colors.card,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSoft,
-    paddingTop: 4,
-    paddingHorizontal: 28,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    shadowColor: '#101828',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: -2 },
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  tabItem: {
-    width: 58,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-  },
-  tabMark: {
-    color: colors.text3,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  tabMarkActive: {
-    color: colors.primary,
-  },
-  tabLabel: {
-    color: colors.text3,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  tabLabelActive: {
-    color: colors.primary,
-  },
-  createTabWrap: {
-    alignItems: 'center',
-    gap: 3,
-    transform: [{ translateY: -14 }],
-  },
-  createTabButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
-    backgroundColor: colors.primary,
-    borderWidth: 3,
-    borderColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 18,
-    elevation: 8,
-  },
-  createPlusVertical: {
-    position: 'absolute',
-    width: 2.6,
-    height: 22,
-    borderRadius: 2,
-    backgroundColor: colors.card,
-  },
-  createPlusHorizontal: {
-    position: 'absolute',
-    width: 22,
-    height: 2.6,
-    borderRadius: 2,
-    backgroundColor: colors.card,
-  },
-  createTabLabel: {
-    color: colors.primary,
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  createTabText: {
-    color: colors.card,
-    fontSize: 28,
-    fontWeight: '700',
-    marginTop: -2,
   },
 });

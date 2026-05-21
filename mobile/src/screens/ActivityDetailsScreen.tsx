@@ -18,14 +18,13 @@ import {
 } from '../services/studentApi';
 import { getActivityDetailsActionModel } from '../services/activityDetailsActions';
 import {
-  CategoryPill,
   InlineBanner,
   PrimaryButton,
   ProgressStrip,
   SectionCard,
   SkeletonBlock,
-  StatusBadge,
   TinyIcon,
+  categoryStyle,
   colors,
   metrics,
 } from '../components/InCampusUI';
@@ -90,7 +89,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
 
   const cta = useMemo(() => {
     if (!activity) {
-      return { kind: 'join' as const, label: 'Back to Feed', tone: 'green' as const, disabled: false };
+      return { kind: 'join' as const, label: 'Back to Feed', tone: 'blue' as const, disabled: false };
     }
     return getActivityDetailsActionModel(activity, isFull);
   }, [activity, isFull]);
@@ -208,13 +207,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
         ) : null}
         {/* success toast rendered as PostActionToast overlay below */}
 
-        <View style={styles.headerSection}>
-          <View style={styles.headerRow}>
-            <CategoryPill label={activity.categoryLabel} />
-            <StatusBadge status={activity.status} />
-          </View>
-          <Text style={styles.title}>{activity.title}</Text>
-        </View>
+        <ActivityHeader activity={activity} when={formatDetailTime(activity.scheduledDateTime, activity.scheduledEndDateTime)} />
 
         <InfoBlock activity={activity} />
 
@@ -277,6 +270,34 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
   );
 };
 
+
+function ActivityHeader({ activity, when }: { activity: ActivityDetailsViewModel; when: string }) {
+  const cs = categoryStyle(activity.categoryLabel);
+  const useWhite = cs.fg === '#FFFFFF';
+  const pillBg = useWhite ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.08)';
+  return (
+    <View style={[styles.heroHeader, { backgroundColor: cs.bg, shadowColor: cs.bg }]}>
+      <View style={styles.heroTopRow}>
+        <View style={styles.heroBadges}>
+          <View style={[styles.heroPill, { backgroundColor: pillBg }]}>
+            <View style={[styles.heroPillDot, { backgroundColor: cs.dot }]} />
+            <Text style={[styles.heroPillText, { color: cs.fg }]} numberOfLines={1}>
+              {activity.categoryLabel.toUpperCase()}
+            </Text>
+          </View>
+          {activity.status && activity.status !== 'open' ? (
+            <View style={[styles.heroStatus, { backgroundColor: pillBg }]}>
+              <Text style={[styles.heroStatusText, { color: cs.fg }]}>{formatStatusLabel(activity.status)}</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={[styles.heroWhen, { color: cs.fg }]} numberOfLines={2}>{when}</Text>
+      </View>
+      <Text style={[styles.heroTitle, { color: cs.fg }]}>{activity.title}</Text>
+    </View>
+  );
+}
+
 function DetailTopBar({
   topInset,
   onBack,
@@ -298,6 +319,7 @@ function DetailTopBar({
 }
 
 function InfoBlock({ activity }: { activity: ActivityDetailsViewModel }) {
+  const isFull = activity.status === 'full' || activity.currentParticipantCount >= activity.maxParticipants;
   return (
     <SectionCard style={styles.infoCard}>
       <InfoRow label="When" value={formatDetailTime(activity.scheduledDateTime, activity.scheduledEndDateTime)} icon="T" />
@@ -312,12 +334,17 @@ function InfoBlock({ activity }: { activity: ActivityDetailsViewModel }) {
             <Text style={styles.infoValue}>
               {activity.currentParticipantCount}/{activity.maxParticipants} joined
             </Text>
-            <ProgressStrip current={activity.currentParticipantCount} max={activity.maxParticipants} />
+            <ProgressStrip current={activity.currentParticipantCount} max={activity.maxParticipants} full={isFull} />
           </View>
         </View>
       </View>
       <Divider />
-      <InfoRow label="How to join" value={formatJoinMode(activity.participationMode)} icon={activity.participationMode === 'open' ? 'O' : 'A'} />
+      <InfoRow
+        label="How to join"
+        value={formatJoinMode(activity.participationMode)}
+        icon={activity.participationMode === 'open' ? 'O' : 'A'}
+        tone={activity.participationMode === 'open' ? 'open' : 'default'}
+      />
       {activity.genderPreference !== 'all' ? (
         <>
           <Divider />
@@ -328,13 +355,14 @@ function InfoBlock({ activity }: { activity: ActivityDetailsViewModel }) {
   );
 }
 
-function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+function InfoRow({ icon, label, value, tone = 'default' }: { icon: string; label: string; value: string; tone?: 'default' | 'open' }) {
+  const open = tone === 'open';
   return (
     <View style={styles.infoRow}>
-      <TinyIcon label={icon} />
+      <TinyIcon label={icon} color={open ? colors.greenDeep : colors.text2} />
       <View style={styles.infoTextBlock}>
         <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoValue}>{value}</Text>
+        <Text style={[styles.infoValue, open && styles.openInfoValue]}>{value}</Text>
       </View>
     </View>
   );
@@ -377,6 +405,9 @@ function HostTrustSection({
     <SectionCard style={styles.section}>
       <Text style={styles.sectionTitle}>Hosted by</Text>
       <Pressable style={styles.hostRow} onPress={onOpenProfile} disabled={!onOpenProfile}>
+        <View style={styles.hostAvatar}>
+          <Text style={styles.hostAvatarText}>{name.charAt(0).toUpperCase()}</Text>
+        </View>
         <View style={styles.hostContent}>
           <Text style={styles.hostName}>{name}</Text>
           {host?.major ? <Text style={styles.hostMajor}>{host.major}</Text> : <Text style={styles.hostMajor}>Campus verified</Text>}
@@ -457,7 +488,14 @@ function StickyDetailCTA({
           <Text style={styles.stickySummaryLabel}>spots filled</Text>
         </View>
         <View style={styles.stickyCTAButton}>
-          <PrimaryButton label={ctaLabel} tone={tone} disabled={disabled} loading={loading} onPress={onPress} />
+          <PrimaryButton
+            label={ctaLabel}
+            tone={tone}
+            disabled={disabled}
+            loading={loading}
+            onPress={onPress}
+            style={tone === 'green' ? styles.joinCTAButton : tone === 'blue' ? styles.brandCTAButton : undefined}
+          />
         </View>
       </View>
     </View>
@@ -471,7 +509,7 @@ function PostActionToast({
   message: string;
   tone: 'green' | 'blue';
 }) {
-  const bg = tone === 'blue' ? colors.primary : colors.primaryGreen;
+  const bg = tone === 'blue' ? colors.skyBlue : colors.green;
   return (
     <View style={styles.toastOverlay}>
       <View style={[styles.toastCard, { borderColor: `${bg}33` }]}>
@@ -479,7 +517,7 @@ function PostActionToast({
           <Text style={styles.toastIconText}>✓</Text>
         </View>
         <View style={styles.toastContent}>
-          <Text style={[styles.toastTitle, { color: tone === 'blue' ? colors.primary : colors.primaryGreenPressed }]}>
+          <Text style={[styles.toastTitle, { color: tone === 'blue' ? colors.skyDeep : colors.greenDeep }]}>
             {message}
           </Text>
           <Text style={styles.toastSub}>
@@ -618,6 +656,10 @@ function getToastTone(kind: string): 'green' | 'blue' {
   return kind === 'request_to_join' || kind === 'pending_request' ? 'blue' : 'green';
 }
 
+function formatStatusLabel(status: string): string {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -679,21 +721,73 @@ const styles = StyleSheet.create({
   topBanner: {
     marginBottom: 12,
   },
-  headerSection: {
+  heroHeader: {
+    borderRadius: 22,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 22,
     marginBottom: 14,
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 28,
+    elevation: 4,
   },
-  headerRow: {
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  heroBadges: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 7,
+  },
+  heroPill: {
+    maxWidth: '100%',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
+    gap: 6,
   },
-  title: {
-    color: colors.text,
+  heroPillDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  heroPillText: {
+    flexShrink: 1,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  heroStatus: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  heroStatusText: {
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  heroWhen: {
+    maxWidth: 112,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+  heroTitle: {
     fontSize: 28,
     lineHeight: 34,
     fontWeight: '900',
-    marginTop: 12,
+    letterSpacing: -0.8,
+    marginTop: 18,
   },
   infoCard: {
     padding: 14,
@@ -720,6 +814,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     fontWeight: '800',
+  },
+  openInfoValue: {
+    alignSelf: 'flex-start',
+    overflow: 'hidden',
+    borderRadius: 999,
+    backgroundColor: colors.greenSoft,
+    color: colors.greenDeep,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
   },
   spotsLine: {
     flexDirection: 'row',
@@ -763,6 +866,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     alignItems: 'center',
+  },
+  hostAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: colors.primary,
+    borderWidth: 3,
+    borderColor: colors.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOpacity: 0.28,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  hostAvatarText: {
+    color: colors.card,
+    fontSize: 17,
+    fontWeight: '900',
   },
   hostContent: {
     flex: 1,
@@ -820,12 +943,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   trustMark: {
-    color: colors.sky,
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '900',
   },
   trustText: {
-    color: colors.skyDeep,
+    color: colors.primaryDeep,
     fontSize: 13,
     fontWeight: '800',
   },
@@ -888,6 +1011,20 @@ const styles = StyleSheet.create({
   },
   stickyCTAButton: {
     flex: 1,
+  },
+  joinCTAButton: {
+    shadowColor: colors.green,
+    shadowOpacity: 0.22,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  brandCTAButton: {
+    shadowColor: colors.primary,
+    shadowOpacity: 0.22,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 18,
+    elevation: 4,
   },
   toastOverlay: {
     position: 'absolute',
@@ -987,12 +1124,17 @@ const styles = StyleSheet.create({
   unavailableButton: {
     minWidth: 190,
     marginTop: 24,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.22,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 18,
+    elevation: 4,
   },
   alertsLink: {
     padding: 16,
   },
   alertsLinkText: {
-    color: colors.skyDeep,
+    color: colors.primaryDeep,
     fontSize: 14,
     fontWeight: '900',
   },

@@ -57,13 +57,13 @@ export const metrics = {
 };
 
 const CATEGORY_STYLE: Record<string, { bg: string; fg: string; dot: string }> = {
-  Lunch: { bg: '#FFC233', fg: '#5C3A00', dot: '#5C3A00' },
-  Study: { bg: '#5B7BFF', fg: '#FFFFFF', dot: '#FFFFFF' },
-  'Language Exchange': { bg: '#FF7A4D', fg: '#FFFFFF', dot: '#FFFFFF' },
-  Sport: { bg: '#2DD685', fg: '#FFFFFF', dot: '#FFFFFF' },
-  Sports: { bg: '#2DD685', fg: '#FFFFFF', dot: '#FFFFFF' },
-  Social: { bg: '#A989FF', fg: '#FFFFFF', dot: '#FFFFFF' },
-  Coffee: { bg: '#FFA463', fg: '#FFFFFF', dot: '#FFFFFF' },
+  Lunch: { bg: '#FFEDB8', fg: '#7A4A00', dot: '#FFC233' },
+  Study: { bg: '#E8EAF5', fg: '#1E2D7A', dot: '#5B7BFF' },
+  'Language Exchange': { bg: '#FFDACB', fg: '#D04A1F', dot: '#FF6B3D' },
+  Sport: { bg: '#D6F4E3', fg: '#0E9B59', dot: '#16C172' },
+  Sports: { bg: '#D6F4E3', fg: '#0E9B59', dot: '#16C172' },
+  Social: { bg: '#F1EBFF', fg: '#5B3FBF', dot: '#A989FF' },
+  Coffee: { bg: '#FFDACB', fg: '#A4501B', dot: '#FFA463' },
 };
 
 export function categoryStyle(label?: string) {

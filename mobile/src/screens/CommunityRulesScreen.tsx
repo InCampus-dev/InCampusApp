@@ -103,8 +103,8 @@ const FALLBACK_RULE_SECTIONS: CommunityRuleSection[] = [
 ];
 
 const RULE_TONES = [
-  { bg: colors.successSoft, fg: colors.primaryGreenPressed },
   { bg: colors.primarySoft, fg: colors.primary },
+  { bg: colors.successSoft, fg: colors.primaryGreenPressed },
   { bg: colors.coralSoft, fg: colors.coralDeep },
   { bg: colors.yellowSoft, fg: '#8A5B00' },
 ];

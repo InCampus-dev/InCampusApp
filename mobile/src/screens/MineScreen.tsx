@@ -89,7 +89,7 @@ export default function MineScreen({ navigation }: { navigation: any }) {
     <ScreenShell padded={false} style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Mine</Text>
+          <Text style={styles.title}>Account</Text>
           <Text style={styles.subtitle}>Your personal hub</Text>
         </View>
         {loading ? (
@@ -131,7 +131,7 @@ export default function MineScreen({ navigation }: { navigation: any }) {
           <SettingsRow label={signingOut ? 'Signing out...' : 'Sign out'} danger disabled={signingOut} onPress={signOut} last />
         </SettingsGroup>
       </ScrollView>
-      <BottomTabBar active="mine" onFeed={() => navigation.navigate('ActivityFeed')} onCreate={() => navigation.navigate('CreateActivity')} />
+      <BottomTabBar active="account" onFeed={() => navigation.navigate('ActivityFeed')} onCreate={() => navigation.navigate('CreateActivity')} onAccount={() => navigation.navigate('Mine')} />
     </ScreenShell>
   );
 }
@@ -198,8 +198,8 @@ const styles = StyleSheet.create({
   profileName: { color: colors.text, fontSize: 20, fontWeight: '900' },
   profileMajor: { color: colors.text2, fontSize: 13, fontWeight: '800', marginTop: 3 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 9 },
-  campusBadge: { flexShrink: 1, overflow: 'hidden', borderRadius: 999, backgroundColor: colors.skySoft, color: colors.sky, paddingHorizontal: 9, paddingVertical: 4, fontSize: 11, fontWeight: '900' },
-  verifiedBadge: { overflow: 'hidden', borderRadius: 999, backgroundColor: colors.primarySoft, color: colors.primary, paddingHorizontal: 9, paddingVertical: 4, fontSize: 11, fontWeight: '900' },
+  campusBadge: { flexShrink: 1, overflow: 'hidden', borderRadius: 999, backgroundColor: colors.primarySoft, color: colors.primary, paddingHorizontal: 9, paddingVertical: 4, fontSize: 11, fontWeight: '900' },
+  verifiedBadge: { overflow: 'hidden', borderRadius: 999, backgroundColor: colors.successSoft, color: colors.primaryGreenPressed, paddingHorizontal: 9, paddingVertical: 4, fontSize: 11, fontWeight: '900' },
   bio: { color: colors.text2, fontSize: 12, fontWeight: '700', marginTop: 10 },
   primaryActionCard: { padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 },
   primaryIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },

@@ -20,7 +20,7 @@ export default function NotificationFallbackScreen({ navigation, route }: { navi
         <Text style={styles.reason}>Reason: {typeof rawReason === 'string' ? copy.reasonLabel : 'Generic fallback'}</Text>
       </View>
       <View style={styles.footer}>
-        <PrimaryButton label="Back to Notifications" onPress={() => navigation.navigate('NotificationList')} />
+        <PrimaryButton label="Back to Alerts" onPress={() => navigation.navigate('NotificationList')} />
         <Pressable style={styles.secondary} onPress={() => navigation.reset({ index: 0, routes: [{ name: 'ActivityFeed' }] })}>
           <Text style={styles.secondaryText}>Go to Feed</Text>
         </Pressable>

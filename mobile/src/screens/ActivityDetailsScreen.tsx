@@ -471,7 +471,7 @@ function PostActionToast({
   message: string;
   tone: 'green' | 'blue';
 }) {
-  const bg = tone === 'blue' ? colors.sky : colors.primary;
+  const bg = tone === 'blue' ? colors.primary : colors.primaryGreen;
   return (
     <View style={styles.toastOverlay}>
       <View style={[styles.toastCard, { borderColor: `${bg}33` }]}>
@@ -479,7 +479,7 @@ function PostActionToast({
           <Text style={styles.toastIconText}>✓</Text>
         </View>
         <View style={styles.toastContent}>
-          <Text style={[styles.toastTitle, { color: tone === 'blue' ? colors.skyDeep : colors.primaryDeep }]}>
+          <Text style={[styles.toastTitle, { color: tone === 'blue' ? colors.primary : colors.primaryGreenPressed }]}>
             {message}
           </Text>
           <Text style={styles.toastSub}>

@@ -221,6 +221,6 @@ const styles = StyleSheet.create({
   secondaryLink: { alignItems: 'center', paddingVertical: 16 },
   secondaryText: { color: colors.primary, fontSize: 14, fontWeight: '900' },
   trustLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 },
-  trustDot: { width: 14, height: 14, borderRadius: 4, backgroundColor: colors.primary },
+  trustDot: { width: 14, height: 14, borderRadius: 4, backgroundColor: colors.primaryGreen },
   trustText: { color: colors.text2, fontSize: 12, fontWeight: '700' },
 });

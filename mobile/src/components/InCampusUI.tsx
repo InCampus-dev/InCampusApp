@@ -14,24 +14,32 @@ import {
   ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BOTTOM_TAB_ITEMS, type BottomTabKey } from '../services/bottomTabs';
 
 export const colors = {
-  primary: '#16B978',
-  primaryDeep: '#0F9963',
-  primarySoft: '#E6F7EF',
-  primaryGhost: '#F1FBF6',
-  sky: '#4DA3FF',
-  skyDeep: '#1E63C8',
-  skySoft: '#E8F2FF',
-  coral: '#FF6B5F',
-  coralDeep: '#C0382E',
-  coralSoft: '#FFE9E6',
-  yellow: '#FFD166',
-  yellowSoft: '#FFF5DB',
-  bg: '#F7F8FA',
+  primary: '#1E2D7A',
+  primaryPressed: '#15215C',
+  primaryDeep: '#15215C',
+  primarySoft: '#E8EAF5',
+  primaryGhost: '#F5F6FB',
+  primaryGreen: '#16C172',
+  primaryGreenPressed: '#0E9B59',
+  successSoft: '#D6F4E3',
+  sky: '#1E2D7A',
+  skyBlue: '#1E2D7A',
+  skyDeep: '#15215C',
+  skySoft: '#E8EAF5',
+  coral: '#FF6B3D',
+  coralDeep: '#D04A1F',
+  coralSoft: '#FFDACB',
+  yellow: '#FFC233',
+  warmYellow: '#FFC233',
+  yellowSoft: '#FFEDB8',
+  warmYellowSoft: '#FFEDB8',
+  bg: '#F4F5FA',
+  background: '#F4F5FA',
   card: '#FFFFFF',
-  text: '#1F2933',
+  text: '#1F2444',
+  textPrimary: '#1F2444',
   text2: '#667085',
   text3: '#98A0AB',
   border: '#E5E7EB',
@@ -49,13 +57,13 @@ export const metrics = {
 };
 
 const CATEGORY_STYLE: Record<string, { bg: string; fg: string; dot: string }> = {
-  Lunch: { bg: '#FFF5DB', fg: '#9A6B00', dot: '#FFD166' },
-  Study: { bg: '#E8F2FF', fg: '#1E63C8', dot: '#4DA3FF' },
-  'Language Exchange': { bg: '#FFE9E6', fg: '#C0382E', dot: '#FF6B5F' },
-  Sports: { bg: '#E6F7EF', fg: '#0F7E54', dot: '#16B978' },
-  Sport: { bg: '#E6F7EF', fg: '#0F7E54', dot: '#16B978' },
-  Social: { bg: '#F1EBFF', fg: '#5B3FBF', dot: '#9D88F0' },
-  Coffee: { bg: '#FFEFE2', fg: '#A4501B', dot: '#FF9E5C' },
+  Lunch: { bg: '#FFC233', fg: '#5C3A00', dot: '#5C3A00' },
+  Study: { bg: '#5B7BFF', fg: '#FFFFFF', dot: '#FFFFFF' },
+  'Language Exchange': { bg: '#FF7A4D', fg: '#FFFFFF', dot: '#FFFFFF' },
+  Sport: { bg: '#2DD685', fg: '#FFFFFF', dot: '#FFFFFF' },
+  Sports: { bg: '#2DD685', fg: '#FFFFFF', dot: '#FFFFFF' },
+  Social: { bg: '#A989FF', fg: '#FFFFFF', dot: '#FFFFFF' },
+  Coffee: { bg: '#FFA463', fg: '#FFFFFF', dot: '#FFFFFF' },
 };
 
 export function categoryStyle(label?: string) {
@@ -77,8 +85,8 @@ export function CategoryPill({ label, compact = false }: { label: string; compac
 export function ModeBadge({ mode }: { mode: 'open' | 'approval_based' }) {
   const isOpen = mode === 'open';
   return (
-    <View style={[uiStyles.badge, { backgroundColor: isOpen ? colors.primarySoft : colors.skySoft }]}>
-      <Text style={[uiStyles.badgeText, { color: isOpen ? colors.primaryDeep : colors.skyDeep }]}>
+    <View style={[uiStyles.badge, { backgroundColor: isOpen ? colors.successSoft : colors.primarySoft }]}>
+      <Text style={[uiStyles.badgeText, { color: isOpen ? colors.primaryGreenPressed : colors.primary }]}>
         {isOpen ? 'Open' : 'Approval'}
       </Text>
     </View>
@@ -127,7 +135,7 @@ export function InlineBanner({
 }) {
   const palette =
     tone === 'success'
-      ? { bg: colors.primaryGhost, border: colors.primarySoft, text: colors.primaryDeep }
+      ? { bg: colors.successSoft, border: colors.primaryGreen, text: colors.primaryGreenPressed }
       : tone === 'error'
         ? { bg: colors.dangerSoft, border: '#F8C9CB', text: colors.danger }
         : { bg: colors.yellowSoft, border: '#F3D99B', text: '#8A5B00' };
@@ -198,7 +206,7 @@ export function PrimaryButton({
   onPress,
   disabled,
   loading,
-  tone = 'green',
+  tone = 'blue',
   style,
 }: {
   label: string;
@@ -210,12 +218,12 @@ export function PrimaryButton({
 }) {
   const backgroundColor =
     tone === 'blue'
-      ? colors.sky
+      ? colors.primary
       : tone === 'danger'
         ? colors.danger
         : tone === 'muted'
           ? '#D9DEE6'
-          : colors.primary;
+          : colors.primaryGreen;
 
   return (
     <Pressable
@@ -506,7 +514,7 @@ export function Chip({
 function chipTone(tone: 'green' | 'blue' | 'coral' | 'yellow' | 'muted') {
   switch (tone) {
     case 'blue':
-      return { bg: colors.skySoft, fg: colors.sky };
+      return { bg: colors.primarySoft, fg: colors.primary };
     case 'coral':
       return { bg: colors.coralSoft, fg: colors.coral };
     case 'yellow':
@@ -515,7 +523,7 @@ function chipTone(tone: 'green' | 'blue' | 'coral' | 'yellow' | 'muted') {
       return { bg: colors.borderSoft, fg: colors.text2 };
     case 'green':
     default:
-      return { bg: colors.primarySoft, fg: colors.primary };
+      return { bg: colors.successSoft, fg: colors.primaryGreenPressed };
   }
 }
 
@@ -527,6 +535,7 @@ export function EmptyState({
   secondaryLabel,
   onPrimary,
   onSecondary,
+  primaryTone = 'blue',
 }: {
   icon?: string;
   title: string;
@@ -535,6 +544,7 @@ export function EmptyState({
   secondaryLabel?: string;
   onPrimary?: () => void;
   onSecondary?: () => void;
+  primaryTone?: 'green' | 'blue' | 'muted' | 'danger';
 }) {
   return (
     <View style={shellStyles.emptyCard}>
@@ -544,7 +554,7 @@ export function EmptyState({
       <Text style={shellStyles.emptyTitle}>{title}</Text>
       {text ? <Text style={shellStyles.emptyText}>{text}</Text> : null}
       {primaryLabel ? (
-        <PrimaryButton label={primaryLabel} onPress={onPrimary} style={shellStyles.emptyPrimary} />
+        <PrimaryButton label={primaryLabel} onPress={onPrimary} tone={primaryTone} style={shellStyles.emptyPrimary} />
       ) : null}
       {secondaryLabel ? (
         <Pressable style={shellStyles.emptySecondary} onPress={onSecondary}>
@@ -565,7 +575,7 @@ export function InlineSpinnerButton({
   loadingLabel,
   loading,
   onPress,
-  tone = 'green',
+  tone = 'blue',
   disabled,
 }: {
   label: string;
@@ -586,27 +596,48 @@ export function InlineSpinnerButton({
   );
 }
 
+export type BottomTabKey = 'feed' | 'create' | 'account';
+
+const BOTTOM_TAB_ITEMS: Array<{ key: BottomTabKey; label: string; icon: string; fab?: boolean }> = [
+  { key: 'feed', label: 'Feed', icon: 'F' },
+  { key: 'create', label: 'Create', icon: '+', fab: true },
+  { key: 'account', label: 'Account', icon: 'M' },
+];
+
 export function BottomTabBar({
   active,
   onFeed,
   onCreate,
+  onAccount,
   onMine,
 }: {
   active?: BottomTabKey;
   onFeed?: () => void;
   onCreate?: () => void;
+  onAccount?: () => void;
   onMine?: () => void;
 }) {
   const handlers: Record<BottomTabKey, (() => void) | undefined> = {
     feed: onFeed,
     create: onCreate,
-    mine: onMine,
+    account: onAccount ?? onMine,
   };
   const insets = useSafeAreaInsets();
   return (
-    <View style={[shellStyles.tabBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+    <View style={[shellStyles.tabBar, { paddingBottom: Math.max(insets.bottom, 18) }]}>
       {BOTTOM_TAB_ITEMS.map((item) => {
         const selected = active === item.key;
+        if (item.fab) {
+          return (
+            <Pressable key={item.key} style={shellStyles.tabCreateWrap} onPress={handlers[item.key]}>
+              <View style={shellStyles.tabFab}>
+                <View style={shellStyles.tabFabPlusVertical} />
+                <View style={shellStyles.tabFabPlusHorizontal} />
+              </View>
+              <Text style={shellStyles.tabCreateLabel}>{item.label}</Text>
+            </Pressable>
+          );
+        }
         return (
           <Pressable key={item.key} style={shellStyles.tabItem} onPress={handlers[item.key]}>
             <Text style={[shellStyles.tabIcon, selected && shellStyles.tabActive]}>{item.icon}</Text>
@@ -804,7 +835,7 @@ const uiStyles = StyleSheet.create({
     borderRadius: 3,
   },
   progressDotFilled: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryGreen,
   },
   progressDotEmpty: {
     backgroundColor: colors.border,
@@ -1120,17 +1151,21 @@ const shellStyles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    minHeight: 82,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingTop: 8,
+    paddingTop: 4,
+    paddingHorizontal: 28,
     flexDirection: 'row',
     justifyContent: 'space-around',
+    alignItems: 'flex-end',
   },
   tabItem: {
     alignItems: 'center',
     gap: 2,
     minWidth: 64,
+    paddingVertical: 4,
   },
   tabIcon: {
     color: colors.text3,
@@ -1146,5 +1181,44 @@ const shellStyles = StyleSheet.create({
   tabActive: {
     color: colors.primary,
   },
+  tabCreateWrap: {
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 12,
+    transform: [{ translateY: -14 }],
+  },
+  tabFab: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    borderWidth: 3,
+    borderColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  tabFabPlusVertical: {
+    position: 'absolute',
+    width: 2.6,
+    height: 22,
+    borderRadius: 2,
+    backgroundColor: colors.card,
+  },
+  tabFabPlusHorizontal: {
+    position: 'absolute',
+    width: 22,
+    height: 2.6,
+    borderRadius: 2,
+    backgroundColor: colors.card,
+  },
+  tabCreateLabel: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '900',
+  },
 });
-

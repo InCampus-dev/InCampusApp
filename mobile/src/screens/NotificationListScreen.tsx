@@ -152,12 +152,12 @@ export default function NotificationListScreen({ navigation }: { navigation: any
           onEndReached={onEndReached}
           onEndReachedThreshold={0.3}
           ListHeaderComponent={errorMessage ? <InlineBanner tone="error" text={errorMessage} actionLabel="Retry" onAction={onRefresh} /> : null}
-          ListEmptyComponent={<EmptyState icon="i" title="No notifications yet" text="When students join your activities or your requests get a response, you'll see it here." primaryLabel="Browse activities" onPrimary={() => navigation.navigate('ActivityFeed')} />}
+          ListEmptyComponent={<EmptyState icon="i" title="No notifications yet" text="When students join your activities or your requests get a response, you'll see it here." primaryLabel="Browse activities" primaryTone="green" onPrimary={() => navigation.navigate('ActivityFeed')} />}
           ListFooterComponent={loadingMore ? <LoadingFooter /> : null}
           renderItem={({ item }) => <NotificationCard item={item} loading={tappedId === item.notificationId} onPress={() => handleTapNotification(item.notificationId)} />}
         />
       )}
-      <BottomTabBar onFeed={() => navigation.navigate('ActivityFeed')} onCreate={() => navigation.navigate('CreateActivity')} onMine={() => navigation.navigate('Mine')} />
+      <BottomTabBar active="account" onFeed={() => navigation.navigate('ActivityFeed')} onCreate={() => navigation.navigate('CreateActivity')} onAccount={() => navigation.navigate('Mine')} />
     </ScreenShell>
   );
 }
@@ -183,7 +183,7 @@ function NotificationCard({ item, loading, onPress }: { item: NotificationItem; 
 }
 
 function notificationVisual(item: NotificationItem) {
-  if (item.notificationType === 'JoinEvent') return { accent: colors.sky, soft: colors.skySoft, icon: '+', hint: 'Tap to review' };
+  if (item.notificationType === 'JoinEvent') return { accent: colors.primary, soft: colors.primarySoft, icon: '+', hint: 'Tap to review' };
   if (item.notificationType === 'ActivityCancellation') return { accent: colors.coral, soft: colors.coralSoft, icon: 'x', hint: 'Tap to see details' };
   if (item.notificationType === 'LeaveEvent') return { accent: colors.coral, soft: colors.coralSoft, icon: '-', hint: 'Tap to review' };
   if (item.notificationType === 'ActivityReminder') return { accent: '#8A5B00', soft: colors.yellowSoft, icon: 't', hint: 'Tap to view' };
@@ -191,10 +191,10 @@ function notificationVisual(item: NotificationItem) {
     const text = `${item.notificationTitle} ${item.notificationMessage}`.toLowerCase();
     const approved = text.includes('approved') || text.includes('accepted');
     return approved
-      ? { accent: colors.primary, soft: colors.primarySoft, icon: 'ok', hint: 'Tap to view' }
+      ? { accent: colors.primaryGreen, soft: colors.successSoft, icon: 'ok', hint: 'Tap to view' }
       : { accent: colors.text2, soft: colors.borderSoft, icon: 'x', hint: 'Tap to view activities' };
   }
-  return { accent: colors.sky, soft: colors.skySoft, icon: 'i', hint: 'Tap to view' };
+  return { accent: colors.primary, soft: colors.primarySoft, icon: 'i', hint: 'Tap to view' };
 }
 
 function relativeTime(value: string): string {

@@ -82,8 +82,11 @@ export const ManageRequestsScreen = ({ route, navigation }: any) => {
     <ScreenShell style={styles.screen}>
       <TopBar title="Join Requests" onBack={() => navigation.goBack()} rightLabel={activityId ? 'View activity' : undefined} onRight={() => activityId && navigation.navigate('ActivityDetails', { activityId })} />
       <View style={styles.contextCard}>
-        <Text style={styles.contextTitle}>{activityId ? 'Review pending requests' : 'This screen needs an activity context'}</Text>
-        <Text style={styles.contextBody}>{activityId ? 'Approve or decline each request below.' : 'Open Join Requests from an activity or notification.'}</Text>
+        <View pointerEvents="none" style={styles.contextOverlay} />
+        <View style={styles.contextContent}>
+          <Text style={styles.contextTitle}>{activityId ? 'Review pending requests' : 'This screen needs an activity context'}</Text>
+          <Text style={styles.contextBody}>{activityId ? 'Approve or decline each request below.' : 'Open Join Requests from an activity or notification.'}</Text>
+        </View>
       </View>
       {!activityId ? (
         <View style={styles.content}>
@@ -130,7 +133,7 @@ function JoinRequestCard({
   onDecline: () => void;
 }) {
   const initial = request.applicant.displayName.trim().charAt(0).toUpperCase() || '?';
-  const avatarColor = AVATAR_COLORS[index % AVATAR_COLORS.length];
+  const avatarColor = AVATAR_TINTS[index % AVATAR_TINTS.length];
   return (
     <SectionCard style={[styles.requestCard, decided && styles.requestCardDecided]}>
       <View style={styles.requestTop}>
@@ -146,15 +149,15 @@ function JoinRequestCard({
       </View>
       {processing ? (
         <View style={[styles.processingRow, processing === 'approve' ? styles.processingApprove : styles.processingDecline]}>
-          <ActivityIndicator color={processing === 'approve' ? colors.primary : colors.coral} size="small" />
-          <Text style={[styles.processingText, { color: processing === 'approve' ? colors.primary : colors.coral }]}>{processing === 'approve' ? 'Approving...' : 'Declining...'}</Text>
+          <ActivityIndicator color={processing === 'approve' ? colors.primaryGreen : colors.coral} size="small" />
+          <Text style={[styles.processingText, { color: processing === 'approve' ? colors.primaryGreenPressed : colors.coral }]}>{processing === 'approve' ? 'Approving...' : 'Declining...'}</Text>
         </View>
       ) : decided ? (
         <View style={styles.decidedRow}><Text style={styles.decidedText}>{decided === 'approve' ? 'Approved' : 'Declined'}</Text></View>
       ) : (
         <View style={styles.actions}>
           <Pressable style={styles.declineButton} onPress={onDecline}><Text style={styles.declineText}>Decline</Text></Pressable>
-          <PrimaryButton label="Approve" onPress={onApprove} style={styles.approveButton} />
+          <PrimaryButton label="Approve" onPress={onApprove} tone="green" style={styles.approveButton} />
         </View>
       )}
     </SectionCard>
@@ -172,17 +175,19 @@ function relativeTime(value: string): string {
   return `${Math.floor(hours / 24)} days ago`;
 }
 
-const AVATAR_COLORS = [
-  { bg: colors.skySoft, fg: colors.sky },
+const AVATAR_TINTS = [
   { bg: colors.primarySoft, fg: colors.primary },
-  { bg: colors.coralSoft, fg: colors.coral },
+  { bg: colors.successSoft, fg: colors.primaryGreenPressed },
+  { bg: colors.coralSoft, fg: colors.coralDeep },
   { bg: colors.yellowSoft, fg: '#8A5B00' },
 ];
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.bg },
   content: { padding: 16 },
-  contextCard: { marginHorizontal: 16, marginTop: 8, padding: 16, borderRadius: 18, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+  contextCard: { marginHorizontal: 16, marginTop: 8, padding: 16, borderRadius: 18, backgroundColor: colors.card, borderWidth: 1, borderLeftWidth: 4, borderColor: colors.border, borderLeftColor: colors.primary, position: 'relative', overflow: 'hidden' },
+  contextOverlay: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '60%', backgroundColor: colors.primary, opacity: 0.08 },
+  contextContent: { position: 'relative' },
   contextTitle: { color: colors.text, fontSize: 16, fontWeight: '900' },
   contextBody: { color: colors.text2, fontSize: 13, fontWeight: '600', marginTop: 4 },
   list: { padding: 16, gap: 12, paddingBottom: 28 },
@@ -200,9 +205,9 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 8, marginTop: 14 },
   declineButton: { flex: 1, minHeight: 52, borderRadius: 16, borderWidth: 1.5, borderColor: colors.coral, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card },
   declineText: { color: colors.coral, fontSize: 15, fontWeight: '900' },
-  approveButton: { flex: 1 },
+  approveButton: { flex: 1, shadowColor: colors.primaryGreen, shadowOpacity: 0.22, shadowOffset: { width: 0, height: 4 }, shadowRadius: 10, elevation: 3 },
   processingRow: { marginTop: 14, minHeight: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 },
-  processingApprove: { backgroundColor: colors.primarySoft },
+  processingApprove: { backgroundColor: colors.successSoft },
   processingDecline: { backgroundColor: colors.coralSoft },
   processingText: { fontSize: 13, fontWeight: '900' },
   decidedRow: { marginTop: 14, minHeight: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.borderSoft },

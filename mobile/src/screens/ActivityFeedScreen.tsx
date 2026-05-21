@@ -167,8 +167,8 @@ export const ActivityFeedScreen = ({ navigation, route }: any) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => fetchActivities('refresh')}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
+              tintColor={colors.primaryGreen}
+              colors={[colors.primaryGreen]}
             />
           }
           showsVerticalScrollIndicator={false}
@@ -377,14 +377,18 @@ function FeedBottomTabBar({
   onMine: () => void;
 }) {
   return (
-    <View style={[styles.tabBar, { paddingBottom: Math.max(bottomInset, 10) }]}>
+    <View style={[styles.tabBar, { paddingBottom: Math.max(bottomInset, 18) }]}>
       <TabItem label="Feed" mark="F" active />
-      <Pressable style={styles.createTabButton} onPress={onCreate}>
-        <Text style={styles.createTabText}>+</Text>
+      <Pressable style={styles.createTabWrap} onPress={onCreate}>
+        <View style={styles.createTabButton}>
+          <View style={styles.createPlusVertical} />
+          <View style={styles.createPlusHorizontal} />
+        </View>
+        <Text style={styles.createTabLabel}>Create</Text>
       </Pressable>
       <Pressable style={styles.tabItem} onPress={onMine}>
         <Text style={styles.tabMark}>M</Text>
-        <Text style={styles.tabLabel}>Mine</Text>
+        <Text style={styles.tabLabel}>Account</Text>
       </Pressable>
     </View>
   );
@@ -712,10 +716,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.borderSoft,
-    paddingTop: 8,
+    paddingTop: 4,
     paddingHorizontal: 28,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
     shadowColor: '#101828',
     shadowOpacity: 0.08,
@@ -745,18 +749,44 @@ const styles = StyleSheet.create({
   tabLabelActive: {
     color: colors.primary,
   },
+  createTabWrap: {
+    alignItems: 'center',
+    gap: 3,
+    transform: [{ translateY: -14 }],
+  },
   createTabButton: {
-    width: 52,
-    height: 52,
+    width: 50,
+    height: 50,
     borderRadius: 16,
     backgroundColor: colors.primary,
+    borderWidth: 3,
+    borderColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: colors.primary,
-    shadowOpacity: 0.32,
+    shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 14,
-    elevation: 6,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  createPlusVertical: {
+    position: 'absolute',
+    width: 2.6,
+    height: 22,
+    borderRadius: 2,
+    backgroundColor: colors.card,
+  },
+  createPlusHorizontal: {
+    position: 'absolute',
+    width: 22,
+    height: 2.6,
+    borderRadius: 2,
+    backgroundColor: colors.card,
+  },
+  createTabLabel: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '900',
   },
   createTabText: {
     color: colors.card,

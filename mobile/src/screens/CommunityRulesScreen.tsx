@@ -103,9 +103,9 @@ const FALLBACK_RULE_SECTIONS: CommunityRuleSection[] = [
 ];
 
 const RULE_TONES = [
+  { bg: colors.successSoft, fg: colors.primaryGreenPressed },
   { bg: colors.primarySoft, fg: colors.primary },
-  { bg: colors.skySoft, fg: colors.sky },
-  { bg: colors.coralSoft, fg: colors.coral },
+  { bg: colors.coralSoft, fg: colors.coralDeep },
   { bg: colors.yellowSoft, fg: '#8A5B00' },
 ];
 
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   screen: { backgroundColor: colors.bg, paddingTop: 54 },
   loadingWrap: { padding: 16 },
   content: { padding: 16, gap: 10, paddingBottom: 28 },
-  introCard: { padding: 16, borderRadius: 18, backgroundColor: '#EEF8F4', borderWidth: 1, borderColor: '#D7F0E5' },
+  introCard: { padding: 16, borderRadius: 18, backgroundColor: colors.successSoft, borderWidth: 1, borderColor: '#D7F0E5' },
   introText: { color: colors.text, fontSize: 14, fontWeight: '800', lineHeight: 20 },
   ruleCard: { padding: 15, flexDirection: 'row', gap: 12 },
   ruleNumber: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },

@@ -224,7 +224,7 @@ function createReportSubmissionService(
       },
       async hasExistingReport(
         reporterAccountId: string,
-        targetType: string,
+        targetType: ReportTargetType,
         targetAccountId: string | null,
         targetActivityId: string | null
       ) {

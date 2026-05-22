@@ -1,6 +1,7 @@
 import { DataSource, Repository } from "typeorm";
 
 import { ReportRecord } from "../entities/ReportRecord";
+import { ReportTargetType } from "../../../shared/src/domain/enums";
 
 export class ReportRepo extends Repository<ReportRecord> {
   constructor(dataSource: DataSource) {
@@ -30,7 +31,7 @@ export class ReportRepo extends Repository<ReportRecord> {
 
   public async hasExistingReport(
     reporterAccountId: string,
-    targetType: string,
+    targetType: ReportTargetType,
     targetAccountId: string | null,
     targetActivityId: string | null
   ): Promise<boolean> {

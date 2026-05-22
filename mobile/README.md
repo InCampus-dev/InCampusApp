@@ -80,7 +80,7 @@ Use three terminals.
 Terminal 1, from the repository root, start the backend:
 
 ```bash
-npm run dev:backend
+npm run dev:backend:device
 ```
 
 Terminal 2, expose the backend with system ngrok v3:

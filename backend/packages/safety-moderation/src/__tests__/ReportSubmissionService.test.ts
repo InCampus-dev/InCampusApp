@@ -167,6 +167,34 @@ describe("ReportSubmissionService", () => {
       code: "CAMPUS_SCOPE_VIOLATION"
     });
   });
+  it("rejects duplicate reports", async () => {
+    const reportStore = createReportStore(
+      createReportRecord({
+        reporterAccountId: "reporter-student-id",
+        targetType: ReportTargetType.Student,
+        targetAccountId: "target-student-id",
+      })
+    );
+    const service = createReportSubmissionService(reportStore, {
+      studentAccounts: [
+        createStudentAccount({
+          studentAccountId: "target-student-id",
+          selectedCampusId: "campus-001"
+        })
+      ]
+    });
+
+    await expect(
+      service.submitReport(createStudentContext(), {
+        campusId: "campus-001",
+        targetType: ReportTargetType.Student,
+        targetAccountId: "target-student-id",
+        reasonCode: "harassment"
+      })
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR"
+    });
+  });
 });
 
 function createReportSubmissionService(
@@ -193,6 +221,20 @@ function createReportSubmissionService(
 
         reportStore.push(reportRecord);
         return reportRecord;
+      },
+      async hasExistingReport(
+        reporterAccountId: string,
+        targetType: ReportTargetType,
+        targetAccountId: string | null,
+        targetActivityId: string | null
+      ) {
+        return reportStore.some(
+          (report) =>
+            report.reporterAccountId === reporterAccountId &&
+            report.targetType === targetType &&
+            report.targetAccountId === targetAccountId &&
+            report.targetActivityId === targetActivityId
+        );
       }
     },
     {

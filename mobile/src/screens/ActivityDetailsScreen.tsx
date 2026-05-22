@@ -65,6 +65,13 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
   }, [fetchActivityDetails]);
 
   useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+  useEffect(() => {
     if (!activity?.canManageRequests) {
       navigation.setOptions({ headerRight: undefined });
       return;
@@ -521,7 +528,11 @@ function PostActionToast({
             {message}
           </Text>
           <Text style={styles.toastSub}>
-            {tone === 'blue' ? 'The host will review and let you know.' : 'Returning to your feed…'}
+            {message === 'Request withdrawn.'
+              ? 'Your request has been cancelled.'
+              : tone === 'blue'
+                ? 'The host will review and let you know.'
+                : 'Returning to your feed…'}
           </Text>
         </View>
       </View>

@@ -35,13 +35,13 @@ describe("createDiscoveryParticipationRoutes", () => {
         createActivity({
           activityId: "activity-001",
           hostAccountId: "host-blocked",
-          scheduledDateTime: new Date("2026-05-20T10:00:00.000Z")
+          scheduledDateTime: new Date("2030-05-20T10:00:00.000Z")
         }),
         createActivity({
           activityId: "activity-002",
           hostAccountId: "host-visible",
           title: "Visible Activity",
-          scheduledDateTime: new Date("2026-05-21T10:00:00.000Z")
+          scheduledDateTime: new Date("2030-05-21T10:00:00.000Z")
         })
       ],
       blockRelationships: [
@@ -76,7 +76,7 @@ describe("createDiscoveryParticipationRoutes", () => {
         createActivity({
           activityId: "activity-001",
           hostAccountId: "host-001",
-          scheduledDateTime: new Date("2026-05-20T10:00:00.000Z")
+          scheduledDateTime: new Date("2030-05-20T10:00:00.000Z")
         })
       ],
       profiles: [
@@ -121,7 +121,7 @@ describe("createDiscoveryParticipationRoutes", () => {
         createActivity({
           activityId: "activity-001",
           hostAccountId: "host-001",
-          scheduledDateTime: new Date("2026-05-20T10:00:00.000Z")
+          scheduledDateTime: new Date("2030-05-20T10:00:00.000Z")
         })
       ],
       profiles: [
@@ -163,7 +163,7 @@ describe("createDiscoveryParticipationRoutes", () => {
         createActivity({
           activityId: "activity-001",
           hostAccountId: "host-001",
-          scheduledDateTime: new Date("2026-05-20T10:00:00.000Z")
+          scheduledDateTime: new Date("2030-05-20T10:00:00.000Z")
         })
       ],
       profiles: [createProfile({ studentAccountId: "other-001" })]
@@ -684,7 +684,7 @@ function createActivity(overrides: Partial<ActivityEntity> = {}): ActivityEntity
     categoryId: "category-001",
     categoryLabel: "General",
     description: null,
-    scheduledDateTime: new Date("2026-05-20T10:00:00.000Z"),
+    scheduledDateTime: new Date("2030-05-20T10:00:00.000Z"),
     scheduledEndDateTime: null,
     meetingPointId: "meeting-point-001",
     meetingPointLabel: "Main Gate",

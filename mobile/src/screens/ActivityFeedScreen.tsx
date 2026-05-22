@@ -207,7 +207,7 @@ function FeedTopBar({
           <Text style={styles.campusPillText}>Campus only - Verified</Text>
         </View>
         <Pressable style={styles.alertButton} onPress={onNotifications} accessibilityLabel="Notifications">
-          <Text style={styles.alertButtonText}>⌁</Text>
+          <Text style={styles.alertButtonText}>🔔</Text>
         </Pressable>
       </View>
     </View>

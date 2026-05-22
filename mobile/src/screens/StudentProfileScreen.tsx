@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   chip: { borderRadius: 999, backgroundColor: colors.primarySoft, paddingHorizontal: 11, paddingVertical: 7 },
   chipText: { color: colors.primaryDeep, fontSize: 12, fontWeight: '900' },
   emptyText: { color: colors.text2, fontSize: 13, fontWeight: '600' },
-  blockButton: { minHeight: 48, borderRadius: 16, borderWidth: 1.5, borderColor: colors.danger, alignItems: 'center', justifyContent: 'center' },
+  blockButton: { minHeight: 48, borderRadius: 16, borderWidth: 1.5, borderColor: colors.danger, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   blockButtonText: { color: colors.danger, fontSize: 14, fontWeight: '900' },
   emptyWrap: { flex: 1, padding: 24, justifyContent: 'center', gap: 14 },
 });

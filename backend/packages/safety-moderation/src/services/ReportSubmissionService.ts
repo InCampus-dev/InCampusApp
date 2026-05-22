@@ -16,7 +16,7 @@ import { ReportRepo } from "../repositories/ReportRepo";
 
 export class ReportSubmissionService {
   constructor(
-    private readonly reportRepo: Pick<ReportRepo, "instantiate" | "persist">,
+    private readonly reportRepo: Pick<ReportRepo, "instantiate" | "persist" | "hasExistingReport">,
     private readonly studentAccountRepo: Pick<StudentAccountRepo, "findById">
   ) {}
 
@@ -64,6 +64,23 @@ export class ReportSubmissionService {
       }
 
       assertTargetAccountWithinCampusScope(targetAccount, validatedRequest.campusId);
+    }
+
+    const hasExisting = await this.reportRepo.hasExistingReport(
+      studentContext.studentAccountId,
+      validatedRequest.targetType,
+      validatedRequest.targetAccountId,
+      validatedRequest.targetActivityId
+    );
+
+    if (hasExisting) {
+      throw AppError.validation("Request validation failed", [
+        {
+          field: "body",
+          message: "You have already reported this target",
+          code: "already_reported"
+        }
+      ]);
     }
 
     const reportRecord = this.reportRepo.instantiate({

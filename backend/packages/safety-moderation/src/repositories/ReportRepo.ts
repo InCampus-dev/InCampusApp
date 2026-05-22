@@ -28,6 +28,23 @@ export class ReportRepo extends Repository<ReportRecord> {
     });
   }
 
+  public async hasExistingReport(
+    reporterAccountId: string,
+    targetType: string,
+    targetAccountId: string | null,
+    targetActivityId: string | null
+  ): Promise<boolean> {
+    const count = await this.count({
+      where: {
+        reporterAccountId,
+        targetType,
+        targetAccountId: targetAccountId ?? undefined,
+        targetActivityId: targetActivityId ?? undefined
+      }
+    });
+    return count > 0;
+  }
+
   public instantiate(payload: Partial<ReportRecord>): ReportRecord {
     return this.create(payload);
   }

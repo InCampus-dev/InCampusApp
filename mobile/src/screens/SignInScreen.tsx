@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useLayoutEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -10,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api, { getApiErrorCode } from '../services/api';
 import { clearAdminContext, saveDemoAdminContext } from '../services/adminSession';
 import {
@@ -31,11 +33,13 @@ interface SignInResponse {
 
 export default function SignInScreen() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const [universityEmail, setUniversityEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
+  const [adminMenuVisible, setAdminMenuVisible] = useState(false);
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
   const [formError, setFormError] = useState<string | null>(null);
@@ -109,12 +113,33 @@ export default function SignInScreen() {
     }
   }
 
+  function handleDemoAdminFromMenu() {
+    setAdminMenuVisible(false);
+    void handleDemoAdmin();
+  }
+
   return (
     <ScreenShell style={styles.screen}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        <View style={styles.menuBar}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.menuButton,
+              pressed && styles.menuButtonPressed,
+              (loading || adminLoading) && styles.disabled,
+            ]}
+            onPress={() => setAdminMenuVisible(true)}
+            disabled={loading || adminLoading}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="More sign in options"
+          >
+            <Text style={styles.menuButtonText}>...</Text>
+          </Pressable>
+        </View>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <BrandHeader />
           <View style={styles.motifCard}>
@@ -148,14 +173,6 @@ export default function SignInScreen() {
             error={passwordError}
           />
           <PrimaryButton label="Sign in" loading={loading} onPress={handleSignIn} style={styles.cta} disabled={adminLoading} />
-          <PrimaryButton
-            label="Continue as Demo Admin"
-            loading={adminLoading}
-            onPress={handleDemoAdmin}
-            tone="blue"
-            style={styles.adminCta}
-            disabled={loading}
-          />
           <Pressable style={styles.secondaryLink} onPress={() => navigation.navigate('SignUp')}>
             <Text style={styles.secondaryText}>Create account</Text>
           </Pressable>
@@ -165,6 +182,34 @@ export default function SignInScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <Modal
+        visible={adminMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAdminMenuVisible(false)}
+      >
+        <View style={styles.menuModalRoot}>
+          <Pressable
+            style={styles.menuScrim}
+            onPress={() => setAdminMenuVisible(false)}
+            accessibilityLabel="Close menu"
+          />
+          <View style={[styles.adminMenu, { top: Math.max(insets.top, 18) + 58 }]}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.adminMenuItem,
+                pressed && styles.adminMenuItemPressed,
+                (loading || adminLoading) && styles.disabled,
+              ]}
+              onPress={handleDemoAdminFromMenu}
+              disabled={loading || adminLoading}
+              accessibilityRole="button"
+            >
+              <Text style={styles.adminMenuText}>Try admin demo</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScreenShell>
   );
 }
@@ -172,6 +217,31 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.bg },
   flex: { flex: 1 },
+  menuBar: {
+    minHeight: 44,
+    paddingHorizontal: 24,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  menuButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuButtonPressed: {
+    backgroundColor: colors.primaryGhost,
+  },
+  menuButtonText: {
+    color: colors.text2,
+    fontSize: 20,
+    fontWeight: '900',
+    lineHeight: 22,
+  },
   content: { flexGrow: 1, paddingHorizontal: 24, justifyContent: 'center', paddingBottom: 28 },
   motifCard: {
     borderRadius: 20,
@@ -217,10 +287,47 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '20deg' }],
   },
   cta: { marginTop: 8 },
-  adminCta: { marginTop: 10 },
   secondaryLink: { alignItems: 'center', paddingVertical: 16 },
   secondaryText: { color: colors.primary, fontSize: 14, fontWeight: '900' },
   trustLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 },
   trustDot: { width: 14, height: 14, borderRadius: 4, backgroundColor: colors.primaryGreen },
   trustText: { color: colors.text2, fontSize: 12, fontWeight: '700' },
+  menuModalRoot: {
+    flex: 1,
+  },
+  menuScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+  },
+  adminMenu: {
+    position: 'absolute',
+    right: 24,
+    minWidth: 166,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    backgroundColor: colors.card,
+    shadowColor: '#101828',
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 16,
+    elevation: 6,
+    overflow: 'hidden',
+  },
+  adminMenuItem: {
+    minHeight: 48,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+  },
+  adminMenuItemPressed: {
+    backgroundColor: colors.primaryGhost,
+  },
+  adminMenuText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  disabled: {
+    opacity: 0.5,
+  },
 });

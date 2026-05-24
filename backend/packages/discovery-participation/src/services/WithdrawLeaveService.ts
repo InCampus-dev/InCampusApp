@@ -10,6 +10,7 @@ import {
   findConfirmedParticipationByActivityAndStudent,
   findPendingRequestByActivityAndStudent
 } from "../../../hosting-lifecycle/src/repositories/ParticipationRepo";
+import { isGuestCapacityFull } from "../../../hosting-lifecycle/src/services/activityCapacity";
 
 export class WithdrawLeaveService {
   constructor(
@@ -84,7 +85,7 @@ export class WithdrawLeaveService {
       await manager.remove(Participation, participation);
       activity.currentParticipantCount = Math.max(0, activity.currentParticipantCount - 1);
 
-      if (activity.status === ActivityStatus.Full) {
+      if (activity.status === ActivityStatus.Full && !isGuestCapacityFull(activity)) {
         activity.status = ActivityStatus.Open;
       }
 

@@ -234,8 +234,8 @@ describe("JoinRequestManagementService", () => {
       }));
     });
 
-    it("should update activity status to Full if maxParticipants reached after approval", async () => {
-      const activity = { ...defaultActivity, currentParticipantCount: 4, maxParticipants: 5 };
+    it("should update activity status to Full if guest capacity is reached after approval", async () => {
+      const activity = { ...defaultActivity, currentParticipantCount: 3, maxParticipants: 5 };
       const participation = { ...defaultParticipation };
 
       (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
@@ -246,7 +246,7 @@ describe("JoinRequestManagementService", () => {
 
       await service.reviewJoinRequest("host-1", "campus-1", "act-1", "req-1", "approve");
 
-      expect(activity.currentParticipantCount).toBe(5);
+      expect(activity.currentParticipantCount).toBe(4);
       expect(activity.status).toBe(ActivityStatus.Full); // Regola coperta!
     });
 
@@ -271,7 +271,7 @@ describe("JoinRequestManagementService", () => {
     });
 
     it("should throw if trying to approve but activity is already full", async () => {
-      const activity = { ...defaultActivity, currentParticipantCount: 5, maxParticipants: 5 };
+      const activity = { ...defaultActivity, currentParticipantCount: 4, maxParticipants: 5 };
       const participation = { ...defaultParticipation };
 
       (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);

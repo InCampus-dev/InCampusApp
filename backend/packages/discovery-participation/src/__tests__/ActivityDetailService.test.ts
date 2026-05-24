@@ -131,6 +131,35 @@ describe("ActivityDetailService", () => {
     expect(result.personalActivityStatus).toBe("host");
   });
 
+  it("returns host-owned full activity details by id, including host-only activities", async () => {
+    const service = createActivityDetailService({
+      activityRepository: {
+        findOne: vi.fn().mockResolvedValue(
+          createActivity({
+            activityId: "activity-host-only",
+            campusId: "campus-001",
+            hostAccountId: "student-001",
+            maxParticipants: 1,
+            currentParticipantCount: 0,
+            status: ActivityStatus.Full
+          })
+        )
+      },
+      blockRelationships: [],
+      profiles: []
+    });
+
+    const result = await service.getActivityDetails(
+      "student-001",
+      "campus-001",
+      "activity-host-only"
+    );
+
+    expect(result.activityId).toBe("activity-host-only");
+    expect(result.personalActivityStatus).toBe("host");
+    expect(result.status).toBe(ActivityStatus.Full);
+  });
+
   it("does not mark open activity details as request-manageable for the host", async () => {
     const service = createActivityDetailService({
       activityRepository: {

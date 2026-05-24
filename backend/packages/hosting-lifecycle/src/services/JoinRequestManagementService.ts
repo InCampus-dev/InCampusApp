@@ -18,6 +18,7 @@ import {
 import { AppError } from "../../../shared/src/errors/AppError";
 import { executeTransaction, findWithPessimisticWriteLock } from "../../../shared/src/db/transaction";
 import { findOtherActiveByActivityAndStudent } from "../repositories/ParticipationRepo";
+import { isGuestCapacityFull } from "./activityCapacity";
 
 export interface JoinRequestEventDispatcherPort {
   dispatch(eventName: string, payload: any): Promise<void>;
@@ -111,14 +112,14 @@ export class JoinRequestManagementService {
             throw new Error("Cannot approve request: Student already has an active participation record");
           }
 
-          if (activity.currentParticipantCount >= activity.maxParticipants) {
+          if (isGuestCapacityFull(activity)) {
             throw new Error("Cannot approve request: Activity is already full");
           }
           participation.status = ParticipationStatus.Confirmed;
           participation.recordType = ParticipationRecordType.Participation;
           activity.currentParticipantCount += 1;
           activity.currentRequestCount = Math.max(0, activity.currentRequestCount - 1);
-          if (activity.currentParticipantCount === activity.maxParticipants) {
+          if (isGuestCapacityFull(activity)) {
             activity.status = ActivityStatus.Full;
           }
           eventName = "JoinRequestApproved";

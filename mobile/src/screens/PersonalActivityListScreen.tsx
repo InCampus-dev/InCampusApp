@@ -14,6 +14,10 @@ import {
   colors,
   metrics,
 } from '../components/InCampusUI';
+import {
+  getJoinedCountLabel,
+  getOccupancyRatioIncludingHost
+} from '../services/activityCapacity';
 
 type PersonalActivityStatus = 'host' | 'pending_request' | 'confirmed_participant';
 type ActivityLifecycleStatus = 'open' | 'full' | 'completed' | 'cancelled';
@@ -128,10 +132,10 @@ function SegmentButton({ label, active, onPress }: { label: string; active: bool
 
 function PersonalActivityCard({ activity, muted, onPress }: { activity: PersonalActivityItem; muted?: boolean; onPress: () => void }) {
   const cat = categoryStyle(activity.categoryLabel);
+  const participantRatio = getOccupancyRatioIncludingHost(activity);
   return (
     <Pressable onPress={onPress}>
       <SectionCard style={[styles.card, { borderLeftColor: cat.bg }, muted && styles.cardMuted]}>
-        <View pointerEvents="none" style={[styles.categoryOverlay, { backgroundColor: cat.bg }]} />
         <View style={styles.cardContent}>
           <View style={styles.cardTop}>
             {activity.categoryLabel ? <CategoryPill label={activity.categoryLabel} compact /> : <View />}
@@ -142,8 +146,8 @@ function PersonalActivityCard({ activity, muted, onPress }: { activity: Personal
           {activity.meetingPointLabel ? <Text style={styles.meta}>{activity.meetingPointLabel}</Text> : null}
           {typeof activity.currentParticipantCount === 'number' && typeof activity.maxParticipants === 'number' ? (
             <View style={styles.participantRow}>
-              <View style={styles.participantTrack}><View style={[styles.participantFill, { width: `${Math.min(100, (activity.currentParticipantCount / Math.max(activity.maxParticipants, 1)) * 100)}%` }]} /></View>
-              <Text style={styles.participantText}>{activity.currentParticipantCount}/{activity.maxParticipants} joined</Text>
+              <View style={styles.participantTrack}><View style={[styles.participantFill, { width: `${Math.min(100, participantRatio * 100)}%` }]} /></View>
+              <Text style={styles.participantText}>{getJoinedCountLabel(activity)}</Text>
             </View>
           ) : null}
           {activity.status && activity.status !== 'open' ? <LifecycleBadge value={activity.status} /> : null}
@@ -211,7 +215,6 @@ const styles = StyleSheet.create({
   loadingWrap: { padding: 16 },
   list: { padding: 16, gap: 10, paddingBottom: metrics.bottomTabContentPadding },
   card: { padding: 14, borderLeftWidth: 4, position: 'relative', overflow: 'hidden' },
-  categoryOverlay: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '60%', opacity: 0.08 },
   cardContent: { position: 'relative' },
   cardMuted: { opacity: 0.82 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginBottom: 8 },

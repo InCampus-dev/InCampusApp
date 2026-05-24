@@ -18,6 +18,10 @@ import {
 } from '../services/studentApi';
 import { getActivityDetailsActionModel } from '../services/activityDetailsActions';
 import {
+  getDisplayParticipantCountIncludingHost,
+  getJoinedCountLabel
+} from '../services/activityCapacity';
+import {
   InlineBanner,
   PrimaryButton,
   ProgressStrip,
@@ -91,7 +95,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
       (studentAccountId && activity?.hostAccountId === studentAccountId)
   );
   const isFull = Boolean(
-    activity && (activity.status === 'full' || activity.currentParticipantCount >= activity.maxParticipants),
+    activity && (activity.status === 'full' || getDisplayParticipantCountIncludingHost(activity) >= activity.maxParticipants),
   );
 
   const cta = useMemo(() => {
@@ -264,7 +268,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
 
       <StickyDetailCTA
         bottomInset={insets.bottom}
-        current={activity.currentParticipantCount}
+        current={getDisplayParticipantCountIncludingHost(activity)}
         max={activity.maxParticipants}
         ctaLabel={cta.label}
         tone={cta.tone}
@@ -326,7 +330,8 @@ function DetailTopBar({
 }
 
 function InfoBlock({ activity }: { activity: ActivityDetailsViewModel }) {
-  const isFull = activity.status === 'full' || activity.currentParticipantCount >= activity.maxParticipants;
+  const displayParticipantCount = getDisplayParticipantCountIncludingHost(activity);
+  const isFull = activity.status === 'full' || displayParticipantCount >= activity.maxParticipants;
   return (
     <SectionCard style={styles.infoCard}>
       <InfoRow label="When" value={formatDetailTime(activity.scheduledDateTime, activity.scheduledEndDateTime)} icon="T" />
@@ -338,10 +343,8 @@ function InfoBlock({ activity }: { activity: ActivityDetailsViewModel }) {
         <View style={styles.infoTextBlock}>
           <Text style={styles.infoLabel}>Spots</Text>
           <View style={styles.spotsLine}>
-            <Text style={styles.infoValue}>
-              {activity.currentParticipantCount}/{activity.maxParticipants} joined
-            </Text>
-            <ProgressStrip current={activity.currentParticipantCount} max={activity.maxParticipants} full={isFull} />
+            <Text style={styles.infoValue}>{getJoinedCountLabel(activity)}</Text>
+            <ProgressStrip current={displayParticipantCount} max={activity.maxParticipants} full={isFull} />
           </View>
         </View>
       </View>

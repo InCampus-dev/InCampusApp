@@ -31,6 +31,28 @@ describe("PersonalListService", () => {
     ]);
   });
 
+  it("returns host-owned full host-only activities in personal lists", async () => {
+    const { service } = createService([
+      createActivity({
+        activityId: "activity-host-only",
+        hostAccountId: "student-001",
+        maxParticipants: 1,
+        currentParticipantCount: 0,
+        status: ActivityStatus.Full
+      })
+    ]);
+
+    const result = await service.getPersonalActivities("student-001", "campus-001");
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        activityId: "activity-host-only",
+        personalActivityStatus: "host",
+        status: ActivityStatus.Full
+      })
+    ]);
+  });
+
   it("returns activities where the user has a pending request", async () => {
     const { service } = createService([
       createActivity({

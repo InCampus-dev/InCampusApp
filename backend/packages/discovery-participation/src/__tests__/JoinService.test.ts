@@ -76,6 +76,30 @@ describe("JoinService", () => {
     expect(mockEventDispatcher.dispatch).toHaveBeenCalledWith("DirectJoinCompleted", expect.any(Object));
   });
 
+  it("marks an open activity full when the final guest slot is taken", async () => {
+    const activity = {
+      activityId: "act-1",
+      campusId: "camp-1",
+      hostAccountId: "host-1",
+      status: ActivityStatus.Open,
+      participationMode: ParticipationMode.Open,
+      currentParticipantCount: 0,
+      maxParticipants: 2,
+    };
+
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+    mockManager.findOne.mockResolvedValue(null);
+
+    const mockParticipation = { participationId: "part-1" } as any;
+    mockManager.create.mockReturnValue(mockParticipation);
+    mockManager.save.mockImplementation(async (entity: any, instance: any) => instance || mockParticipation);
+
+    await joinService.joinActivity("student-1", "camp-1", "act-1");
+
+    expect(activity.currentParticipantCount).toBe(1);
+    expect(activity.status).toBe(ActivityStatus.Full);
+  });
+
   it("should successfully submit a join request for an approval-based activity", async () => {
     const activity = {
       activityId: "act-2",
@@ -83,6 +107,8 @@ describe("JoinService", () => {
       hostAccountId: "host-1",
       status: ActivityStatus.Open,
       participationMode: ParticipationMode.ApprovalBased,
+      currentParticipantCount: 0,
+      maxParticipants: 5,
       currentRequestCount: 0,
       maxRequests: 10,
     };
@@ -154,6 +180,8 @@ describe("JoinService", () => {
       hostAccountId: "host-1",
       status: ActivityStatus.Open,
       participationMode: ParticipationMode.ApprovalBased,
+      currentParticipantCount: 0,
+      maxParticipants: 5,
       currentRequestCount: 0,
       maxRequests: 10
     };
@@ -189,6 +217,8 @@ describe("JoinService", () => {
       hostAccountId: "host-1",
       status: ActivityStatus.Open,
       participationMode: ParticipationMode.ApprovalBased,
+      currentParticipantCount: 0,
+      maxParticipants: 5,
       currentRequestCount: 1,
       maxRequests: 10
     };
@@ -235,13 +265,25 @@ describe("JoinService", () => {
   });
 
   it("should fail if open activity is already full", async () => {
-    const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Open, participationMode: ParticipationMode.Open, currentParticipantCount: 5, maxParticipants: 5 };
+    const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Open, participationMode: ParticipationMode.Open, currentParticipantCount: 4, maxParticipants: 5 };
     (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
     await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("already full");
   });
 
   it("should fail if approval-based activity has reached max requests", async () => {
-    const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Open, participationMode: ParticipationMode.ApprovalBased, currentRequestCount: 10, maxRequests: 10 };
+    const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Open, participationMode: ParticipationMode.ApprovalBased, currentParticipantCount: 0, maxParticipants: 20, currentRequestCount: 10, maxRequests: 10 };
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+    await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("maximum number of pending requests");
+  });
+
+  it("should fail if approval-based activity has no remaining guest capacity", async () => {
+    const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Open, participationMode: ParticipationMode.ApprovalBased, currentParticipantCount: 1, maxParticipants: 2, currentRequestCount: 0, maxRequests: 10 };
+    (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
+    await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("already full");
+  });
+
+  it("caps pending requests by guest capacity even when maxRequests is higher", async () => {
+    const activity = { activityId: "act-1", campusId: "camp-1", hostAccountId: "host-1", status: ActivityStatus.Open, participationMode: ParticipationMode.ApprovalBased, currentParticipantCount: 0, maxParticipants: 2, currentRequestCount: 1, maxRequests: 10 };
     (findWithPessimisticWriteLock as Mock).mockResolvedValue(activity);
     await expect(joinService.joinActivity("student-1", "camp-1", "act-1")).rejects.toThrow("maximum number of pending requests");
   });

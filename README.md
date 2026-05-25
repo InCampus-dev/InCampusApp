@@ -1,5 +1,9 @@
 # InCampus
 
+<p align="center">
+  <img src="mobile/assets/incampus-wordmark.png" alt="InCampus wordmark" width="240" />
+</p>
+
 **InCampus helps university students turn campus life from something they watch into something they can enter.**
 
 It is a campus-scoped mobile app for low-pressure participation: lunch, coffee,

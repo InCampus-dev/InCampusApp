@@ -51,6 +51,26 @@ describe("ActivityLifecycleService", () => {
 
     expect(activity.categoryLabel).toBe("Lunch");
     expect(activity.meetingPointLabel).toBe("Jiading Library");
+    expect(activity.currentParticipantCount).toBe(0);
+    expect(activity.status).toBe(ActivityStatus.Open);
+    expect(activityStore).toHaveLength(1);
+  });
+
+  it("creates maxParticipants=1 activities as host-only full activities", async () => {
+    const activityStore: Activity[] = [];
+    const service = createServiceWithSelectableOptions(activityStore);
+
+    const activity = await service.createActivity(
+      "host-001",
+      "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81",
+      {
+        ...createValidActivityPayload(),
+        maxParticipants: 1
+      }
+    );
+
+    expect(activity.currentParticipantCount).toBe(0);
+    expect(activity.status).toBe(ActivityStatus.Full);
     expect(activityStore).toHaveLength(1);
   });
 
@@ -275,6 +295,26 @@ describe("ActivityLifecycleService", () => {
       details: {
         validation: [
           expect.objectContaining({ field: "maxRequests", code: "positive_integer_required" })
+        ]
+      }
+    });
+  });
+
+  it("rejects creation when maxRequests exceeds guest capacity", async () => {
+    const service = createServiceWithSelectableOptions([]);
+
+    await expect(
+      service.createActivity("host-001", "9e91dded-c0a3-4d6f-b0d8-6c56b3f3be81", {
+        ...createValidActivityPayload(),
+        participationMode: ParticipationMode.ApprovalBased,
+        maxParticipants: 2,
+        maxRequests: 2
+      })
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: {
+        validation: [
+          expect.objectContaining({ field: "maxRequests", code: "exceeds_guest_capacity" })
         ]
       }
     });

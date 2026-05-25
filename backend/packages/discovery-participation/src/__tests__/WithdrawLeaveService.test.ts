@@ -125,7 +125,7 @@ describe('WithdrawLeaveService (DP07)', () => {
         activityId: defaultActivityId,
         campusId: defaultCampusId,
         status: ActivityStatus.Full,
-        currentParticipantCount: 5,
+        currentParticipantCount: 4,
         maxParticipants: 5,
         scheduledDateTime: new Date(Date.now() + 86400000), // Tomorrow (has not started)
       };
@@ -154,7 +154,7 @@ describe('WithdrawLeaveService (DP07)', () => {
         }
       });
       expect(mockManager.remove).toHaveBeenCalledWith(Participation, mockParticipation);
-      expect(mockActivity.currentParticipantCount).toBe(4); // Decremented
+      expect(mockActivity.currentParticipantCount).toBe(3); // Decremented
       expect(mockActivity.status).toBe(ActivityStatus.Open); // Reopened because it's no longer full
       expect(mockManager.save).toHaveBeenCalledWith(Activity, mockActivity);
       

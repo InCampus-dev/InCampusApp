@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -371,12 +372,12 @@ export function TopBar({
 export function BrandHeader() {
   return (
     <View style={shellStyles.brandHeader}>
-      <View style={shellStyles.brandMark}>
-        <Text style={shellStyles.brandMarkText}>In</Text>
-      </View>
-      <Text style={shellStyles.brandText}>
-        <Text style={{ color: colors.sky }}>In</Text>Campus
-      </Text>
+      <Image
+        source={require('../../assets/incampus-wordmark.png')}
+        style={shellStyles.brandWordmark}
+        resizeMode="contain"
+        accessibilityLabel="InCampus"
+      />
     </View>
   );
 }
@@ -942,34 +943,13 @@ const shellStyles = StyleSheet.create({
     fontWeight: '800',
   },
   brandHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
     marginBottom: 22,
   },
-  brandMark: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOpacity: 0.24,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  brandMarkText: {
-    color: colors.card,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  brandText: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '900',
+  brandWordmark: {
+    width: 184,
+    height: 68,
   },
   titleBlock: {
     marginBottom: 22,

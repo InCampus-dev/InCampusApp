@@ -11,6 +11,10 @@ import {
 import { AppError } from "../../../shared/src/errors/AppError";
 import { executeTransaction, findWithPessimisticWriteLock } from "../../../shared/src/db/transaction";
 import { findActiveByActivityAndStudent } from "../../../hosting-lifecycle/src/repositories/ParticipationRepo";
+import {
+  getEffectivePendingRequestLimit,
+  isGuestCapacityFull
+} from "../../../hosting-lifecycle/src/services/activityCapacity";
 
 // Interface to emit events to the shared EventBus without hard coupling
 export interface EventDispatcherPort {
@@ -72,19 +76,24 @@ export class JoinService {
 
         // 5. Process based on participation mode
         if (activity.participationMode === ParticipationMode.Open) {
-          if (activity.currentParticipantCount >= activity.maxParticipants) {
+          if (isGuestCapacityFull(activity)) {
             throw AppError.conflict("Activity is already full", "Activity");
           }
           participation.recordType = ParticipationRecordType.Participation;
           participation.status = ParticipationStatus.Confirmed;
           activity.currentParticipantCount += 1;
 
-          if (activity.currentParticipantCount === activity.maxParticipants) {
+          if (isGuestCapacityFull(activity)) {
             activity.status = ActivityStatus.Full;
           }
           eventName = "DirectJoinCompleted";
         } else {
-          if (activity.maxRequests !== null && activity.currentRequestCount >= activity.maxRequests) {
+          if (isGuestCapacityFull(activity)) {
+            throw AppError.conflict("Activity is already full", "Activity");
+          }
+
+          const pendingRequestLimit = getEffectivePendingRequestLimit(activity);
+          if (activity.currentRequestCount >= pendingRequestLimit) {
             throw AppError.conflict(
               "Activity has reached the maximum number of pending requests",
               "Activity"

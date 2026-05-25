@@ -15,7 +15,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api, { getApiErrorMessage } from '../services/api';
 import {
   BottomTabBar,
-  CategoryPill,
   InlineBanner,
   ModeBadge,
   PrimaryButton,
@@ -26,6 +25,10 @@ import {
   colors,
   metrics,
 } from '../components/InCampusUI';
+import {
+  getDisplayParticipantCountIncludingHost,
+  getJoinedCountLabel
+} from '../services/activityCapacity';
 
 type ParticipationMode = 'open' | 'approval_based';
 type ActivityStatus = 'open' | 'full' | 'completed' | 'cancelled';
@@ -207,9 +210,20 @@ function FeedTopBar({
           <Text style={styles.campusPillText}>Campus only - Verified</Text>
         </View>
         <Pressable style={styles.alertButton} onPress={onNotifications} accessibilityLabel="Notifications">
-          <Text style={styles.alertButtonText}>🔔</Text>
+          <NotificationBellIcon />
         </Pressable>
       </View>
+    </View>
+  );
+}
+
+function NotificationBellIcon() {
+  return (
+    <View style={styles.bellIcon}>
+      <View style={styles.bellKnob} />
+      <View style={styles.bellDome} />
+      <View style={styles.bellBase} />
+      <View style={styles.bellClapper} />
     </View>
   );
 }
@@ -266,7 +280,8 @@ function ActivityCard({
   onPress: () => void;
 }) {
   const cs = categoryStyle(activity.categoryLabel);
-  const isFull = activity.status === 'full' || activity.currentParticipantCount >= activity.maxParticipants;
+  const displayParticipantCount = getDisplayParticipantCountIncludingHost(activity);
+  const isFull = activity.status === 'full' || displayParticipantCount >= activity.maxParticipants;
   return (
     <Pressable
       onPress={onPress}
@@ -304,10 +319,8 @@ function ActivityCard({
       </View>
       <View style={styles.cardFooter}>
         <View style={styles.joinedBlock}>
-          <SeatStrip current={activity.currentParticipantCount} max={activity.maxParticipants} />
-          <Text style={styles.joinedText}>
-            {activity.currentParticipantCount}/{activity.maxParticipants} joined
-          </Text>
+          <SeatStrip current={displayParticipantCount} max={activity.maxParticipants} />
+          <Text style={styles.joinedText}>{getJoinedCountLabel(activity)}</Text>
         </View>
         <ModeBadge mode={activity.participationMode} />
       </View>
@@ -468,10 +481,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  alertButtonText: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: '900',
+  bellIcon: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+  },
+  bellKnob: {
+    width: 5,
+    height: 3,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+    backgroundColor: colors.text,
+    marginTop: 2,
+  },
+  bellDome: {
+    width: 15,
+    height: 12,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderWidth: 2,
+    borderBottomWidth: 0,
+    borderColor: colors.text,
+    marginTop: 1,
+  },
+  bellBase: {
+    width: 18,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: colors.text,
+    marginTop: -1,
+  },
+  bellClapper: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.text,
+    marginTop: 1,
   },
   discovery: {
     paddingTop: 6,

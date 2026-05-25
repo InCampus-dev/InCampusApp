@@ -303,7 +303,7 @@ export const phase0DemoSeed: DemoSeedData = {
       meetingPointId: demoCafeteriaLocationOptionId,
       meetingPointLabel: "Cafeteria",
       maxParticipants: 3,
-      maxRequests: 8,
+      maxRequests: 2,
       participationMode: ParticipationMode.ApprovalBased,
       genderPreference: GenderPreference.All,
       status: ActivityStatus.Open

@@ -749,16 +749,17 @@ function DateTimeSheet({
   onClose: () => void;
 }) {
   const nearest = nearestFutureHour(baseDate ?? undefined);
-  const [draft, setDraft] = useState<Date>(initialDate ?? nearest);
+  const [draft, setDraft] = useState<Date>(() => normalizeDateForSheet(initialDate ?? nearest));
 
   React.useEffect(() => {
     if (visible) {
-      setDraft(initialDate ?? nearestFutureHour(baseDate ?? undefined));
+      setDraft(normalizeDateForSheet(initialDate ?? nearestFutureHour(baseDate ?? undefined)));
     }
   }, [baseDate, initialDate, visible]);
 
   const dates = useMemo(() => buildDateChoices(baseDate ?? undefined), [baseDate]);
   const times = ['09:00', '10:00', '12:30', '14:00', '15:00', '17:00', '19:30'];
+  const validationMessage = getDateTimeSheetValidationMessage(draft, baseDate ?? undefined);
 
   const setDraftDate = (date: Date) => {
     const next = new Date(date);
@@ -771,6 +772,10 @@ function DateTimeSheet({
     const next = new Date(draft);
     next.setHours(hour, minute, 0, 0);
     setDraft(next);
+  };
+
+  const shiftDraftTime = (minutes: number) => {
+    setDraft((current) => shiftTimeWithinDay(current, minutes));
   };
 
   return (
@@ -811,13 +816,74 @@ function DateTimeSheet({
         })}
       </View>
 
-      <PrimaryButton label="Set date and time" onPress={() => onConfirm(draft)} style={styles.sheetConfirm} />
+      <View style={styles.customTimePanel}>
+        <View style={styles.customTimeHeader}>
+          <Text style={styles.customTimeTitle}>Custom time</Text>
+          <Text style={styles.customTimeHelp}>Adjust hour and minute in 5-minute steps</Text>
+        </View>
+        <View style={styles.timeAdjustRow}>
+          <TimeAdjustControl
+            label="Hour"
+            value={padTimePart(draft.getHours())}
+            onDecrease={() => shiftDraftTime(-60)}
+            onIncrease={() => shiftDraftTime(60)}
+          />
+          <Text style={styles.timeSeparator}>:</Text>
+          <TimeAdjustControl
+            label="Minute"
+            value={padTimePart(draft.getMinutes())}
+            onDecrease={() => shiftDraftTime(-5)}
+            onIncrease={() => shiftDraftTime(5)}
+          />
+        </View>
+      </View>
+
+      <View style={[styles.selectedDateTimeSummary, validationMessage && styles.selectedDateTimeSummaryError]}>
+        <Text style={styles.selectedSummaryLabel}>{baseDate ? 'Selected end' : 'Selected start'}</Text>
+        <Text style={styles.selectedSummaryValue}>{formatDateTimeLabel(draft)}</Text>
+      </View>
+
+      <FieldError message={validationMessage} />
+
+      <PrimaryButton
+        label="Set date and time"
+        onPress={() => onConfirm(draft)}
+        disabled={Boolean(validationMessage)}
+        style={styles.sheetConfirm}
+      />
       {allowClear && onClear ? (
         <Pressable style={styles.clearDateButton} onPress={onClear}>
           <Text style={styles.clearDateText}>Clear end time</Text>
         </Pressable>
       ) : null}
     </BottomSheet>
+  );
+}
+
+function TimeAdjustControl({
+  label,
+  value,
+  onDecrease,
+  onIncrease,
+}: {
+  label: string;
+  value: string;
+  onDecrease: () => void;
+  onIncrease: () => void;
+}) {
+  return (
+    <View style={styles.timeAdjustControl}>
+      <Text style={styles.timeAdjustLabel}>{label}</Text>
+      <View style={styles.timeAdjustStepper}>
+        <Pressable style={styles.timeAdjustButton} onPress={onDecrease} accessibilityRole="button">
+          <Text style={styles.timeAdjustButtonText}>-</Text>
+        </Pressable>
+        <Text style={styles.timeAdjustValue}>{value}</Text>
+        <Pressable style={styles.timeAdjustButton} onPress={onIncrease} accessibilityRole="button">
+          <Text style={styles.timeAdjustButtonText}>+</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -866,6 +932,20 @@ function validateCreateForm(args: {
   ) {
     nextErrors.maxRequests = 'Use at least 1 request or leave it blank';
   }
+  if (
+    args.participationMode === 'approval_based' &&
+    isPositiveIntegerString(args.maxParticipants) &&
+    isPositiveIntegerString(args.maxRequests)
+  ) {
+    const guestCapacity = Number.parseInt(args.maxParticipants.trim(), 10) - 1;
+    const parsedMaxRequests = Number.parseInt(args.maxRequests.trim(), 10);
+    if (parsedMaxRequests > guestCapacity) {
+      nextErrors.maxRequests =
+        guestCapacity === 0
+          ? 'No guest spots are available when total spots is 1'
+          : `Use ${guestCapacity} or fewer pending requests`;
+    }
+  }
 
   return nextErrors;
 }
@@ -884,6 +964,25 @@ function nearestFutureHour(baseDate?: Date): Date {
     base.setHours(base.getHours() + 1);
   }
   return base;
+}
+
+function normalizeDateForSheet(date: Date): Date {
+  const next = new Date(date);
+  const roundedMinutes = Math.round(next.getMinutes() / 5) * 5;
+  if (roundedMinutes >= 60) {
+    next.setHours(next.getHours() + 1, 0, 0, 0);
+  } else {
+    next.setMinutes(roundedMinutes, 0, 0);
+  }
+  return next;
+}
+
+function shiftTimeWithinDay(date: Date, minuteDelta: number): Date {
+  const next = new Date(date);
+  const currentTotal = next.getHours() * 60 + next.getMinutes();
+  const nextTotal = (currentTotal + minuteDelta + 24 * 60) % (24 * 60);
+  next.setHours(Math.floor(nextTotal / 60), nextTotal % 60, 0, 0);
+  return next;
 }
 
 function buildDateChoices(baseDate?: Date): Date[] {
@@ -918,7 +1017,19 @@ function formatDateTimeLabel(date: Date): string {
 }
 
 function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `${padTimePart(date.getHours())}:${padTimePart(date.getMinutes())}`;
+}
+
+function padTimePart(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+function getDateTimeSheetValidationMessage(draft: Date, baseDate?: Date): string | undefined {
+  if (baseDate) {
+    return draft.getTime() <= baseDate.getTime() ? 'End time must be after start time' : undefined;
+  }
+
+  return draft.getTime() <= Date.now() ? 'Pick a future date and time' : undefined;
 }
 
 const styles = StyleSheet.create({
@@ -1380,6 +1491,104 @@ const styles = StyleSheet.create({
   },
   timeChoiceTextActive: {
     color: colors.card,
+  },
+  customTimePanel: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bg,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+    marginTop: 10,
+    gap: 12,
+  },
+  customTimeHeader: {
+    gap: 3,
+  },
+  customTimeTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  customTimeHelp: {
+    color: colors.text3,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  timeAdjustRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  timeAdjustControl: {
+    flex: 1,
+    minWidth: 0,
+  },
+  timeAdjustLabel: {
+    color: colors.text3,
+    fontSize: 11,
+    fontWeight: '900',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  timeAdjustStepper: {
+    minHeight: 44,
+    borderRadius: 12,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeAdjustButton: {
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeAdjustButtonText: {
+    color: colors.primary,
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  timeAdjustValue: {
+    minWidth: 34,
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  timeSeparator: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '900',
+    paddingTop: 18,
+  },
+  selectedDateTimeSummary: {
+    borderRadius: 14,
+    backgroundColor: colors.primaryGhost,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    marginTop: 12,
+  },
+  selectedDateTimeSummaryError: {
+    backgroundColor: colors.dangerSoft,
+    borderColor: colors.danger,
+  },
+  selectedSummaryLabel: {
+    color: colors.text3,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  selectedSummaryValue: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '900',
   },
   sheetConfirm: {
     marginTop: 18,

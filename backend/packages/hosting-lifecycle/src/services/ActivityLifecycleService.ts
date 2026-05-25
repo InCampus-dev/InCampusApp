@@ -9,6 +9,7 @@ import {
   ParticipationMode
 } from "../../../shared/src/domain/enums";
 import { type ActivityCancelledEvent } from "../../../shared/src/events/EventBus";
+import { getGuestCapacity, isGuestCapacityFull } from "./activityCapacity";
 
 export interface ActivityRepositoryPort {
   create(payload: Partial<Activity>): Activity;
@@ -89,6 +90,8 @@ export class ActivityLifecycleService {
       ]);
     }
 
+    const initialGuestParticipantCount = 0;
+    const maxParticipants = data.maxParticipants as number;
     const activity = this.activityRepo.create({
       ...data,
       campusId,
@@ -97,7 +100,14 @@ export class ActivityLifecycleService {
       meetingPointId,
       categoryLabel: category.name,
       meetingPointLabel: meetingPoint.name,
-      status: ActivityStatus.Open
+      currentParticipantCount: initialGuestParticipantCount,
+      currentRequestCount: 0,
+      status: isGuestCapacityFull({
+        currentParticipantCount: initialGuestParticipantCount,
+        maxParticipants
+      })
+        ? ActivityStatus.Full
+        : ActivityStatus.Open
     });
 
     return await this.activityRepo.save(activity);
@@ -236,6 +246,20 @@ function validateCreateActivityData(
       field: "maxRequests",
       message: "must be a positive integer when provided",
       code: "positive_integer_required"
+    });
+  }
+
+  if (
+    isPositiveInteger(data.maxParticipants) &&
+    data.maxRequests !== undefined &&
+    data.maxRequests !== null &&
+    isPositiveInteger(data.maxRequests) &&
+    data.maxRequests > getGuestCapacity({ maxParticipants: data.maxParticipants })
+  ) {
+    validationIssues.push({
+      field: "maxRequests",
+      message: "cannot exceed guest capacity",
+      code: "exceeds_guest_capacity"
     });
   }
 

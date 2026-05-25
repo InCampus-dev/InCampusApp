@@ -397,6 +397,7 @@ async function signIn(email: string, password: string): Promise<AuthResponse> {
 async function createSmokeActivity(label: string, mode: ParticipationMode): Promise<ActivityDto> {
   const startsAt = new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString();
   const endsAt = new Date(Date.now() + 37 * 60 * 60 * 1000).toISOString();
+  const isApprovalBased = mode === ParticipationMode.ApprovalBased;
 
   return postJson<ActivityDto>(
     "/activities",
@@ -408,8 +409,8 @@ async function createSmokeActivity(label: string, mode: ParticipationMode): Prom
       scheduledEndDateTime: endsAt,
       meetingPointId: meetingPoint!.optionId,
       participationMode: mode,
-      maxParticipants: 4,
-      maxRequests: mode === ParticipationMode.ApprovalBased ? 8 : undefined,
+      maxParticipants: isApprovalBased ? 2 : 4,
+      maxRequests: isApprovalBased ? 1 : undefined,
       genderPreference: "all"
     },
     hostAuth!.accessToken

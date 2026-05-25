@@ -60,6 +60,14 @@ describe("FeedService (DP07)", () => {
     expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith("activity.scheduledDateTime", "ASC");
   });
 
+  it("excludes full host-only activities from public discovery by querying only open activities", async () => {
+    await feedService.getActivities("student-1", "campus-abc");
+
+    expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith("activity.status = :status", {
+      status: ActivityStatus.Open
+    });
+  });
+
   it("should apply category filter if provided", async () => {
     await feedService.getActivities("student-1", "campus-abc", { categoryId: "cat-1" });
     expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(

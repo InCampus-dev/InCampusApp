@@ -15,6 +15,7 @@ import {
   blockStudent,
   buildCreateBlockPayload,
   buildSubmitReportPayload,
+  deleteHostedActivity,
   getPublicStudentProfile,
   leaveActivity,
   listCampusStructuredOptions,
@@ -48,6 +49,14 @@ describe('studentApi helpers', () => {
     await leaveActivity('activity-001', client);
 
     expect(client.delete).toHaveBeenCalledWith('/activities/activity-001/participants/me');
+  });
+
+  it('delete hosted activity helper calls the host activity DELETE endpoint', async () => {
+    const client = createClient();
+
+    await deleteHostedActivity('activity-001', client);
+
+    expect(client.delete).toHaveBeenCalledWith('/activities/activity-001');
   });
 
   it('public profile helper includes activity context in the path', async () => {

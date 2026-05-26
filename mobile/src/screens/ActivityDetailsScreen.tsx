@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApiErrorMessage } from '../services/api';
 import {
+  deleteHostedActivity,
   getActivityDetails,
   joinActivity,
   leaveActivity,
@@ -45,6 +47,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchActivityDetails = useCallback(async () => {
     setLoading(true);
@@ -152,6 +155,45 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
     }
   };
 
+  const performDeleteActivity = async () => {
+    if (deleteLoading) {
+      return;
+    }
+
+    setDeleteLoading(true);
+    setJoinError(null);
+    setSuccessMessage(null);
+    try {
+      await deleteHostedActivity(activityId);
+      navigation.reset({ index: 0, routes: [{ name: 'ActivityFeed' }] });
+    } catch (error) {
+      setJoinError(getApiErrorMessage(error) ?? 'Could not delete this activity.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const confirmDeleteActivity = () => {
+    if (deleteLoading) {
+      return;
+    }
+
+    Alert.alert(
+      'Delete activity?',
+      'This removes the activity from the feed. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            void performDeleteActivity();
+          },
+        },
+      ],
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.screen}>
@@ -213,7 +255,7 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
         ) : null}
         {joinError ? (
           <View style={styles.topBanner}>
-            <InlineBanner tone="error" text="Something went wrong. Try again." />
+            <InlineBanner tone="error" text={joinError} />
           </View>
         ) : null}
         {/* success toast rendered as PostActionToast overlay below */}
@@ -223,6 +265,13 @@ export const ActivityDetailsScreen = ({ route, navigation }: any) => {
         <InfoBlock activity={activity} />
 
         {relationshipStatus ? <RelationshipStatusBanner text={relationshipStatus} /> : null}
+
+        {isHost ? (
+          <HostManagementSection
+            loading={deleteLoading}
+            onDelete={confirmDeleteActivity}
+          />
+        ) : null}
 
         {activity.description ? <DescriptionSection text={activity.description} /> : null}
 
@@ -395,6 +444,27 @@ function RelationshipStatusBanner({ text }: { text: string }) {
   return (
     <SectionCard style={styles.relationshipCard}>
       <Text style={styles.relationshipText}>{text}</Text>
+    </SectionCard>
+  );
+}
+
+function HostManagementSection({
+  loading,
+  onDelete,
+}: {
+  loading?: boolean;
+  onDelete: () => void;
+}) {
+  return (
+    <SectionCard style={styles.hostManagementCard}>
+      <Text style={styles.sectionTitle}>Host controls</Text>
+      <PrimaryButton
+        label={loading ? 'Deleting...' : 'Delete activity'}
+        tone="danger"
+        loading={loading}
+        onPress={onDelete}
+        style={styles.deleteActivityButton}
+      />
     </SectionCard>
   );
 }
@@ -863,6 +933,14 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 14,
     fontWeight: '900',
+  },
+  hostManagementCard: {
+    padding: 14,
+    marginBottom: 14,
+    borderColor: '#F8C9CB',
+  },
+  deleteActivityButton: {
+    minHeight: 46,
   },
   sectionTitle: {
     color: colors.text,

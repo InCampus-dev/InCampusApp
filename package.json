@@ -12,6 +12,7 @@
     "dev:backend:device": "node scripts/start-backend-device.mjs",
     "migrate": "npm run migrate --workspace backend",
     "seed:demo": "npm run seed:demo --workspace backend",
+    "seed:mock-activities": "npm run seed:mock-activities --workspace backend",
     "smoke:demo": "npm run smoke:demo --workspace backend",
     "lint": "npm run lint --workspace backend",
     "build": "npm run build --workspace backend",

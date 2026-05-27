@@ -10,6 +10,7 @@
     "migrate": "tsx src/runMigrations.ts",
     "seed:demo:identity-rules": "tsx src/seedDemoIdentityRules.ts",
     "seed:demo": "tsx src/seedDemo.ts",
+    "seed:mock-activities": "tsx src/seedMockActivities.ts",
     "smoke:demo": "tsx src/demoSmokeCheck.ts",
     "lint": "eslint .",
     "format:check": "prettier --check .",

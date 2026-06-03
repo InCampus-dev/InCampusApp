@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { CampusStructuredOptionType, ReportStatus, ReportTargetType } from "../domain/enums";
+import {
+  ActivityStatus,
+  CampusStructuredOptionType,
+  GenderPreference,
+  ParticipationMode,
+  ReportStatus,
+  ReportTargetType
+} from "../domain/enums";
 import {
   demoActivityTitlePrefix,
   demoModerationActivityId,
@@ -9,6 +16,10 @@ import {
   phase0DemoSeed,
   summarizeDemoSeed
 } from "../seed/demoSeed";
+import {
+  demoMockActivities,
+  demoMockActivityTitlePrefix
+} from "../seed/demoMockActivities";
 
 describe("phase0DemoSeed", () => {
   it("contains the minimum data needed for the local demo path", () => {
@@ -95,6 +106,53 @@ describe("phase0DemoSeed", () => {
       targetActivityId: demoModerationActivityId,
       status: ReportStatus.PendingReview
     });
+  });
+
+  it("contains a rich idempotent mock activity set for demo feeds", () => {
+    expect(demoMockActivities.length).toBeGreaterThanOrEqual(18);
+    expect(demoMockActivities.length).toBeLessThanOrEqual(25);
+    expect(
+      demoMockActivities.every((activity) =>
+        activity.title.startsWith(demoMockActivityTitlePrefix)
+      )
+    ).toBe(true);
+    expectUnique(
+      demoMockActivities.map((activity) => `${activity.campusId}:${activity.title}`),
+      "mock activity campusId + title"
+    );
+
+    const modes = new Set(demoMockActivities.map((activity) => activity.participationMode));
+    expect(modes.has(ParticipationMode.Open)).toBe(true);
+    expect(modes.has(ParticipationMode.ApprovalBased)).toBe(true);
+
+    const genderPreferences = new Set(
+      demoMockActivities.map((activity) => activity.genderPreference)
+    );
+    expect(genderPreferences.has(GenderPreference.All)).toBe(true);
+    expect(genderPreferences.has(GenderPreference.MaleOnly)).toBe(true);
+    expect(genderPreferences.has(GenderPreference.FemaleOnly)).toBe(true);
+
+    const categories = new Set(
+      phase0DemoSeed.campusStructuredOptions
+        .filter((option) => option.optionType === CampusStructuredOptionType.ActivityCategory)
+        .map((option) => option.optionId)
+    );
+    const locations = new Set(
+      phase0DemoSeed.campusStructuredOptions
+        .filter((option) => option.optionType === CampusStructuredOptionType.CampusLocation)
+        .map((option) => option.optionId)
+    );
+
+    for (const activity of demoMockActivities) {
+      expect(categories.has(activity.categoryId)).toBe(true);
+      expect(locations.has(activity.meetingPointId)).toBe(true);
+      expect(activity.status).toBe(ActivityStatus.Open);
+      expect(activity.maxParticipants).toBeGreaterThanOrEqual(2);
+      expect(activity.maxRequests ?? 0).toBeLessThanOrEqual(activity.maxParticipants - 1);
+      expect(activity.description.length).toBeGreaterThan(40);
+      expect(activity.description.length).toBeLessThanOrEqual(300);
+      expect(activity.title.length).toBeLessThanOrEqual(100);
+    }
   });
 });
 

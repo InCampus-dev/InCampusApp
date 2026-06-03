@@ -18,6 +18,8 @@ import {
   type DemoReportSeed,
   type DemoSeedData
 } from "../packages/shared/src/seed/demoSeed";
+import { assertLocalDemoEnvironment } from "./demoSeedEnvironment";
+import { seedMockActivities } from "./seedMockActivities";
 
 interface DemoSeedRunSummary {
   universityIdentityRules: number;
@@ -26,6 +28,7 @@ interface DemoSeedRunSummary {
   studentAccounts: number;
   studentProfiles: number;
   activities: number;
+  mockActivities: number;
   reports: number;
   resetDemoActivityIds: string[];
 }
@@ -54,6 +57,7 @@ export async function seedDemo(dataSource: DataSource): Promise<DemoSeedRunSumma
     studentAccounts: 0,
     studentProfiles: 0,
     activities: 0,
+    mockActivities: 0,
     reports: 0,
     resetDemoActivityIds: []
   };
@@ -64,15 +68,11 @@ export async function seedDemo(dataSource: DataSource): Promise<DemoSeedRunSumma
   await seedStudentAccounts(dataSource, phase0DemoSeed, context, summary);
   await seedStudentProfiles(dataSource, phase0DemoSeed, context, summary);
   await seedActivities(dataSource, phase0DemoSeed, context, summary);
+  const mockActivitySummary = await seedMockActivities(dataSource);
+  summary.mockActivities = mockActivitySummary.inserted + mockActivitySummary.updated;
   await seedReports(dataSource, phase0DemoSeed, context, summary);
 
   return summary;
-}
-
-function assertLocalDemoEnvironment(): void {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Refusing to seed demo data when NODE_ENV=production");
-  }
 }
 
 async function seedUniversityIdentityRules(

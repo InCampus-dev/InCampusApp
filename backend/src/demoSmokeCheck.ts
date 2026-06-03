@@ -7,6 +7,7 @@ import {
   demoPassword,
   phase0DemoSeed
 } from "../packages/shared/src/seed/demoSeed";
+import { demoMockActivities } from "../packages/shared/src/seed/demoMockActivities";
 
 type CheckKind = "required" | "conditional" | "skipped";
 type CheckStatus = "PASS" | "FAIL" | "SKIPPED" | "BLOCKED";
@@ -215,12 +216,26 @@ async function runDemoChecks(): Promise<void> {
     const feed = await getJson<ActivityDto[]>("/activities", guestAuth!.accessToken);
     const activity = feed.find((item) => item.title === seededOpenActivity!.title);
     assert(Boolean(activity), `Seeded activity not visible: ${seededOpenActivity!.title}`);
+    const mockActivityTitles = new Set(demoMockActivities.map((item) => item.title));
+    const visibleMockActivities = feed.filter((item) => mockActivityTitles.has(item.title));
+    const visibleMockModes = new Set(
+      visibleMockActivities.map((item) => item.participationMode)
+    );
+    assert(
+      visibleMockActivities.length >= 18,
+      `Expected at least 18 visible demo mock activities, found ${visibleMockActivities.length}`
+    );
+    assert(
+      visibleMockModes.has(ParticipationMode.Open) &&
+        visibleMockModes.has(ParticipationMode.ApprovalBased),
+      "Expected demo mock activities to include both open and approval-based modes"
+    );
     const detail = await getJson<ActivityDto>(
       `/activities/${activity!.activityId}`,
       guestAuth!.accessToken
     );
     assert(detail.activityId === activity!.activityId, "Activity detail id mismatch");
-    return `${detail.title}`;
+    return `${detail.title}; mockActivities=${visibleMockActivities.length}`;
   });
 
   await conditional("create smoke direct-join activity through backend", async () => {

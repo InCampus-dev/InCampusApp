@@ -10,6 +10,14 @@ npm run seed:demo
 
 The command delegates to the backend workspace and uses the existing `tsx` dev tool. It refuses to run when `NODE_ENV=production`.
 
+To refresh only the richer mock activity feed while the backend and Expo demo are already running, use:
+
+```bash
+npm run seed:mock-activities
+```
+
+This command upserts only the dedicated `[DEMO] Mock:` activities. It does not reset the database, delete accounts, remove structured options, create notifications, or clear existing participation records.
+
 ## Demo Credentials
 
 | Role | Email | Password | Notes |
@@ -39,6 +47,11 @@ x-admin-authorized-campus-ids: <demo campus id>
   - `[DEMO] Lunch near Library Plaza`, open join.
   - `[DEMO] Language Exchange at Cafeteria`, approval-based.
   - `[DEMO] Moderation Review Activity`, dedicated to admin report-review and `remove_activity` checks.
+- Mock activity feed records:
+  - 22 `[DEMO] Mock:` activities across lunch, coffee, study, sport, language exchange, casual social, campus walk, exam prep, cultural exchange, and evening hangout scenarios.
+  - Mixed open and approval-based participation modes.
+  - Mixed capacities from 1-to-1 to small groups of 3-5 total people including the host.
+  - Mixed gender preferences using the existing `all`, `male_only`, and `female_only` enum values.
 - Report records:
   - One pending `[DEMO]` report targeting only the moderation review activity.
 
@@ -54,10 +67,12 @@ The seed reuses stable demo keys and updates records instead of creating uncontr
 | Account | `universityEmail` |
 | Profile | `studentAccountId` |
 | Activity | `campusId + hostAccountId + title`, where title starts with `[DEMO]` |
+| Mock activity | `campusId + title`, where title starts with `[DEMO] Mock:` |
 | Report | Stable seeded demo report ID |
 
 Rerunning the seed updates the demo records and resets only participations and notification records attached to the seeded `[DEMO]` activities. It does not delete or mutate non-demo data.
 The seeded admin-demo report is reset by its stable report ID only; non-demo reports are not deleted or overwritten.
+The mock activity command uses a PostgreSQL transaction and advisory lock, updates existing mock rows in place, recomputes counters from current participation rows, and leaves existing participation and notification records intact.
 
 ## Start Order
 
@@ -80,7 +95,13 @@ The seeded admin-demo report is reset by its stable report ID only; non-demo rep
    npm run seed:demo
    ```
 
-5. Optionally run the backend smoke check:
+5. To refresh only the feed mock activities during a live demo, run:
+
+   ```bash
+   npm run seed:mock-activities
+   ```
+
+6. Optionally run the backend smoke check:
 
    ```bash
    npm run smoke:demo
@@ -92,6 +113,12 @@ For normal demo cleanup, rerun:
 
 ```bash
 npm run seed:demo
+```
+
+For a live feed refresh without resetting core demo records, rerun:
+
+```bash
+npm run seed:mock-activities
 ```
 
 For a full database reset, recreate the local database, apply migrations again with `npm run migrate`, and rerun the seed.

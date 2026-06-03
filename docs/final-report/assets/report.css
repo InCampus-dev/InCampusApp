@@ -1,0 +1,354 @@
+:root {
+  --primary: #1e2d7a;
+  --deep: #15215c;
+  --green: #16c172;
+  --bg: #f4f5fa;
+  --card: #ffffff;
+  --ink: #14203d;
+  --muted: #5b6687;
+  --line: #d9deee;
+  --soft: #eef2fb;
+  --soft-green: #eef9f4;
+}
+
+@page {
+  size: A4;
+  margin: 16mm 15mm 18mm;
+}
+
+@page cover {
+  size: A4;
+  margin: 0;
+}
+
+@page landscape {
+  size: A4 landscape;
+  margin: 14mm;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--bg);
+  font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+  font-size: 11.3pt;
+  line-height: 1.56;
+}
+
+main.page {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 20px 56px;
+}
+
+.cover {
+  page: cover;
+  min-height: 297mm;
+  margin: 0 -20px 18px;
+  padding: 30mm 24mm 24mm;
+  color: var(--card);
+  background:
+    radial-gradient(circle at 82% 20%, rgba(22, 193, 114, 0.24), transparent 25%),
+    linear-gradient(145deg, #15215c 0%, #1e2d7a 55%, #20358f 100%);
+  display: grid;
+  align-content: center;
+  page-break-after: always;
+}
+
+.brand-band {
+  width: 148px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--green);
+  margin-bottom: 26px;
+}
+
+.cover-logo {
+  width: 255px;
+  max-width: 52%;
+  padding: 14px 18px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 18px 42px rgba(9, 18, 57, 0.24);
+}
+
+.cover-rule {
+  width: 92px;
+  height: 2px;
+  margin: 34px 0 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.cover h1 {
+  margin: 0;
+  color: #fff;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 31pt;
+  font-weight: 700;
+  line-height: 1.14;
+  border: 0;
+  padding: 0;
+}
+
+.cover .assignment {
+  margin: 12px 0 8px;
+  font-size: 16pt;
+  font-weight: 600;
+  color: #e9edff;
+}
+
+.cover .tagline {
+  margin: 0 0 28px;
+  font-size: 12.8pt;
+  color: #d7f6e8;
+}
+
+.cover-meta {
+  width: min(760px, 100%);
+  margin: 0;
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 8px 18px;
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cover-meta dt {
+  font-weight: 700;
+  color: #d7f6e8;
+}
+
+.cover-meta dd {
+  margin: 0;
+  color: #fff;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5 {
+  color: var(--deep);
+  letter-spacing: 0;
+}
+
+h1 {
+  margin: 26px 0 10px;
+  padding-bottom: 7px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 22pt;
+  line-height: 1.16;
+  border-bottom: 3px solid var(--green);
+  page-break-after: avoid;
+}
+
+h1:not(#table-of-contents):not(.cover h1) {
+  page-break-before: always;
+}
+
+h2 {
+  margin: 20px 0 8px;
+  font-size: 15.5pt;
+  page-break-after: avoid;
+}
+
+h3 {
+  margin: 16px 0 6px;
+  font-size: 12.5pt;
+}
+
+p {
+  margin: 8px 0 11px;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+code {
+  padding: 1px 4px;
+  border: 1px solid #dfe5f6;
+  border-radius: 4px;
+  background: var(--soft);
+  color: var(--deep);
+  font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.91em;
+}
+
+pre {
+  margin: 12px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--primary);
+  border-radius: 8px;
+  background: #f7f9fe;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font-size: 9pt;
+  line-height: 1.42;
+}
+
+pre code {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+ul,
+ol {
+  margin: 8px 0 12px;
+  padding-left: 22px;
+}
+
+li {
+  margin: 4px 0;
+}
+
+.toc {
+  padding: 16px 18px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fbfcff, #f4f7fd);
+}
+
+.toc ol {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.toc li {
+  margin: 4px 0;
+}
+
+.toc > ol > li {
+  margin: 10px 0;
+  font-weight: 600;
+}
+
+.toc > ol > li > ol {
+  margin-top: 6px;
+}
+
+.toc > ol > li > ol > li {
+  font-weight: 400;
+}
+
+table {
+  width: 100%;
+  margin: 12px 0 18px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  page-break-inside: auto;
+  font-size: 8.7pt;
+  line-height: 1.34;
+}
+
+th,
+td {
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+th {
+  background: var(--primary);
+  color: var(--card);
+  font-weight: 700;
+}
+
+tr:nth-child(even) td {
+  background: #fafbfe;
+}
+
+.table-caption {
+  margin-top: 16px;
+  margin-bottom: 6px;
+  color: var(--deep);
+  font-weight: 700;
+}
+
+figure {
+  margin: 0;
+}
+
+figure img {
+  display: block;
+  max-width: 100%;
+  max-height: 232mm;
+  margin: 0 auto;
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+
+figcaption {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 9pt;
+  line-height: 1.34;
+  text-align: center;
+}
+
+.figure-page {
+  page: landscape;
+  break-before: page;
+  break-after: page;
+  min-height: calc(210mm - 28mm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6mm 2mm 4mm;
+}
+
+.figure-page figure {
+  width: 100%;
+}
+
+.figure-page img {
+  max-height: 164mm;
+}
+
+.figure-page.wide img {
+  max-height: 168mm;
+}
+
+blockquote {
+  margin: 12px 0;
+  padding: 2px 0 2px 14px;
+  border-left: 4px solid var(--green);
+  color: var(--muted);
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 18px 0;
+}
+
+@media print {
+  html,
+  body {
+    background: var(--card);
+  }
+
+  main.page {
+    max-width: none;
+    padding: 0;
+  }
+
+  a {
+    color: inherit;
+  }
+}

@@ -1,0 +1,13 @@
+Backend test evidence excerpt
+Command: npm test --workspace backend
+Environment: approved unsandboxed local run, required because Supertest binds a local listener.
+
+> @incampus/backend@0.1.0 test
+> vitest run
+
+RUN v2.1.9 backend
+
+Test Files  31 passed (31)
+Tests       260 passed (260)
+Start at    15:59:21
+Duration    5.12s

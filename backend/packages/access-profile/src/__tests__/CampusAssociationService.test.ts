@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { createDefaultCampusInsightConsentSettings } from "../../../shared/src/domain/campusInsightConsent";
 import {
   PlatformAccessStatus,
   VerificationStatus
@@ -159,6 +160,8 @@ function createStudentAccount(overrides?: Partial<StudentAccount>): StudentAccou
     platformAccessStatus: overrides?.platformAccessStatus ?? PlatformAccessStatus.Active,
     selectedCampusId: overrides?.selectedCampusId ?? null,
     campusInsightSharingConsent: overrides?.campusInsightSharingConsent ?? false,
+    campusInsightConsentSettings:
+      overrides?.campusInsightConsentSettings ?? createDefaultCampusInsightConsentSettings(),
     verificationToken: overrides?.verificationToken ?? null,
     createdAt: overrides?.createdAt ?? new Date("2026-05-15T00:00:00.000Z")
   } as StudentAccount;

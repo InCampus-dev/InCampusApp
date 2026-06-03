@@ -1,5 +1,6 @@
 import { In } from "typeorm";
 
+import type { StudentAccount } from "../../../access-profile/src/entities/StudentAccount";
 import type { StudentProfile } from "../../../access-profile/src/entities/StudentProfile";
 import type { StudentAccountRepo } from "../../../access-profile/src/repositories/StudentAccountRepo";
 import type { StudentProfileRepo } from "../../../access-profile/src/repositories/StudentProfileRepo";
@@ -8,8 +9,13 @@ import type { Participation } from "../../../hosting-lifecycle/src/entities/Part
 import type { ActivityRepo } from "../../../hosting-lifecycle/src/repositories/ActivityRepo";
 import type { ParticipationRepo } from "../../../hosting-lifecycle/src/repositories/ParticipationRepo";
 import type { AuthenticatedAdminContext } from "../../../shared/src/auth/AuthenticatedAdminContext";
+import {
+  deriveCampusInsightSharingConsent,
+  normalizeCampusInsightConsentSettings
+} from "../../../shared/src/domain/campusInsightConsent";
 import type {
   CampusId,
+  CampusInsightConsentSettingsDto,
   ConsentBasedStudentHostedActivityDto,
   ConsentBasedStudentInsightDto,
   ConsentBasedStudentInsightProfileDto,
@@ -36,47 +42,82 @@ export class AdminInsightService {
 
     const eligibleAccounts = await this.studentAccountRepo.find({
       where: {
-        selectedCampusId: campusId,
-        campusInsightSharingConsent: true
+        selectedCampusId: campusId
       },
       order: {
         createdAt: "ASC"
       }
     });
 
-    if (eligibleAccounts.length === 0) {
+    const consentSettingsByStudentAccountId = new Map<string, CampusInsightConsentSettingsDto>();
+    const insightEligibleAccounts: StudentAccount[] = [];
+    let studentsWithoutInsightsEnabledCount = 0;
+
+    for (const account of eligibleAccounts) {
+      const settings = normalizeCampusInsightConsentSettings(
+        account.campusInsightConsentSettings,
+        account.campusInsightSharingConsent
+      );
+      consentSettingsByStudentAccountId.set(account.studentAccountId, settings);
+
+      if (deriveCampusInsightSharingConsent(settings)) {
+        insightEligibleAccounts.push(account);
+      } else {
+        studentsWithoutInsightsEnabledCount += 1;
+      }
+    }
+
+    if (insightEligibleAccounts.length === 0) {
       return {
         campusId,
+        studentsWithoutInsightsEnabledCount,
         students: []
       };
     }
 
-    const studentAccountIds = eligibleAccounts.map((account) => account.studentAccountId);
+    const profileEligibleStudentAccountIds = insightEligibleAccounts
+      .filter((account) => {
+        const settings = consentSettingsByStudentAccountId.get(account.studentAccountId);
+        return settings?.basicInsightsEnabled === true;
+      })
+      .map((account) => account.studentAccountId);
+    const activityEligibleStudentAccountIds = insightEligibleAccounts
+      .filter((account) => {
+        const settings = consentSettingsByStudentAccountId.get(account.studentAccountId);
+        return settings?.activityInsightsEnabled === true;
+      })
+      .map((account) => account.studentAccountId);
 
     const [profiles, hostedActivities, participations] = await Promise.all([
-      this.studentProfileRepo.find({
-        where: {
-          studentAccountId: In(studentAccountIds)
-        }
-      }),
-      this.activityRepo.find({
-        where: {
-          campusId,
-          hostAccountId: In(studentAccountIds)
-        },
-        order: {
-          scheduledDateTime: "ASC"
-        }
-      }),
-      this.participationRepo
-        .createQueryBuilder("participation")
-        .leftJoinAndSelect("participation.activity", "activity")
-        .where("participation.studentAccountId IN (:...studentAccountIds)", {
-          studentAccountIds
-        })
-        .andWhere("activity.campusId = :campusId", { campusId })
-        .orderBy("participation.createdAt", "DESC")
-        .getMany()
+      profileEligibleStudentAccountIds.length > 0
+        ? this.studentProfileRepo.find({
+            where: {
+              studentAccountId: In(profileEligibleStudentAccountIds)
+            }
+          })
+        : [],
+      activityEligibleStudentAccountIds.length > 0
+        ? this.activityRepo.find({
+            where: {
+              campusId,
+              hostAccountId: In(activityEligibleStudentAccountIds)
+            },
+            order: {
+              scheduledDateTime: "ASC"
+            }
+          })
+        : [],
+      activityEligibleStudentAccountIds.length > 0
+        ? this.participationRepo
+            .createQueryBuilder("participation")
+            .leftJoinAndSelect("participation.activity", "activity")
+            .where("participation.studentAccountId IN (:...studentAccountIds)", {
+              studentAccountIds: activityEligibleStudentAccountIds
+            })
+            .andWhere("activity.campusId = :campusId", { campusId })
+            .orderBy("participation.createdAt", "DESC")
+            .getMany()
+        : []
     ]);
 
     const profilesByStudentAccountId = new Map<string, StudentProfile>();
@@ -90,19 +131,39 @@ export class AdminInsightService {
       campusId
     );
 
-    const students: ConsentBasedStudentInsightStudentDto[] = eligibleAccounts.map((account) => ({
-      studentAccountId: account.studentAccountId,
-      profile: toInsightProfileDto(profilesByStudentAccountId.get(account.studentAccountId) ?? null),
-      hostedActivities: (hostedActivitiesByStudentAccountId.get(account.studentAccountId) ?? []).map(
-        toHostedActivityDto
-      ),
-      participations: (
-        participationsByStudentAccountId.get(account.studentAccountId) ?? []
-      ).map(toParticipationDto)
-    }));
+    const students: ConsentBasedStudentInsightStudentDto[] = insightEligibleAccounts.map(
+      (account) => {
+        const settings =
+          consentSettingsByStudentAccountId.get(account.studentAccountId) ??
+          normalizeCampusInsightConsentSettings(null, account.campusInsightSharingConsent);
+
+        return {
+          studentAccountId: account.studentAccountId,
+          consentSettings: settings,
+          profile: settings.basicInsightsEnabled
+            ? toInsightProfileDto(
+                profilesByStudentAccountId.get(account.studentAccountId) ?? null
+              )
+            : null,
+          hostedActivities: settings.activityInsightsEnabled
+            ? (hostedActivitiesByStudentAccountId.get(account.studentAccountId) ?? [])
+                .filter((activity) => isActivityAllowedByConsent(activity, settings))
+                .map(toHostedActivityDto)
+            : [],
+          participations: settings.activityInsightsEnabled
+            ? (participationsByStudentAccountId.get(account.studentAccountId) ?? [])
+                .filter((participation) =>
+                  isActivityAllowedByConsent(participation.activity, settings)
+                )
+                .map(toParticipationDto)
+            : []
+        };
+      }
+    );
 
     return {
       campusId,
+      studentsWithoutInsightsEnabledCount,
       students
     };
   }
@@ -161,6 +222,17 @@ function toHostedActivityDto(activity: Activity): ConsentBasedStudentHostedActiv
     scheduledDateTime: activity.scheduledDateTime.toISOString(),
     status: activity.status
   };
+}
+
+function isActivityAllowedByConsent(
+  activity: Activity | undefined,
+  settings: CampusInsightConsentSettingsDto
+): boolean {
+  if (!activity || !settings.activityInsightsEnabled) {
+    return false;
+  }
+
+  return !settings.hiddenActivityCategoryIds.includes(activity.categoryId);
 }
 
 function toParticipationDto(participation: Participation): ConsentBasedStudentParticipationDto {

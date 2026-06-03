@@ -10,6 +10,10 @@ import { Activity } from "../packages/hosting-lifecycle/src/entities/Activity";
 import { Participation } from "../packages/hosting-lifecycle/src/entities/Participation";
 import { NotificationRecord } from "../packages/notifications-system-flow/src/entities/NotificationRecord";
 import { ReportRecord } from "../packages/safety-moderation/src/entities/ReportRecord";
+import {
+  createDefaultCampusInsightConsentSettings,
+  createLegacyEnabledCampusInsightConsentSettings
+} from "../packages/shared/src/domain/campusInsightConsent";
 import { AppDataSource } from "../packages/shared/src/config/database";
 import {
   demoActivityTitlePrefix,
@@ -204,6 +208,9 @@ async function seedStudentAccounts(
     account.platformAccessStatus = accountSeed.platformAccessStatus;
     account.verificationStatus = accountSeed.verificationStatus;
     account.campusInsightSharingConsent = accountSeed.campusInsightSharingConsent;
+    account.campusInsightConsentSettings = accountSeed.campusInsightSharingConsent
+      ? createLegacyEnabledCampusInsightConsentSettings()
+      : createDefaultCampusInsightConsentSettings();
     account.verificationToken = null;
 
     const savedAccount = await repo.save(account);

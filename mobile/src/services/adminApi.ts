@@ -105,11 +105,20 @@ export interface AdminReportReviewed {
 
 export interface StudentInsights {
   campusId: string;
+  studentsWithoutInsightsEnabledCount: number;
   students: StudentInsight[];
+}
+
+export interface CampusInsightConsentSettings {
+  basicInsightsEnabled: boolean;
+  activityInsightsEnabled: boolean;
+  hiddenActivityCategoryIds: string[];
+  excludeCoParticipants: boolean;
 }
 
 export interface StudentInsight {
   studentAccountId: string;
+  consentSettings: CampusInsightConsentSettings;
   profile: StudentInsightProfile | null;
   hostedActivities: StudentHostedActivity[];
   participations: StudentParticipation[];

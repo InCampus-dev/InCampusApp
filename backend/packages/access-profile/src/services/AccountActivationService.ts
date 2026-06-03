@@ -5,6 +5,7 @@ import { randomBytes } from "crypto";
 
 import { AppError } from "../../../shared/src/errors/AppError";
 import { PlatformAccessStatus, VerificationStatus } from "../../../shared/src/domain/enums";
+import { createDefaultCampusInsightConsentSettings } from "../../../shared/src/domain/campusInsightConsent";
 import { StudentAccount } from "../entities/StudentAccount";
 import { StudentAccountRepo } from "../repositories/StudentAccountRepo";
 
@@ -34,7 +35,8 @@ export class AccountActivationService {
       platformAccessStatus: PlatformAccessStatus.PendingVerification,
       verificationToken,
       selectedCampusId: null,
-      campusInsightSharingConsent: false
+      campusInsightSharingConsent: false,
+      campusInsightConsentSettings: createDefaultCampusInsightConsentSettings()
     });
 
     return this.studentAccountRepo.save(entity);

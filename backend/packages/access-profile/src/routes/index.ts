@@ -74,6 +74,16 @@ export function createAccessProfileRoutes(args: CreateAccessProfileRoutesArgs): 
     studentAuthMiddleware,
     consentController.updateOwnConsent
   );
+  router.get(
+    "/accounts/me/insight-consent",
+    studentAuthMiddleware,
+    consentController.getOwnInsightConsent
+  );
+  router.patch(
+    "/accounts/me/insight-consent",
+    studentAuthMiddleware,
+    consentController.updateOwnInsightConsent
+  );
   router.post("/profiles", studentAuthMiddleware, profileController.createProfile);
   router.get("/profiles/me", studentAuthMiddleware, profileController.getOwnProfile);
   router.patch("/profiles/me", studentAuthMiddleware, profileController.updateOwnProfile);

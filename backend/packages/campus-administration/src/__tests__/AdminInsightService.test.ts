@@ -476,8 +476,6 @@ describe("AdminInsightService", () => {
       createAdminContext(),
       "campus-001"
     );
-    const student = result.students[0] as unknown as Record<string, unknown>;
-
     expect(result.students[0]?.consentSettings).toMatchObject({ excludeCoParticipants: true });
     expect(result.students[0]?.participations).toHaveLength(1);
     expect(result.students[0]).not.toHaveProperty("coParticipants");

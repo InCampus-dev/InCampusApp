@@ -1,6 +1,5 @@
 import { In } from "typeorm";
 
-import type { StudentAccount } from "../../../access-profile/src/entities/StudentAccount";
 import type { StudentProfile } from "../../../access-profile/src/entities/StudentProfile";
 import type { StudentAccountRepo } from "../../../access-profile/src/repositories/StudentAccountRepo";
 import type { StudentProfileRepo } from "../../../access-profile/src/repositories/StudentProfileRepo";
@@ -10,7 +9,6 @@ import type { ActivityRepo } from "../../../hosting-lifecycle/src/repositories/A
 import type { ParticipationRepo } from "../../../hosting-lifecycle/src/repositories/ParticipationRepo";
 import type { AuthenticatedAdminContext } from "../../../shared/src/auth/AuthenticatedAdminContext";
 import {
-  deriveCampusInsightSharingConsent,
   normalizeCampusInsightConsentSettings
 } from "../../../shared/src/domain/campusInsightConsent";
 import type {

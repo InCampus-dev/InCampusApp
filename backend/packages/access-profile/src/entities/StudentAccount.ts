@@ -2,6 +2,7 @@
 
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
 
+import type { CampusInsightConsentSettingsDto } from "../../../shared/src/domain/dtos";
 import { PlatformAccessStatus, VerificationStatus } from "../../../shared/src/domain/enums";
 
 @Entity("student_accounts")
@@ -35,6 +36,13 @@ export class StudentAccount {
 
   @Column({ type: "boolean", default: false })
   campusInsightSharingConsent!: boolean;
+
+  @Column({
+    type: "jsonb",
+    default: () =>
+      `'{"basicInsightsEnabled":false,"activityInsightsEnabled":false,"hiddenActivityCategoryIds":[],"excludeCoParticipants":true}'::jsonb`
+  })
+  campusInsightConsentSettings!: CampusInsightConsentSettingsDto;
 
   // ⚠️ NOT in Entities & Attributes v1.2 catalog — approved implementation detail.
   // Realises the abstract token exchange in UCR-A&P v1.2 DUC-AP-01 (verify email step).

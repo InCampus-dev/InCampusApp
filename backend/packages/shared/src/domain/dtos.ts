@@ -65,17 +65,40 @@ export interface UpdateCampusInsightConsentRequestDto {
   campusInsightSharingConsent: boolean;
 }
 
+export interface CampusInsightConsentSettingsDto {
+  basicInsightsEnabled: boolean;
+  activityInsightsEnabled: boolean;
+  hiddenActivityCategoryIds: string[];
+  excludeCoParticipants: boolean;
+}
+
+export type UpdateCampusInsightConsentSettingsRequestDto =
+  | CampusInsightConsentSettingsDto
+  | {
+      campusInsightConsentSettings: CampusInsightConsentSettingsDto;
+    };
+
 export interface CampusInsightConsentDto {
   campusInsightSharingConsent: boolean;
+  campusInsightConsentSettings: CampusInsightConsentSettingsDto;
 }
 
 export interface ConsentBasedStudentInsightDto {
   campusId: CampusId;
+  studentsWithoutInsightsEnabledCount: number;
   students: ConsentBasedStudentInsightStudentDto[];
+}
+
+export interface AdminVisibleConsentSettingsDto {
+  basicInsightsEnabled: boolean;
+  activityInsightsEnabled: boolean;
+  hasHiddenActivityCategories: boolean;
+  excludeCoParticipants: boolean;
 }
 
 export interface ConsentBasedStudentInsightStudentDto {
   studentAccountId: StudentAccountId;
+  consentSettings: AdminVisibleConsentSettingsDto;
   profile: ConsentBasedStudentInsightProfileDto | null;
   hostedActivities: ConsentBasedStudentHostedActivityDto[];
   participations: ConsentBasedStudentParticipationDto[];

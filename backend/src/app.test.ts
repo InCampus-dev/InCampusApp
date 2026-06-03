@@ -54,6 +54,14 @@ describe("GET /health", () => {
       path: "/accounts/me/consent"
     });
     expect(routes).toContainEqual({
+      method: "get",
+      path: "/accounts/me/insight-consent"
+    });
+    expect(routes).toContainEqual({
+      method: "patch",
+      path: "/accounts/me/insight-consent"
+    });
+    expect(routes).toContainEqual({
       method: "post",
       path: "/admin/campuses"
     });
@@ -344,6 +352,44 @@ describe("GET /health", () => {
       path: "/accounts/me/consent",
       body: {
         campusInsightSharingConsent: true
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "AUTH_REQUIRED"
+      }
+    });
+  });
+
+  it("requires student auth for GET /accounts/me/insight-consent", async () => {
+    const app = createApp();
+
+    const response = await dispatchAppRequest(app, {
+      method: "GET",
+      path: "/accounts/me/insight-consent"
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.jsonPayload).toMatchObject({
+      error: {
+        code: "AUTH_REQUIRED"
+      }
+    });
+  });
+
+  it("requires student auth for PATCH /accounts/me/insight-consent", async () => {
+    const app = createApp();
+
+    const response = await dispatchAppRequest(app, {
+      method: "PATCH",
+      path: "/accounts/me/insight-consent",
+      body: {
+        basicInsightsEnabled: true,
+        activityInsightsEnabled: false,
+        hiddenActivityCategoryIds: [],
+        excludeCoParticipants: true
       }
     });
 

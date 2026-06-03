@@ -3,6 +3,7 @@ export * from "./auth/AuthenticatedStudentContext";
 export * from "./config/database";
 export * from "./db/constraints";
 export * from "./db/transaction";
+export * from "./domain/campusInsightConsent";
 export * from "./domain/dtos";
 export * from "./domain/enums";
 export * from "./errors/AppError";

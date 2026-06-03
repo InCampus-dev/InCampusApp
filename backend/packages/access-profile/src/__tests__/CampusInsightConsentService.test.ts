@@ -109,24 +109,35 @@ describe("CampusInsightConsentService", () => {
     );
   });
 
-  it("maps the legacy consent endpoint to disabled granular settings", async () => {
+  it("maps the legacy consent endpoint to disabled granular settings, preserving non-boolean fields", async () => {
+    const customSettings = {
+      basicInsightsEnabled: true,
+      activityInsightsEnabled: true,
+      hiddenActivityCategoryIds: ["category-sensitive"],
+      excludeCoParticipants: false
+    };
     const studentAccountStore = [
       createStudentAccount({
         studentAccountId: "student-001",
         campusInsightSharingConsent: true,
-        campusInsightConsentSettings: createLegacyEnabledCampusInsightConsentSettings()
+        campusInsightConsentSettings: customSettings
       })
     ];
     const service = new CampusInsightConsentService(createStudentAccountRepo(studentAccountStore));
 
+    const expectedSettings = {
+      basicInsightsEnabled: false,
+      activityInsightsEnabled: false,
+      hiddenActivityCategoryIds: ["category-sensitive"],
+      excludeCoParticipants: false
+    };
+
     await expect(service.updateOwnConsent("student-001", false)).resolves.toEqual({
       campusInsightSharingConsent: false,
-      campusInsightConsentSettings: createDefaultCampusInsightConsentSettings()
+      campusInsightConsentSettings: expectedSettings
     });
     expect(studentAccountStore[0]?.campusInsightSharingConsent).toBe(false);
-    expect(studentAccountStore[0]?.campusInsightConsentSettings).toEqual(
-      createDefaultCampusInsightConsentSettings()
-    );
+    expect(studentAccountStore[0]?.campusInsightConsentSettings).toEqual(expectedSettings);
   });
 
   it("rejects missing account updates", async () => {

@@ -1,6 +1,4 @@
 import {
-  createDefaultCampusInsightConsentSettings,
-  createLegacyEnabledCampusInsightConsentSettings,
   deriveCampusInsightSharingConsent,
   normalizeCampusInsightConsentSettings,
   normalizeStringArray
@@ -25,11 +23,23 @@ export class CampusInsightConsentService {
     studentAccountId: string,
     campusInsightSharingConsent: boolean
   ): Promise<CampusInsightConsentDto> {
-    const settings = campusInsightSharingConsent
-      ? createLegacyEnabledCampusInsightConsentSettings()
-      : createDefaultCampusInsightConsentSettings();
+    const studentAccount = await this.getStudentAccount(studentAccountId);
+    const currentSettings = normalizeCampusInsightConsentSettings(
+      studentAccount.campusInsightConsentSettings,
+      studentAccount.campusInsightSharingConsent
+    );
 
-    return this.updateOwnInsightConsent(studentAccountId, settings);
+    const settings: CampusInsightConsentSettingsDto = {
+      ...currentSettings,
+      basicInsightsEnabled: campusInsightSharingConsent,
+      activityInsightsEnabled: campusInsightSharingConsent
+    };
+
+    studentAccount.campusInsightConsentSettings = settings;
+    studentAccount.campusInsightSharingConsent = deriveCampusInsightSharingConsent(settings);
+
+    const savedAccount = await this.studentAccountRepo.save(studentAccount);
+    return toCampusInsightConsentDto(savedAccount);
   }
 
   public async updateOwnInsightConsent(
@@ -89,13 +99,10 @@ function validateCampusInsightConsentSettingsRequest(
     });
   }
 
-  if (!Array.isArray(payload.hiddenActivityCategoryIds)) {
-    issues.push({
-      field: "hiddenActivityCategoryIds",
-      message: "hiddenActivityCategoryIds must be an array of strings",
-      code: "invalid_field_type"
-    });
-  } else if (payload.hiddenActivityCategoryIds.some((item) => typeof item !== "string")) {
+  if (
+    !Array.isArray(payload.hiddenActivityCategoryIds) ||
+    payload.hiddenActivityCategoryIds.some((item) => typeof item !== "string")
+  ) {
     issues.push({
       field: "hiddenActivityCategoryIds",
       message: "hiddenActivityCategoryIds must be an array of strings",

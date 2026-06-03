@@ -10,15 +10,9 @@ import {
   ScreenShell,
   colors,
 } from '../components/InCampusUI';
+import type { CampusInsightConsentSettings } from '../services/adminApi';
 import api, { getApiErrorCode } from '../services/api';
 import { type CampusStructuredOption, listCampusStructuredOptions } from '../services/studentApi';
-
-interface CampusInsightConsentSettings {
-  basicInsightsEnabled: boolean;
-  activityInsightsEnabled: boolean;
-  hiddenActivityCategoryIds: string[];
-  excludeCoParticipants: boolean;
-}
 
 interface CampusInsightConsentResponse {
   campusInsightSharingConsent: boolean;

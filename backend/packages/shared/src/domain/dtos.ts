@@ -89,9 +89,16 @@ export interface ConsentBasedStudentInsightDto {
   students: ConsentBasedStudentInsightStudentDto[];
 }
 
+export interface AdminVisibleConsentSettingsDto {
+  basicInsightsEnabled: boolean;
+  activityInsightsEnabled: boolean;
+  hasHiddenActivityCategories: boolean;
+  excludeCoParticipants: boolean;
+}
+
 export interface ConsentBasedStudentInsightStudentDto {
   studentAccountId: StudentAccountId;
-  consentSettings: CampusInsightConsentSettingsDto;
+  consentSettings: AdminVisibleConsentSettingsDto;
   profile: ConsentBasedStudentInsightProfileDto | null;
   hostedActivities: ConsentBasedStudentHostedActivityDto[];
   participations: ConsentBasedStudentParticipationDto[];

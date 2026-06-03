@@ -14,6 +14,7 @@ import {
   normalizeCampusInsightConsentSettings
 } from "../../../shared/src/domain/campusInsightConsent";
 import type {
+  AdminVisibleConsentSettingsDto,
   CampusId,
   CampusInsightConsentSettingsDto,
   ConsentBasedStudentHostedActivityDto,
@@ -40,32 +41,23 @@ export class AdminInsightService {
   ): Promise<ConsentBasedStudentInsightDto> {
     this.campusAuthorizationService.assertCanManageCampus(adminContext, campusId);
 
-    const eligibleAccounts = await this.studentAccountRepo.find({
-      where: {
-        selectedCampusId: campusId
-      },
-      order: {
-        createdAt: "ASC"
-      }
-    });
-
-    const consentSettingsByStudentAccountId = new Map<string, CampusInsightConsentSettingsDto>();
-    const insightEligibleAccounts: StudentAccount[] = [];
-    let studentsWithoutInsightsEnabledCount = 0;
-
-    for (const account of eligibleAccounts) {
-      const settings = normalizeCampusInsightConsentSettings(
-        account.campusInsightConsentSettings,
-        account.campusInsightSharingConsent
-      );
-      consentSettingsByStudentAccountId.set(account.studentAccountId, settings);
-
-      if (deriveCampusInsightSharingConsent(settings)) {
-        insightEligibleAccounts.push(account);
-      } else {
-        studentsWithoutInsightsEnabledCount += 1;
-      }
-    }
+    const [insightEligibleAccounts, studentsWithoutInsightsEnabledCount] = await Promise.all([
+      this.studentAccountRepo.find({
+        where: {
+          selectedCampusId: campusId,
+          campusInsightSharingConsent: true
+        },
+        order: {
+          createdAt: "ASC"
+        }
+      }),
+      this.studentAccountRepo.count({
+        where: {
+          selectedCampusId: campusId,
+          campusInsightSharingConsent: false
+        }
+      })
+    ]);
 
     if (insightEligibleAccounts.length === 0) {
       return {
@@ -75,18 +67,19 @@ export class AdminInsightService {
       };
     }
 
-    const profileEligibleStudentAccountIds = insightEligibleAccounts
-      .filter((account) => {
-        const settings = consentSettingsByStudentAccountId.get(account.studentAccountId);
-        return settings?.basicInsightsEnabled === true;
-      })
-      .map((account) => account.studentAccountId);
-    const activityEligibleStudentAccountIds = insightEligibleAccounts
-      .filter((account) => {
-        const settings = consentSettingsByStudentAccountId.get(account.studentAccountId);
-        return settings?.activityInsightsEnabled === true;
-      })
-      .map((account) => account.studentAccountId);
+    const consentSettingsByStudentAccountId = new Map<string, CampusInsightConsentSettingsDto>();
+    const profileEligibleStudentAccountIds: string[] = [];
+    const activityEligibleStudentAccountIds: string[] = [];
+
+    for (const account of insightEligibleAccounts) {
+      const settings = normalizeCampusInsightConsentSettings(
+        account.campusInsightConsentSettings,
+        account.campusInsightSharingConsent
+      );
+      consentSettingsByStudentAccountId.set(account.studentAccountId, settings);
+      if (settings.basicInsightsEnabled) profileEligibleStudentAccountIds.push(account.studentAccountId);
+      if (settings.activityInsightsEnabled) activityEligibleStudentAccountIds.push(account.studentAccountId);
+    }
 
     const [profiles, hostedActivities, participations] = await Promise.all([
       profileEligibleStudentAccountIds.length > 0
@@ -133,13 +126,11 @@ export class AdminInsightService {
 
     const students: ConsentBasedStudentInsightStudentDto[] = insightEligibleAccounts.map(
       (account) => {
-        const settings =
-          consentSettingsByStudentAccountId.get(account.studentAccountId) ??
-          normalizeCampusInsightConsentSettings(null, account.campusInsightSharingConsent);
+        const settings = consentSettingsByStudentAccountId.get(account.studentAccountId)!;
 
         return {
           studentAccountId: account.studentAccountId,
-          consentSettings: settings,
+          consentSettings: toAdminVisibleConsentSettings(settings),
           profile: settings.basicInsightsEnabled
             ? toInsightProfileDto(
                 profilesByStudentAccountId.get(account.studentAccountId) ?? null
@@ -224,11 +215,22 @@ function toHostedActivityDto(activity: Activity): ConsentBasedStudentHostedActiv
   };
 }
 
+function toAdminVisibleConsentSettings(
+  settings: CampusInsightConsentSettingsDto
+): AdminVisibleConsentSettingsDto {
+  return {
+    basicInsightsEnabled: settings.basicInsightsEnabled,
+    activityInsightsEnabled: settings.activityInsightsEnabled,
+    hasHiddenActivityCategories: settings.hiddenActivityCategoryIds.length > 0,
+    excludeCoParticipants: settings.excludeCoParticipants
+  };
+}
+
 function isActivityAllowedByConsent(
   activity: Activity | undefined,
   settings: CampusInsightConsentSettingsDto
 ): boolean {
-  if (!activity || !settings.activityInsightsEnabled) {
+  if (!activity) {
     return false;
   }
 

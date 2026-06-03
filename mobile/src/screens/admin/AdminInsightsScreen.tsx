@@ -169,7 +169,7 @@ function StudentInsightCard({ student }: { student: StudentInsight }) {
       </View>
 
       {!consentSettings.basicInsightsEnabled ? <InsightNotice text="Basic insights not shared" /> : null}
-      {consentSettings.hiddenActivityCategoryIds.length > 0 ? <InsightNotice text="Some categories hidden by student" /> : null}
+      {consentSettings.hasHiddenActivityCategories ? <InsightNotice text="Some categories hidden by student" /> : null}
       {consentSettings.excludeCoParticipants ? <InsightNotice text="Co-participants hidden by student" /> : null}
 
       {consentSettings.basicInsightsEnabled && student.profile?.interests.length ? (

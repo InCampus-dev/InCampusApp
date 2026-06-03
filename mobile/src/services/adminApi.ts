@@ -112,7 +112,7 @@ export interface StudentInsights {
 export interface CampusInsightConsentSettings {
   basicInsightsEnabled: boolean;
   activityInsightsEnabled: boolean;
-  hiddenActivityCategoryIds: string[];
+  hasHiddenActivityCategories: boolean;
   excludeCoParticipants: boolean;
 }
 

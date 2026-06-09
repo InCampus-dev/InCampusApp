@@ -1,6 +1,6 @@
 # Demo Seed
 
-This seed is for local and demo environments only. It prepares realistic data for the InCampus demo path without creating hidden mocks, production data, or a schema migration.
+This seed is for local and demo environments only. It prepares realistic data for the InCampus demo path without creating hidden mocks, production data, or a seed-specific schema migration.
 
 Important: these credentials are only for the local/demo seed. Do not use them for production, staging, or any real deployment.
 
@@ -11,6 +11,14 @@ npm run seed:demo
 ```
 
 The command delegates to the backend workspace and uses the existing `tsx` dev tool. It refuses to run when `NODE_ENV=production`.
+
+To refresh only the richer support activity feed while the backend and Expo demo are already running, use:
+
+```bash
+npm run seed:mock-activities
+```
+
+This command upserts only the support feed activities explicitly listed in the mock activity manifest. It does not reset the database, delete accounts, remove structured options, create notifications, or clear existing participation records.
 
 ## Demo Credentials
 
@@ -46,10 +54,15 @@ x-admin-authorized-campus-ids: <demo campus id>
 - Activity categories: Lunch, Coffee, Study, Sport, Language Exchange.
 - Meeting points: Library Plaza, Cafeteria, Main Gate, Sports Center.
 - Student accounts and profiles: `demo.host`, `demo.guest`, and `user1` through `user8`.
-- Activities:
+- Scenario activities:
   - Today: `Library Lunch Table`, `Mandarin Practice Circle`, `Espresso Break Before Lab`.
   - Tomorrow: `Quiet Algorithms Study Block`, `CV Review Swap`, `Basketball Shooting Practice`, `Evening Design Critique`.
   - Day after tomorrow: `Campus Photo Walk`, `Finals Planning Coffee`, `Main Gate Coffee Chat`.
+- Support feed activities:
+  - 22 realistic feed activities across lunch, coffee, study, sport, language exchange, campus walk, exam prep, cultural exchange, and evening hangout scenarios.
+  - Mixed open and approval-based participation modes.
+  - Mixed capacities from 1-to-1 to small groups of 3-5 total people including the host.
+  - Mixed gender preferences using the existing `all`, `male_only`, and `female_only` enum values.
 - Participations:
   - Pending requests on `Mandarin Practice Circle` for host-side request review.
   - A pending request from `demo.guest` for the withdraw-request path.
@@ -57,7 +70,7 @@ x-admin-authorized-campus-ids: <demo campus id>
 - Report records:
   - One pending report targeting `Main Gate Coffee Chat`.
 
-No seeded activity is configured as immediately full.
+No seeded activity is configured as immediately full, and no visible activity title contains `[DEMO]`.
 
 ## Idempotency Rules
 
@@ -70,11 +83,14 @@ The seed reuses stable demo keys and updates records instead of creating uncontr
 | Structured option | `campusId + optionType + name` |
 | Account | `universityEmail` |
 | Profile | `studentAccountId` |
-| Activity | Stable seeded activity ID |
+| Scenario activity | Stable seeded activity ID |
+| Support feed activity | `campusId + title` from the support activity manifest |
 | Participation | Stable seeded participation ID |
 | Report | Stable seeded report ID |
 
-Rerunning the seed updates only the demo records explicitly listed in the manifest. It does not delete unrelated local data, does not reset the database, and does not create a TypeORM migration. Activity counters are recalculated for the seeded activities after listed participations are upserted.
+Rerunning the seed updates only the demo records explicitly listed in the manifests. It does not delete unrelated local data, does not reset the database, and does not create a TypeORM migration for this seed refresh. Activity counters are recalculated for the seeded scenario activities after listed participations are upserted.
+
+The support feed command uses a PostgreSQL transaction and advisory lock, updates existing support rows in place, recomputes counters from current participation rows, and leaves existing participation and notification records intact.
 
 ## Start Order
 
@@ -103,12 +119,24 @@ Rerunning the seed updates only the demo records explicitly listed in the manife
    npm run smoke:demo
    ```
 
+6. To refresh only the support feed activities during a live demo, run:
+
+   ```bash
+   npm run seed:mock-activities
+   ```
+
 ## Reset And Rerun
 
 For normal demo refresh, rerun:
 
 ```bash
 npm run seed:demo
+```
+
+For a live feed refresh without resetting core demo records, rerun:
+
+```bash
+npm run seed:mock-activities
 ```
 
 For a full local database reset, recreate the local database, apply migrations again with `npm run migrate`, and rerun the seed. A full reset is not required for this demo refresh.

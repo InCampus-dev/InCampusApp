@@ -6,6 +6,7 @@ import { CreateAccessProfileStores1710000000004 } from "./1710000000004-CreateAc
 import { CreateHostingLifecycleActivities1710000000005 } from "./1710000000005-CreateHostingLifecycleActivities";
 import { CreateHostingLifecycleParticipations1710000000006 } from "./1710000000006-CreateHostingLifecycleParticipations";
 import { CreateNotificationSystemFlowNotificationRecords1710000000007 } from "./1710000000007-CreateNotificationSystemFlowNotificationRecords";
+import { AddCampusInsightConsentSettings1710000000008 } from "./1710000000008-AddCampusInsightConsentSettings";
 
 export const appMigrations = [
   Phase0CanonicalStoresStub1710000000000,
@@ -15,5 +16,6 @@ export const appMigrations = [
   CreateAccessProfileStores1710000000004,
   CreateHostingLifecycleActivities1710000000005,
   CreateHostingLifecycleParticipations1710000000006,
-  CreateNotificationSystemFlowNotificationRecords1710000000007
+  CreateNotificationSystemFlowNotificationRecords1710000000007,
+  AddCampusInsightConsentSettings1710000000008
 ];

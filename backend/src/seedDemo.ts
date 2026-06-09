@@ -9,6 +9,10 @@ import { CampusStructuredOption } from "../packages/campus-administration/src/en
 import { Activity } from "../packages/hosting-lifecycle/src/entities/Activity";
 import { Participation } from "../packages/hosting-lifecycle/src/entities/Participation";
 import { ReportRecord } from "../packages/safety-moderation/src/entities/ReportRecord";
+import {
+  createDefaultCampusInsightConsentSettings,
+  createLegacyEnabledCampusInsightConsentSettings
+} from "../packages/shared/src/domain/campusInsightConsent";
 import { AppDataSource } from "../packages/shared/src/config/database";
 import { ParticipationRecordType, ParticipationStatus } from "../packages/shared/src/domain/enums";
 import {
@@ -17,6 +21,8 @@ import {
   type DemoReportSeed,
   type DemoSeedData
 } from "../packages/shared/src/seed/demoSeed";
+import { assertLocalDemoEnvironment } from "./demoSeedEnvironment";
+import { seedMockActivities } from "./seedMockActivities";
 
 interface DemoSeedRunSummary {
   universityIdentityRules: number;
@@ -26,6 +32,7 @@ interface DemoSeedRunSummary {
   studentProfiles: number;
   activities: number;
   participations: number;
+  mockActivities: number;
   reports: number;
   refreshedDemoActivityIds: string[];
 }
@@ -55,6 +62,7 @@ export async function seedDemo(dataSource: DataSource): Promise<DemoSeedRunSumma
     studentProfiles: 0,
     activities: 0,
     participations: 0,
+    mockActivities: 0,
     reports: 0,
     refreshedDemoActivityIds: []
   };
@@ -67,15 +75,11 @@ export async function seedDemo(dataSource: DataSource): Promise<DemoSeedRunSumma
   await seedActivities(dataSource, phase0DemoSeed, context, summary);
   await seedParticipations(dataSource, phase0DemoSeed, context, summary);
   await refreshSeededActivityCounters(dataSource, phase0DemoSeed, context);
+  const mockActivitySummary = await seedMockActivities(dataSource);
+  summary.mockActivities = mockActivitySummary.inserted + mockActivitySummary.updated;
   await seedReports(dataSource, phase0DemoSeed, context, summary);
 
   return summary;
-}
-
-function assertLocalDemoEnvironment(): void {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Refusing to seed demo data when NODE_ENV=production");
-  }
 }
 
 async function seedUniversityIdentityRules(
@@ -207,6 +211,9 @@ async function seedStudentAccounts(
     account.platformAccessStatus = accountSeed.platformAccessStatus;
     account.verificationStatus = accountSeed.verificationStatus;
     account.campusInsightSharingConsent = accountSeed.campusInsightSharingConsent;
+    account.campusInsightConsentSettings = accountSeed.campusInsightSharingConsent
+      ? createLegacyEnabledCampusInsightConsentSettings()
+      : createDefaultCampusInsightConsentSettings();
     account.verificationToken = null;
 
     const savedAccount = await repo.save(account);

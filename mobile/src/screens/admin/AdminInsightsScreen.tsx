@@ -22,6 +22,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AdminInsights'>;
 export default function AdminInsightsScreen({ navigation }: Props) {
   const [adminContext, setAdminContext] = useState<AuthenticatedAdminContext | null>(null);
   const [students, setStudents] = useState<StudentInsight[]>([]);
+  const [studentsWithoutInsightsEnabledCount, setStudentsWithoutInsightsEnabledCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -45,6 +46,7 @@ export default function AdminInsightsScreen({ navigation }: Props) {
       }
       const data = await listStudentInsights(context.selectedCampusId);
       setStudents(data.students);
+      setStudentsWithoutInsightsEnabledCount(data.studentsWithoutInsightsEnabledCount ?? 0);
     } catch (error) {
       const code = getApiErrorCode(error);
       if (code === 'AUTH_FORBIDDEN' || code === 'AUTH_REQUIRED' || code === 'CAMPUS_SCOPE_VIOLATION') {
@@ -70,6 +72,9 @@ export default function AdminInsightsScreen({ navigation }: Props) {
         <Text style={styles.title}>Consent-based insights</Text>
         <Text style={styles.subtitle}>
           {students.length === 1 ? '1 returned student' : `${students.length} returned students`}
+          {studentsWithoutInsightsEnabledCount > 0
+            ? ` - ${studentsWithoutInsightsEnabledCount} with no insights enabled`
+            : ''}
         </Text>
       </View>
       {loading ? (
@@ -82,13 +87,25 @@ export default function AdminInsightsScreen({ navigation }: Props) {
           keyExtractor={(item) => item.studentAccountId}
           contentContainerStyle={[styles.list, students.length === 0 && styles.emptyList]}
           ListHeaderComponent={
-            errorMessage ? (
-              <InlineBanner
-                tone={accessDenied ? 'error' : 'warning'}
-                text={errorMessage}
-                actionLabel="Retry"
-                onAction={() => fetchInsights('refresh')}
-              />
+            errorMessage || studentsWithoutInsightsEnabledCount > 0 ? (
+              <View style={styles.listHeader}>
+                {errorMessage ? (
+                  <InlineBanner
+                    tone={accessDenied ? 'error' : 'warning'}
+                    text={errorMessage}
+                    actionLabel="Retry"
+                    onAction={() => fetchInsights('refresh')}
+                  />
+                ) : null}
+                {studentsWithoutInsightsEnabledCount > 0 ? (
+                  <InlineBanner
+                    tone="warning"
+                    text={`${studentsWithoutInsightsEnabledCount} ${
+                      studentsWithoutInsightsEnabledCount === 1 ? 'student has' : 'students have'
+                    } no insights enabled.`}
+                  />
+                ) : null}
+              </View>
             ) : null
           }
           ListEmptyComponent={
@@ -97,7 +114,9 @@ export default function AdminInsightsScreen({ navigation }: Props) {
               title={adminContext ? 'No consent-eligible students' : 'Admin context required'}
               text={
                 adminContext
-                  ? 'The backend did not return any students with campus insight sharing consent.'
+                  ? studentsWithoutInsightsEnabledCount > 0
+                    ? 'Students with no insights enabled are hidden from identifiable insight rows.'
+                    : 'The backend did not return any students with campus insight sharing consent.'
                   : 'Return to sign in and continue as demo admin.'
               }
               primaryLabel="Refresh"
@@ -120,6 +139,11 @@ export default function AdminInsightsScreen({ navigation }: Props) {
 }
 
 function StudentInsightCard({ student }: { student: StudentInsight }) {
+  const { consentSettings } = student;
+  const profileLabel = consentSettings.basicInsightsEnabled
+    ? student.profile?.displayName ?? 'Profile not returned'
+    : 'Basic insights not shared';
+
   return (
     <SectionCard style={styles.studentCard}>
       <View style={styles.studentTop}>
@@ -127,13 +151,28 @@ function StudentInsightCard({ student }: { student: StudentInsight }) {
           <Text style={styles.avatarText}>{initials(student.profile?.displayName)}</Text>
         </View>
         <View style={styles.studentTitleBlock}>
-          <Text style={styles.studentName}>{student.profile?.displayName ?? 'Profile not returned'}</Text>
+          <Text style={styles.studentName}>{profileLabel}</Text>
           <Text style={styles.studentId}>{student.studentAccountId}</Text>
-          {student.profile ? <Text style={styles.major}>{student.profile.major}</Text> : null}
+          {consentSettings.basicInsightsEnabled && student.profile ? <Text style={styles.major}>{student.profile.major}</Text> : null}
         </View>
       </View>
 
-      {student.profile?.interests.length ? (
+      <View style={styles.consentRow}>
+        <ConsentPill
+          label={consentSettings.basicInsightsEnabled ? 'Basic shared' : 'Basic insights not shared'}
+          active={consentSettings.basicInsightsEnabled}
+        />
+        <ConsentPill
+          label={consentSettings.activityInsightsEnabled ? 'Activity shared' : 'Activity insights not shared'}
+          active={consentSettings.activityInsightsEnabled}
+        />
+      </View>
+
+      {!consentSettings.basicInsightsEnabled ? <InsightNotice text="Basic insights not shared" /> : null}
+      {consentSettings.hasHiddenActivityCategories ? <InsightNotice text="Some categories hidden by student" /> : null}
+      {consentSettings.excludeCoParticipants ? <InsightNotice text="Co-participants hidden by student" /> : null}
+
+      {consentSettings.basicInsightsEnabled && student.profile?.interests.length ? (
         <View style={styles.interestRow}>
           {student.profile.interests.map((interest) => (
             <View key={interest} style={styles.interestPill}>
@@ -143,7 +182,11 @@ function StudentInsightCard({ student }: { student: StudentInsight }) {
         </View>
       ) : null}
 
-      <InsightSection title="Hosted activities" count={student.hostedActivities.length}>
+      <InsightSection
+        title="Hosted activities"
+        count={student.hostedActivities.length}
+        emptyText={consentSettings.activityInsightsEnabled ? 'No returned records.' : 'Activity insights not shared'}
+      >
         {student.hostedActivities.map((activity) => (
           <InsightLine
             key={activity.activityId}
@@ -153,7 +196,11 @@ function StudentInsightCard({ student }: { student: StudentInsight }) {
         ))}
       </InsightSection>
 
-      <InsightSection title="Participations" count={student.participations.length}>
+      <InsightSection
+        title="Participations"
+        count={student.participations.length}
+        emptyText={consentSettings.activityInsightsEnabled ? 'No returned records.' : 'Activity insights not shared'}
+      >
         {student.participations.map((participation) => (
           <InsightLine
             key={participation.participationId}
@@ -169,16 +216,36 @@ function StudentInsightCard({ student }: { student: StudentInsight }) {
 function InsightSection({
   title,
   count,
+  emptyText = 'No returned records.',
   children,
 }: {
   title: string;
   count: number;
+  emptyText?: string;
   children: React.ReactNode;
 }) {
   return (
     <View style={styles.insightSection}>
       <Text style={styles.insightTitle}>{title} ({count})</Text>
-      {count > 0 ? children : <Text style={styles.emptyText}>No returned records.</Text>}
+      {count > 0 ? children : <Text style={styles.emptyText}>{emptyText}</Text>}
+    </View>
+  );
+}
+
+function ConsentPill({ label, active }: { label: string; active: boolean }) {
+  return (
+    <View style={[styles.consentPill, active ? styles.consentPillActive : styles.consentPillMuted]}>
+      <Text style={[styles.consentPillText, active ? styles.consentPillTextActive : styles.consentPillTextMuted]}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function InsightNotice({ text }: { text: string }) {
+  return (
+    <View style={styles.noticeRow}>
+      <Text style={styles.noticeText}>{text}</Text>
     </View>
   );
 }
@@ -213,6 +280,7 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 25, fontWeight: '900' },
   subtitle: { color: colors.text2, fontSize: 13, fontWeight: '800', marginTop: 4 },
   loadingWrap: { padding: 16 },
+  listHeader: { gap: 10 },
   list: { padding: 16, gap: 12, paddingBottom: 32 },
   emptyList: { flexGrow: 1, justifyContent: 'center' },
   studentCard: { padding: 14, gap: 14 },
@@ -223,6 +291,15 @@ const styles = StyleSheet.create({
   studentName: { color: colors.text, fontSize: 17, fontWeight: '900' },
   studentId: { color: colors.text3, fontSize: 11, fontWeight: '700', marginTop: 3 },
   major: { color: colors.text2, fontSize: 12, fontWeight: '800', marginTop: 4 },
+  consentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  consentPill: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 6 },
+  consentPillActive: { backgroundColor: colors.successSoft },
+  consentPillMuted: { backgroundColor: colors.borderSoft },
+  consentPillText: { fontSize: 11, fontWeight: '900' },
+  consentPillTextActive: { color: colors.primaryGreenPressed },
+  consentPillTextMuted: { color: colors.text2 },
+  noticeRow: { borderRadius: 12, backgroundColor: colors.bg, paddingHorizontal: 10, paddingVertical: 9 },
+  noticeText: { color: colors.text2, fontSize: 12, fontWeight: '800' },
   interestRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   interestPill: { borderRadius: 999, backgroundColor: colors.primarySoft, paddingHorizontal: 9, paddingVertical: 5 },
   interestText: { color: colors.primaryDeep, fontSize: 11, fontWeight: '900' },

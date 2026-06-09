@@ -10,6 +10,12 @@ import { ActivityRepo } from "../../../hosting-lifecycle/src/repositories/Activi
 import { ParticipationRepo } from "../../../hosting-lifecycle/src/repositories/ParticipationRepo";
 import type { AuthenticatedAdminContext } from "../../../shared/src/auth/AuthenticatedAdminContext";
 import {
+  createDefaultCampusInsightConsentSettings,
+  createLegacyEnabledCampusInsightConsentSettings,
+  deriveCampusInsightSharingConsent
+} from "../../../shared/src/domain/campusInsightConsent";
+import type { AdminVisibleConsentSettingsDto, CampusInsightConsentSettingsDto } from "../../../shared/src/domain/dtos";
+import {
   ActivityStatus,
   GenderPreference,
   ParticipationMode,
@@ -86,6 +92,7 @@ describe("AdminInsightService", () => {
       harness.service.listCampusStudentInsights(createAdminContext(), "campus-001")
     ).resolves.toEqual({
       campusId: "campus-001",
+      studentsWithoutInsightsEnabledCount: 1,
       students: []
     });
   });
@@ -165,9 +172,11 @@ describe("AdminInsightService", () => {
       })
     ).resolves.toEqual({
       campusId: "campus-001",
+      studentsWithoutInsightsEnabledCount: 1,
       students: [
         {
           studentAccountId: "student-001",
+          consentSettings: toAdminConsentSettings(createLegacyEnabledCampusInsightConsentSettings()),
           profile: {
             displayName: "Ada",
             major: "Computer Science",
@@ -212,9 +221,11 @@ describe("AdminInsightService", () => {
       harness.service.listCampusStudentInsights(createAdminContext(), "campus-001")
     ).resolves.toEqual({
       campusId: "campus-001",
+      studentsWithoutInsightsEnabledCount: 0,
       students: [
         {
           studentAccountId: "student-001",
+          consentSettings: toAdminConsentSettings(createLegacyEnabledCampusInsightConsentSettings()),
           profile: null,
           hostedActivities: [],
           participations: []
@@ -261,6 +272,7 @@ describe("AdminInsightService", () => {
       "campus-001"
     );
 
+    expect(result.studentsWithoutInsightsEnabledCount).toBe(0);
     expect(result.students[0]?.participations).toEqual([
       {
         participationId: "participation-001",
@@ -271,6 +283,203 @@ describe("AdminInsightService", () => {
         createdAt: "2026-05-16T10:00:00.000Z"
       }
     ]);
+  });
+
+  it("masks profile fields when basic insights are disabled", async () => {
+    const settings: CampusInsightConsentSettingsDto = {
+      basicInsightsEnabled: false,
+      activityInsightsEnabled: true,
+      hiddenActivityCategoryIds: [],
+      excludeCoParticipants: true
+    };
+    const harness = createHarness({
+      accounts: [
+        createAccount({
+          studentAccountId: "student-001",
+          campusInsightConsentSettings: settings
+        })
+      ],
+      profiles: [
+        createProfile({
+          studentAccountId: "student-001",
+          displayName: "Hidden Student",
+          major: "Hidden Major",
+          interests: ["Hidden"]
+        })
+      ],
+      activities: [
+        createActivity({
+          activityId: "activity-001",
+          hostAccountId: "student-001",
+          title: "Visible Activity Pattern"
+        })
+      ]
+    });
+
+    const result = await harness.service.listCampusStudentInsights(
+      createAdminContext(),
+      "campus-001"
+    );
+
+    expect(result.students[0]).toMatchObject({
+      studentAccountId: "student-001",
+      consentSettings: toAdminConsentSettings(settings),
+      profile: null,
+      hostedActivities: [
+        expect.objectContaining({
+          activityId: "activity-001"
+        })
+      ]
+    });
+  });
+
+  it("masks activity and participation fields when activity insights are disabled", async () => {
+    const settings: CampusInsightConsentSettingsDto = {
+      basicInsightsEnabled: true,
+      activityInsightsEnabled: false,
+      hiddenActivityCategoryIds: [],
+      excludeCoParticipants: true
+    };
+    const harness = createHarness({
+      accounts: [
+        createAccount({
+          studentAccountId: "student-001",
+          campusInsightConsentSettings: settings
+        })
+      ],
+      profiles: [
+        createProfile({
+          studentAccountId: "student-001",
+          displayName: "Ada"
+        })
+      ],
+      activities: [
+        createActivity({
+          activityId: "activity-001",
+          hostAccountId: "student-001"
+        })
+      ],
+      participations: [
+        createParticipation({
+          participationId: "participation-001",
+          studentAccountId: "student-001"
+        })
+      ]
+    });
+
+    const result = await harness.service.listCampusStudentInsights(
+      createAdminContext(),
+      "campus-001"
+    );
+
+    expect(result.students[0]).toMatchObject({
+      studentAccountId: "student-001",
+      consentSettings: toAdminConsentSettings(settings),
+      profile: {
+        displayName: "Ada"
+      },
+      hostedActivities: [],
+      participations: []
+    });
+    expect(harness.activityFind).not.toHaveBeenCalled();
+    expect(harness.participationCreateQueryBuilder).not.toHaveBeenCalled();
+  });
+
+  it("filters hidden category IDs from hosted and participation insight rows", async () => {
+    const settings: CampusInsightConsentSettingsDto = {
+      basicInsightsEnabled: false,
+      activityInsightsEnabled: true,
+      hiddenActivityCategoryIds: ["category-hidden"],
+      excludeCoParticipants: true
+    };
+    const harness = createHarness({
+      accounts: [
+        createAccount({
+          studentAccountId: "student-001",
+          campusInsightConsentSettings: settings
+        })
+      ],
+      activities: [
+        createActivity({
+          activityId: "activity-visible",
+          hostAccountId: "student-001",
+          title: "Visible Hosted",
+          categoryId: "category-visible"
+        }),
+        createActivity({
+          activityId: "activity-hidden",
+          hostAccountId: "student-001",
+          title: "Hidden Hosted",
+          categoryId: "category-hidden"
+        })
+      ],
+      participations: [
+        createParticipation({
+          participationId: "participation-visible",
+          studentAccountId: "student-001",
+          activityId: "activity-visible-participation",
+          activity: createActivity({
+            activityId: "activity-visible-participation",
+            title: "Visible Participation",
+            categoryId: "category-visible"
+          })
+        }),
+        createParticipation({
+          participationId: "participation-hidden",
+          studentAccountId: "student-001",
+          activityId: "activity-hidden-participation",
+          activity: createActivity({
+            activityId: "activity-hidden-participation",
+            title: "Hidden Participation",
+            categoryId: "category-hidden"
+          })
+        })
+      ]
+    });
+
+    const result = await harness.service.listCampusStudentInsights(
+      createAdminContext(),
+      "campus-001"
+    );
+
+    expect(result.students[0]?.hostedActivities.map((activity) => activity.activityId)).toEqual([
+      "activity-visible"
+    ]);
+    expect(
+      result.students[0]?.participations.map((participation) => participation.participationId)
+    ).toEqual(["participation-visible"]);
+  });
+
+  it("does not return co-participant fields when co-participants are excluded", async () => {
+    const settings: CampusInsightConsentSettingsDto = {
+      basicInsightsEnabled: false,
+      activityInsightsEnabled: true,
+      hiddenActivityCategoryIds: [],
+      excludeCoParticipants: true
+    };
+    const harness = createHarness({
+      accounts: [
+        createAccount({
+          studentAccountId: "student-001",
+          campusInsightConsentSettings: settings
+        })
+      ],
+      participations: [
+        createParticipation({
+          participationId: "participation-001",
+          studentAccountId: "student-001"
+        })
+      ]
+    });
+
+    const result = await harness.service.listCampusStudentInsights(
+      createAdminContext(),
+      "campus-001"
+    );
+    expect(result.students[0]?.consentSettings).toMatchObject({ excludeCoParticipants: true });
+    expect(result.students[0]?.participations).toHaveLength(1);
+    expect(result.students[0]).not.toHaveProperty("coParticipants");
+    expect(JSON.stringify(result)).not.toContain("coParticipant");
   });
 });
 
@@ -283,8 +492,8 @@ function createHarness(storeOverrides: Partial<InsightStore> = {}) {
     ...storeOverrides
   };
 
-  const studentAccountFind = vi.fn(async (args?: { where?: Partial<StudentAccount> }) => {
-    return store.accounts
+  const filterAccounts = (args?: { where?: Partial<StudentAccount> }) =>
+    store.accounts
       .filter((account) =>
         args?.where?.selectedCampusId === undefined
           ? true
@@ -294,9 +503,14 @@ function createHarness(storeOverrides: Partial<InsightStore> = {}) {
         args?.where?.campusInsightSharingConsent === undefined
           ? true
           : account.campusInsightSharingConsent === args.where.campusInsightSharingConsent
-      )
-      .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
-  });
+      );
+
+  const studentAccountFind = vi.fn(async (args?: { where?: Partial<StudentAccount> }) =>
+    filterAccounts(args).sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())
+  );
+  const studentAccountCount = vi.fn(async (args?: { where?: Partial<StudentAccount> }) =>
+    filterAccounts(args).length
+  );
   const studentProfileFind = vi.fn(async () => store.profiles);
   const activityFind = vi.fn(async (args?: { where?: { campusId?: string } }) =>
     store.activities.filter((activity) =>
@@ -314,7 +528,7 @@ function createHarness(storeOverrides: Partial<InsightStore> = {}) {
   const participationCreateQueryBuilder = vi.fn(() => participationQueryBuilder);
 
   const service = new AdminInsightService(
-    { find: studentAccountFind } as unknown as StudentAccountRepo,
+    { find: studentAccountFind, count: studentAccountCount } as unknown as StudentAccountRepo,
     { find: studentProfileFind } as unknown as StudentProfileRepo,
     { find: activityFind } as unknown as ActivityRepo,
     {
@@ -346,6 +560,12 @@ function createAdminContext(
 }
 
 function createAccount(overrides: Partial<StudentAccount> = {}): StudentAccount {
+  const campusInsightConsentSettings =
+    overrides.campusInsightConsentSettings ??
+    (overrides.campusInsightSharingConsent === false
+      ? createDefaultCampusInsightConsentSettings()
+      : createLegacyEnabledCampusInsightConsentSettings());
+
   return {
     studentAccountId: "student-default",
     passwordHash: "hash",
@@ -354,7 +574,10 @@ function createAccount(overrides: Partial<StudentAccount> = {}): StudentAccount 
     verificationStatus: VerificationStatus.Verified,
     platformAccessStatus: PlatformAccessStatus.Active,
     selectedCampusId: "campus-001",
-    campusInsightSharingConsent: true,
+    campusInsightSharingConsent:
+      overrides.campusInsightSharingConsent ??
+      deriveCampusInsightSharingConsent(campusInsightConsentSettings),
+    campusInsightConsentSettings,
     verificationToken: null,
     createdAt: new Date("2026-05-10T00:00:00.000Z"),
     ...overrides
@@ -422,4 +645,15 @@ interface InsightStore {
   profiles: StudentProfile[];
   activities: Activity[];
   participations: Participation[];
+}
+
+function toAdminConsentSettings(
+  settings: CampusInsightConsentSettingsDto
+): AdminVisibleConsentSettingsDto {
+  return {
+    basicInsightsEnabled: settings.basicInsightsEnabled,
+    activityInsightsEnabled: settings.activityInsightsEnabled,
+    hasHiddenActivityCategories: settings.hiddenActivityCategoryIds.length > 0,
+    excludeCoParticipants: settings.excludeCoParticipants
+  };
 }

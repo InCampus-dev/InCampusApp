@@ -112,6 +112,13 @@ export async function leaveActivity(activityId: string, client: ApiClientLike = 
   await client.delete(`/activities/${activityId}/participants/me`);
 }
 
+export async function deleteHostedActivity(
+  activityId: string,
+  client: ApiClientLike = api
+): Promise<void> {
+  await client.delete(`/activities/${activityId}`);
+}
+
 export async function getPublicStudentProfile(
   contextActivityId: string,
   studentAccountId: string,

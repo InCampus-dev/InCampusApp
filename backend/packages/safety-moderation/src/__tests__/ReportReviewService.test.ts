@@ -3,6 +3,7 @@ import type { DataSource } from "typeorm";
 
 import type { AuthenticatedAdminContext } from "../../../shared/src/auth/AuthenticatedAdminContext";
 import type { StudentAccountRepo } from "../../../access-profile/src/repositories/StudentAccountRepo";
+import { createDefaultCampusInsightConsentSettings } from "../../../shared/src/domain/campusInsightConsent";
 import {
   ActivityStatus,
   GenderPreference,
@@ -42,7 +43,7 @@ describe("ReportReviewService", () => {
     expect(reports.map((report) => report.reportId)).toEqual(["report-001", "report-002"]);
   });
 
-  it("fetches report detail by campus", async () => {
+  it("fetches report detail by campus even when insight consent is disabled", async () => {
     const service = createReportReviewService({
       reportStore: [
         createReportRecord({
@@ -568,6 +569,7 @@ function createStudentAccount(overrides: Partial<StudentAccount> = {}): StudentA
     platformAccessStatus: PlatformAccessStatus.Active,
     selectedCampusId: "campus-001",
     campusInsightSharingConsent: false,
+    campusInsightConsentSettings: createDefaultCampusInsightConsentSettings(),
     verificationToken: null,
     createdAt: new Date("2026-05-13T00:00:00.000Z"),
     ...overrides

@@ -6,13 +6,13 @@ These scenario-level flows guide the local alpha/demo path. Use `docs/demo-seed.
 
 All local/demo student accounts use password `88888888`. Do not use these credentials for production or real deployments.
 
-| Scenario | Account | Seeded data to open |
-| --- | --- | --- |
-| Manage Requests | `demo.host@tongji.edu.cn` | `Mandarin Practice Circle` has pending join requests. |
-| Withdraw Request | `demo.guest@tongji.edu.cn` | `Mandarin Practice Circle` has this guest's pending request. |
-| Joined/Leave state | `user1@tongji.edu.cn` | `Library Lunch Table` has this user as confirmed. |
-| Normal browsing | `user2@tongji.edu.cn` through `user8@tongji.edu.cn` | Realistic feed spread across today, tomorrow, and the day after tomorrow. |
-| Report review | Admin header context | Pending report targets `Main Gate Coffee Chat`. |
+| Scenario | Display name | Account | Seeded data to open |
+| --- | --- | --- | --- |
+| Manage Requests | Luca Ferri | `demo.host@tongji.edu.cn` | `Mandarin Practice Circle` has pending join requests. |
+| Withdraw Request | Giulia Conti | `demo.guest@tongji.edu.cn` | `Mandarin Practice Circle` has this guest's pending request. |
+| Joined/Leave state | Mei Chen | `user1@tongji.edu.cn` | `Cafeteria Dinner Table` has this user as confirmed. |
+| Normal browsing | Marco Rinaldi through Nora Smith | `user2@tongji.edu.cn` through `user8@tongji.edu.cn` | Realistic feed spread across varied campus-aware time slots. |
+| Report review | Campus Admin | Admin header context | Pending report targets `Main Gate Coffee Chat`. |
 
 1. Student signs up with a supported university email, verifies the account, selects a campus, creates a Student Profile, and grants or refuses campus insight consent.
 2. Host creates an activity using a campus category and meeting point from `campus_structured_options`.

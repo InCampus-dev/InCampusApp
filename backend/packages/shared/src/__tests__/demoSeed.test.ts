@@ -98,6 +98,48 @@ describe("phase0DemoSeed", () => {
     ).toBe(true);
   });
 
+  it("uses person names for seeded demo profiles", () => {
+    const displayNames = phase0DemoSeed.studentProfiles.map((profile) => profile.displayName);
+
+    expect(displayNames).toContain("Luca Ferri");
+    expect(displayNames).toContain("Giulia Conti");
+    expect(displayNames).toContain("Mei Chen");
+    expect(displayNames.every((name) => !/^Demo |^User /.test(name))).toBe(true);
+
+    for (const name of displayNames) {
+      expect(name.split(" ").length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("uses varied Tongji-aware local start slots", () => {
+    const scenarioDayCounts = new Map<number, number>();
+
+    for (const activity of phase0DemoSeed.activities) {
+      expect(activity.startsInDays).toBeGreaterThanOrEqual(0);
+      expect(activity.startsInDays).toBeLessThanOrEqual(2);
+      expect(isValidStartTime(activity.startTime)).toBe(true);
+      scenarioDayCounts.set(
+        activity.startsInDays,
+        (scenarioDayCounts.get(activity.startsInDays) ?? 0) + 1
+      );
+    }
+
+    expect(scenarioDayCounts.get(0)).toBe(3);
+    expect(scenarioDayCounts.get(1)).toBe(4);
+    expect(scenarioDayCounts.get(2)).toBe(3);
+
+    const allSeededStartTimes = [
+      ...phase0DemoSeed.activities.map((activity) => activity.startTime),
+      ...demoMockActivities.map((activity) => activity.startTime)
+    ];
+    const uniqueMinutes = new Set(
+      allSeededStartTimes.map((startTime) => startTime.split(":")[1])
+    );
+
+    expect(uniqueMinutes.size).toBeGreaterThanOrEqual(8);
+    expect(new Set(allSeededStartTimes).size).toBeGreaterThanOrEqual(18);
+  });
+
   it("seeds pending request and confirmed participation scenarios", () => {
     const hostApprovalActivity = phase0DemoSeed.activities.find(
       (activity) => activity.activityId === demoApprovalActivityId
@@ -190,6 +232,8 @@ describe("phase0DemoSeed", () => {
       expect(categories.has(activity.categoryId)).toBe(true);
       expect(locations.has(activity.meetingPointId)).toBe(true);
       expect(activity.status).toBe(ActivityStatus.Open);
+      expect(activity.startsInDays).toBeGreaterThanOrEqual(0);
+      expect(isValidStartTime(activity.startTime)).toBe(true);
       expect(activity.maxParticipants).toBeGreaterThanOrEqual(2);
       expect(activity.maxRequests ?? 0).toBeLessThanOrEqual(activity.maxParticipants - 1);
       expect(activity.description.length).toBeGreaterThan(40);
@@ -201,4 +245,8 @@ describe("phase0DemoSeed", () => {
 
 function expectUnique(values: string[], label: string): void {
   expect(new Set(values).size, `${label} should be unique`).toBe(values.length);
+}
+
+function isValidStartTime(value: string): boolean {
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
 }

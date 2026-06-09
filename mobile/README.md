@@ -61,17 +61,20 @@ npm run seed:demo
 Demo login accounts:
 
 ```text
+Luca Ferri
 demo.host@tongji.edu.cn
 88888888
 ```
 
 ```text
+Giulia Conti
 demo.guest@tongji.edu.cn
 88888888
 ```
 
 Numbered demo accounts `user1@tongji.edu.cn` through `user8@tongji.edu.cn`
-also use `88888888`. These credentials are local/demo only.
+show person-name profiles from Mei Chen through Nora Smith and also use
+`88888888`. These credentials are local/demo only.
 
 ## Physical iPhone with Expo Go
 

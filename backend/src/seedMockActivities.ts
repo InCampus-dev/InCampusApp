@@ -235,7 +235,7 @@ function applyMockActivitySeed(
   category: CampusStructuredOption,
   meetingPoint: CampusStructuredOption
 ): void {
-  const scheduledDateTime = buildFutureDate(seed.startsInHours);
+  const scheduledDateTime = buildScheduledDate(seed.startsInDays, seed.startTime);
 
   activity.campusId = seed.campusId;
   activity.hostAccountId = seed.hostAccountId;
@@ -265,12 +265,33 @@ function deriveStatus(seedStatus: ActivityStatus, activity: Activity): ActivityS
   return seedStatus;
 }
 
-function buildFutureDate(startsInHours: number): Date {
-  return new Date(Date.now() + startsInHours * 60 * 60 * 1000);
+function buildScheduledDate(startsInDays: number, startTime: string): Date {
+  const now = new Date();
+  const [hours, minutes] = parseStartTime(startTime);
+  const scheduledDate = new Date(now);
+
+  scheduledDate.setDate(now.getDate() + startsInDays);
+  scheduledDate.setHours(hours, minutes, 0, 0);
+
+  while (scheduledDate <= now) {
+    scheduledDate.setDate(scheduledDate.getDate() + 1);
+  }
+
+  return scheduledDate;
 }
 
 function buildEndDate(start: Date, durationHours: number): Date {
   return new Date(start.getTime() + durationHours * 60 * 60 * 1000);
+}
+
+function parseStartTime(startTime: string): [number, number] {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(startTime);
+
+  if (!match) {
+    throw new Error(`Invalid demo mock activity start time: ${startTime}`);
+  }
+
+  return [Number(match[1]), Number(match[2])];
 }
 
 function assertMockActivitySeeds(seeds: DemoMockActivitySeed[]): void {

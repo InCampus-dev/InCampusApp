@@ -1,6 +1,8 @@
 # Demo Seed
 
-This seed is for local and demo environments only. It prepares the minimum real data needed for the InCampus demo path without creating hidden mocks or production data.
+This seed is for local and demo environments only. It prepares realistic data for the InCampus demo path without creating hidden mocks, production data, or a schema migration.
+
+Important: these credentials are only for the local/demo seed. Do not use them for production, staging, or any real deployment.
 
 Run it only after the local database exists and the current migrations have been applied.
 
@@ -12,10 +14,20 @@ The command delegates to the backend workspace and uses the existing `tsx` dev t
 
 ## Demo Credentials
 
-| Role | Email | Password | Notes |
+All local/demo student accounts use password `88888888`. Password hashing still runs through the normal backend bcrypt flow.
+
+| Role | Email | Password | Demo scenario |
 | --- | --- | --- | --- |
-| Host student | `demo.host@tongji.edu.cn` | `InCampusDemo2026!` | Verified, active, selected into Tongji Jiading, insight consent enabled. |
-| Guest student | `demo.guest@tongji.edu.cn` | `InCampusDemo2026!` | Verified, active, selected into Tongji Jiading, insight consent disabled. |
+| Host student | `demo.host@tongji.edu.cn` | `88888888` | Hosts `Mandarin Practice Circle` with pending join requests for Manage Requests. |
+| Guest student | `demo.guest@tongji.edu.cn` | `88888888` | Has a pending request for Withdraw Request and a confirmed coffee activity. |
+| Joined guest | `user1@tongji.edu.cn` | `88888888` | Already confirmed in `Library Lunch Table` for Joined/Leave state. |
+| Request applicant | `user2@tongji.edu.cn` | `88888888` | Pending applicant and host of a quick coffee activity. |
+| Request applicant | `user3@tongji.edu.cn` | `88888888` | Pending applicant and host of the reported activity. |
+| Study host | `user4@tongji.edu.cn` | `88888888` | Hosts tomorrow's study block. |
+| Sport host | `user5@tongji.edu.cn` | `88888888` | Hosts basketball and has a pending CV review request. |
+| Design host | `user6@tongji.edu.cn` | `88888888` | Hosts approval-based design critique. |
+| Photo host | `user7@tongji.edu.cn` | `88888888` | Hosts the day-after-tomorrow photo walk. |
+| Planning host | `user8@tongji.edu.cn` | `88888888` | Hosts career/planning meetups. |
 
 Admin routes use the provisional local header context:
 
@@ -33,14 +45,19 @@ x-admin-authorized-campus-ids: <demo campus id>
 - Campus: `Tongji University / Jiading Campus`.
 - Activity categories: Lunch, Coffee, Study, Sport, Language Exchange.
 - Meeting points: Library Plaza, Cafeteria, Main Gate, Sports Center.
-- Student accounts: one host and one guest.
-- Student profiles: one host profile and one guest profile.
+- Student accounts and profiles: `demo.host`, `demo.guest`, and `user1` through `user8`.
 - Activities:
-  - `[DEMO] Lunch near Library Plaza`, open join.
-  - `[DEMO] Language Exchange at Cafeteria`, approval-based.
-  - `[DEMO] Moderation Review Activity`, dedicated to admin report-review and `remove_activity` checks.
+  - Today: `Library Lunch Table`, `Mandarin Practice Circle`, `Espresso Break Before Lab`.
+  - Tomorrow: `Quiet Algorithms Study Block`, `CV Review Swap`, `Basketball Shooting Practice`, `Evening Design Critique`.
+  - Day after tomorrow: `Campus Photo Walk`, `Finals Planning Coffee`, `Main Gate Coffee Chat`.
+- Participations:
+  - Pending requests on `Mandarin Practice Circle` for host-side request review.
+  - A pending request from `demo.guest` for the withdraw-request path.
+  - Confirmed guests on open activities for Joined/Leave state and capacity display.
 - Report records:
-  - One pending `[DEMO]` report targeting only the moderation review activity.
+  - One pending report targeting `Main Gate Coffee Chat`.
+
+No seeded activity is configured as immediately full.
 
 ## Idempotency Rules
 
@@ -53,34 +70,34 @@ The seed reuses stable demo keys and updates records instead of creating uncontr
 | Structured option | `campusId + optionType + name` |
 | Account | `universityEmail` |
 | Profile | `studentAccountId` |
-| Activity | `campusId + hostAccountId + title`, where title starts with `[DEMO]` |
-| Report | Stable seeded demo report ID |
+| Activity | Stable seeded activity ID |
+| Participation | Stable seeded participation ID |
+| Report | Stable seeded report ID |
 
-Rerunning the seed updates the demo records and resets only participations and notification records attached to the seeded `[DEMO]` activities. It does not delete or mutate non-demo data.
-The seeded admin-demo report is reset by its stable report ID only; non-demo reports are not deleted or overwritten.
+Rerunning the seed updates only the demo records explicitly listed in the manifest. It does not delete unrelated local data, does not reset the database, and does not create a TypeORM migration. Activity counters are recalculated for the seeded activities after listed participations are upserted.
 
 ## Start Order
 
-1. Start or reset the local PostgreSQL database.
+1. Start the local PostgreSQL database.
 2. Apply the backend migrations:
 
    ```bash
    npm run migrate
    ```
 
-3. Start the backend:
-
-   ```bash
-   npm run dev:backend
-   ```
-
-4. In another terminal, run:
+3. Seed local/demo data:
 
    ```bash
    npm run seed:demo
    ```
 
-5. Optionally run the backend smoke check:
+4. Start the backend:
+
+   ```bash
+   npm run dev:backend
+   ```
+
+5. In another terminal, run:
 
    ```bash
    npm run smoke:demo
@@ -88,13 +105,13 @@ The seeded admin-demo report is reset by its stable report ID only; non-demo rep
 
 ## Reset And Rerun
 
-For normal demo cleanup, rerun:
+For normal demo refresh, rerun:
 
 ```bash
 npm run seed:demo
 ```
 
-For a full database reset, recreate the local database, apply migrations again with `npm run migrate`, and rerun the seed.
+For a full local database reset, recreate the local database, apply migrations again with `npm run migrate`, and rerun the seed. A full reset is not required for this demo refresh.
 
 ## Quick API Verification
 
@@ -109,13 +126,22 @@ Host sign-in:
 ```bash
 curl -s -X POST http://localhost:3000/auth/signin \
   -H 'content-type: application/json' \
-  -d '{"universityEmail":"demo.host@tongji.edu.cn","password":"InCampusDemo2026!"}'
+  -d '{"universityEmail":"demo.host@tongji.edu.cn","password":"88888888"}'
+```
+
+Guest sign-in:
+
+```bash
+curl -s -X POST http://localhost:3000/auth/signin \
+  -H 'content-type: application/json' \
+  -d '{"universityEmail":"demo.guest@tongji.edu.cn","password":"88888888"}'
 ```
 
 After sign-in, store the returned token:
 
 ```bash
 HOST_TOKEN=<accessToken>
+GUEST_TOKEN=<accessToken>
 ```
 
 List campuses:
@@ -145,9 +171,10 @@ curl -s http://localhost:3000/activities \
 
 ## Expected Demo Tour
 
-1. Sign in as host or guest.
+1. Sign in as `demo.guest@tongji.edu.cn`.
 2. Confirm campus selection for Tongji Jiading.
-3. Read or create profile.
-4. Use the seeded feed activities to verify feed and detail.
-5. Use backend smoke or mobile screens, where implemented, to verify join/request and manage requests.
-6. Use notification list/context routes to verify notification records and fallback behavior.
+3. Browse the activity feed and open realistic activity details.
+4. Open `Mandarin Practice Circle` to show a pending request and withdraw when available.
+5. Sign in as `user1@tongji.edu.cn` and open `Library Lunch Table` to show Joined/Leave state when available.
+6. Sign in as `demo.host@tongji.edu.cn` and open `Mandarin Practice Circle` to manage pending requests.
+7. Use the admin report flow to review the report linked to `Main Gate Coffee Chat`.

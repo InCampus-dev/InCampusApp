@@ -2,6 +2,18 @@
 
 These scenario-level flows guide the local alpha/demo path. Use `docs/demo-seed.md`, `docs/backend-smoke-check.md`, `docs/mobile-run-check.md`, and `docs/demo-readiness-review.md` for the current repeatable demo setup and verification status.
 
+## Seeded Scenario Accounts
+
+All local/demo student accounts use password `88888888`. Do not use these credentials for production or real deployments.
+
+| Scenario | Account | Seeded data to open |
+| --- | --- | --- |
+| Manage Requests | `demo.host@tongji.edu.cn` | `Mandarin Practice Circle` has pending join requests. |
+| Withdraw Request | `demo.guest@tongji.edu.cn` | `Mandarin Practice Circle` has this guest's pending request. |
+| Joined/Leave state | `user1@tongji.edu.cn` | `Library Lunch Table` has this user as confirmed. |
+| Normal browsing | `user2@tongji.edu.cn` through `user8@tongji.edu.cn` | Realistic feed spread across today, tomorrow, and the day after tomorrow. |
+| Report review | Admin header context | Pending report targets `Main Gate Coffee Chat`. |
+
 1. Student signs up with a supported university email, verifies the account, selects a campus, creates a Student Profile, and grants or refuses campus insight consent.
 2. Host creates an activity using a campus category and meeting point from `campus_structured_options`.
 3. Guest browses the campus activity feed, opens details, and directly joins or submits a join request.

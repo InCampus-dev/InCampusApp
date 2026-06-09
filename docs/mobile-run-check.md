@@ -95,8 +95,11 @@ plus Expo tunnel. Do not use Node 25.
 
 | Role | Email | Password |
 | --- | --- | --- |
-| Host | `demo.host@tongji.edu.cn` | `InCampusDemo2026!` |
-| Guest | `demo.guest@tongji.edu.cn` | `InCampusDemo2026!` |
+| Host | `demo.host@tongji.edu.cn` | `88888888` |
+| Guest | `demo.guest@tongji.edu.cn` | `88888888` |
+| Numbered users | `user1@tongji.edu.cn` through `user8@tongji.edu.cn` | `88888888` |
+
+These credentials are local/demo only and must not be used for production.
 
 ## Navigation Checklist
 
@@ -109,7 +112,7 @@ plus Expo tunnel. Do not use Node 25.
 | Consent settings | Implemented | Toggle consent and continue to feed. |
 | Create activity | Implemented | `POST /activities` is wired and category/location options load from the student-safe structured-options endpoint. |
 | Feed refresh, T10 | Implemented, QA pending | Create or join an activity and verify the feed refreshes; also pull to refresh. |
-| Activity detail and join, T11 | Implemented, QA pending | Open seeded `[DEMO]` activities and verify open join, approval request, withdraw request, and leave activity behavior. |
+| Activity detail and join, T11 | Implemented, QA pending | Open seeded realistic activities and verify open join, approval request, withdraw request, and leave activity behavior. |
 | Manage requests, T12 | Implemented, QA pending | Sign in as host, open an approval-based activity, and approve/decline a pending request. |
 | Notifications, T13 | Implemented records/context, push mocked | Verify list, context routing, and fallback routing after backend smoke creates records. |
 | Personal activities, T14 | Implemented, QA pending | Open My Activities and verify `GET /profiles/me/activities` data appears in upcoming/history. |
@@ -124,7 +127,7 @@ plus Expo tunnel. Do not use Node 25.
 4. Expose it with `ngrok http 3000` and verify `https://<backend-tunnel-url>/health`.
 5. Start Expo from `mobile/` with `EXPO_PUBLIC_API_BASE_URL=https://<backend-tunnel-url> npx expo start --tunnel --clear`.
 6. Sign in as guest and confirm campus/profile/consent path reaches Activity Feed.
-7. Open seeded `[DEMO]` activities from feed.
+7. Open seeded realistic activities from feed.
 8. Try open join, approval-based request, withdraw request, and leave joined activity.
 9. Sign in as host and verify manage requests.
 10. Open notifications after the smoke script or manual join/request creates notification records.

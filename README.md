@@ -130,10 +130,15 @@ README.
 
 Demo accounts:
 
-| Role | Email | Password |
-| --- | --- | --- |
-| Host | `demo.host@tongji.edu.cn` | `InCampusDemo2026!` |
-| Guest | `demo.guest@tongji.edu.cn` | `InCampusDemo2026!` |
+| Role | Display name | Email | Password |
+| --- | --- | --- | --- |
+| Host | Luca Ferri | `demo.host@tongji.edu.cn` | `88888888` |
+| Guest | Giulia Conti | `demo.guest@tongji.edu.cn` | `88888888` |
+| Numbered users | Mei Chen through Nora Smith | `user1@tongji.edu.cn` through `user8@tongji.edu.cn` | `88888888` |
+
+These credentials are local/demo only. Do not use them for production or real
+deployments. See [docs/demo-seed.md](docs/demo-seed.md) for the full scenario
+table.
 
 ## Quality Checks
 

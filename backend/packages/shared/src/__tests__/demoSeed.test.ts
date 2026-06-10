@@ -5,24 +5,27 @@ import {
   CampusStructuredOptionType,
   GenderPreference,
   ParticipationMode,
+  ParticipationRecordType,
+  ParticipationStatus,
   ReportStatus,
   ReportTargetType
 } from "../domain/enums";
 import {
-  demoActivityTitlePrefix,
+  demoApprovalActivityId,
+  demoGuestAccountId,
+  demoHostAccountId,
   demoModerationActivityId,
+  demoOpenActivityId,
   demoPassword,
   demoReportId,
+  demoUser1AccountId,
   phase0DemoSeed,
   summarizeDemoSeed
 } from "../seed/demoSeed";
-import {
-  demoMockActivities,
-  demoMockActivityTitlePrefix
-} from "../seed/demoMockActivities";
+import { demoMockActivities } from "../seed/demoMockActivities";
 
 describe("phase0DemoSeed", () => {
-  it("contains the minimum data needed for the local demo path", () => {
+  it("contains the data needed for the refreshed local demo path", () => {
     const summary = summarizeDemoSeed();
 
     expect(summary.universityIdentityRules).toBeGreaterThanOrEqual(1);
@@ -37,13 +40,14 @@ describe("phase0DemoSeed", () => {
         (option) => option.optionType === CampusStructuredOptionType.CampusLocation
       )
     ).toHaveLength(4);
-    expect(summary.studentAccounts).toBeGreaterThanOrEqual(2);
-    expect(summary.studentProfiles).toBeGreaterThanOrEqual(2);
-    expect(summary.activities).toBeGreaterThanOrEqual(3);
+    expect(summary.studentAccounts).toBeGreaterThanOrEqual(10);
+    expect(summary.studentProfiles).toBeGreaterThanOrEqual(10);
+    expect(summary.activities).toBeGreaterThanOrEqual(10);
+    expect(summary.participations).toBeGreaterThanOrEqual(4);
     expect(summary.reports).toBeGreaterThanOrEqual(1);
   });
 
-  it("uses stable natural keys for idempotent demo seeding", () => {
+  it("uses stable manifest keys for idempotent demo seeding", () => {
     expectUnique(
       phase0DemoSeed.universityIdentityRules.map((rule) => rule.emailDomain),
       "identity rule emailDomain"
@@ -67,10 +71,12 @@ describe("phase0DemoSeed", () => {
       "student profile studentAccountId"
     );
     expectUnique(
-      phase0DemoSeed.activities.map(
-        (activity) => `${activity.campusId}:${activity.hostAccountId}:${activity.title}`
-      ),
-      "activity campusId + hostAccountId + title"
+      phase0DemoSeed.activities.map((activity) => activity.activityId),
+      "activity activityId"
+    );
+    expectUnique(
+      phase0DemoSeed.participations.map((participation) => participation.participationId),
+      "participation participationId"
     );
     expectUnique(
       phase0DemoSeed.reports.map((report) => report.reportId),
@@ -78,44 +84,123 @@ describe("phase0DemoSeed", () => {
     );
   });
 
-  it("marks all seeded activities as explicit demo records", () => {
+  it("does not expose demo markers in visible activity titles", () => {
     expect(phase0DemoSeed.activities).not.toHaveLength(0);
-    expect(
-      phase0DemoSeed.activities.every((activity) =>
-        activity.title.startsWith(demoActivityTitlePrefix)
-      )
-    ).toBe(true);
+    expect(phase0DemoSeed.activities.every((activity) => !activity.title.includes("[DEMO]"))).toBe(
+      true
+    );
   });
 
   it("keeps demo account credentials local and explicit", () => {
-    expect(demoPassword).toBe("InCampusDemo2026!");
+    expect(demoPassword).toBe("88888888");
     expect(
       phase0DemoSeed.studentAccounts.every((account) => account.password === demoPassword)
     ).toBe(true);
   });
 
-  it("uses a dedicated moderation activity for the seeded admin-review report", () => {
+  it("uses person names for seeded demo profiles", () => {
+    const displayNames = phase0DemoSeed.studentProfiles.map((profile) => profile.displayName);
+
+    expect(displayNames).toContain("Luca Ferri");
+    expect(displayNames).toContain("Giulia Conti");
+    expect(displayNames).toContain("Mei Chen");
+    expect(displayNames.every((name) => !/^Demo |^User /.test(name))).toBe(true);
+
+    for (const name of displayNames) {
+      expect(name.split(" ").length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("uses varied Tongji-aware local start slots", () => {
+    const scenarioDayCounts = new Map<number, number>();
+
+    for (const activity of phase0DemoSeed.activities) {
+      expect(activity.startsInDays).toBeGreaterThanOrEqual(0);
+      expect(activity.startsInDays).toBeLessThanOrEqual(2);
+      expect(isValidStartTime(activity.startTime)).toBe(true);
+      scenarioDayCounts.set(
+        activity.startsInDays,
+        (scenarioDayCounts.get(activity.startsInDays) ?? 0) + 1
+      );
+    }
+
+    expect(scenarioDayCounts.get(0)).toBe(3);
+    expect(scenarioDayCounts.get(1)).toBe(4);
+    expect(scenarioDayCounts.get(2)).toBe(3);
+
+    const allSeededStartTimes = [
+      ...phase0DemoSeed.activities.map((activity) => activity.startTime),
+      ...demoMockActivities.map((activity) => activity.startTime)
+    ];
+    const uniqueMinutes = new Set(
+      allSeededStartTimes.map((startTime) => startTime.split(":")[1])
+    );
+
+    expect(uniqueMinutes.size).toBeGreaterThanOrEqual(8);
+    expect(new Set(allSeededStartTimes).size).toBeGreaterThanOrEqual(18);
+  });
+
+  it("seeds pending request and confirmed participation scenarios", () => {
+    const hostApprovalActivity = phase0DemoSeed.activities.find(
+      (activity) => activity.activityId === demoApprovalActivityId
+    );
+    const guestPendingRequest = phase0DemoSeed.participations.find(
+      (participation) =>
+        participation.activityId === demoApprovalActivityId &&
+        participation.studentAccountId === demoGuestAccountId
+    );
+    const userOneConfirmed = phase0DemoSeed.participations.find(
+      (participation) =>
+        participation.activityId === demoOpenActivityId &&
+        participation.studentAccountId === demoUser1AccountId
+    );
+
+    expect(hostApprovalActivity).toMatchObject({
+      hostAccountId: demoHostAccountId,
+      participationMode: ParticipationMode.ApprovalBased
+    });
+    expect(guestPendingRequest).toMatchObject({
+      recordType: ParticipationRecordType.Request,
+      status: ParticipationStatus.Pending
+    });
+    expect(userOneConfirmed).toMatchObject({
+      recordType: ParticipationRecordType.Participation,
+      status: ParticipationStatus.Confirmed
+    });
+  });
+
+  it("does not configure seeded activities as immediately full", () => {
+    for (const activity of phase0DemoSeed.activities) {
+      const confirmedGuests = phase0DemoSeed.participations.filter(
+        (participation) =>
+          participation.activityId === activity.activityId &&
+          participation.recordType === ParticipationRecordType.Participation &&
+          participation.status === ParticipationStatus.Confirmed
+      ).length;
+
+      expect(confirmedGuests).toBeLessThan(activity.maxParticipants - 1);
+    }
+  });
+
+  it("uses a realistic activity for the seeded admin-review report", () => {
     const moderationActivity = phase0DemoSeed.activities.find(
       (activity) => activity.activityId === demoModerationActivityId
     );
     const demoReport = phase0DemoSeed.reports.find((report) => report.reportId === demoReportId);
 
-    expect(moderationActivity?.title).toBe("[DEMO] Moderation Review Activity");
+    expect(moderationActivity?.title).toBe("Main Gate Coffee Chat");
     expect(demoReport).toMatchObject({
       targetType: ReportTargetType.Activity,
       targetActivityId: demoModerationActivityId,
       status: ReportStatus.PendingReview
     });
+    expect(demoReport?.description?.includes("[DEMO]")).toBe(false);
   });
 
   it("contains a rich idempotent mock activity set for demo feeds", () => {
     expect(demoMockActivities.length).toBeGreaterThanOrEqual(18);
     expect(demoMockActivities.length).toBeLessThanOrEqual(25);
-    expect(
-      demoMockActivities.every((activity) =>
-        activity.title.startsWith(demoMockActivityTitlePrefix)
-      )
-    ).toBe(true);
+    expect(demoMockActivities.every((activity) => !activity.title.includes("[DEMO]"))).toBe(true);
     expectUnique(
       demoMockActivities.map((activity) => `${activity.campusId}:${activity.title}`),
       "mock activity campusId + title"
@@ -147,6 +232,8 @@ describe("phase0DemoSeed", () => {
       expect(categories.has(activity.categoryId)).toBe(true);
       expect(locations.has(activity.meetingPointId)).toBe(true);
       expect(activity.status).toBe(ActivityStatus.Open);
+      expect(activity.startsInDays).toBeGreaterThanOrEqual(0);
+      expect(isValidStartTime(activity.startTime)).toBe(true);
       expect(activity.maxParticipants).toBeGreaterThanOrEqual(2);
       expect(activity.maxRequests ?? 0).toBeLessThanOrEqual(activity.maxParticipants - 1);
       expect(activity.description.length).toBeGreaterThan(40);
@@ -158,4 +245,8 @@ describe("phase0DemoSeed", () => {
 
 function expectUnique(values: string[], label: string): void {
   expect(new Set(values).size, `${label} should be unique`).toBe(values.length);
+}
+
+function isValidStartTime(value: string): boolean {
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
 }

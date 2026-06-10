@@ -52,7 +52,7 @@ These must pass for the backend demo path to be considered usable:
 | Profile read | `GET /profiles/me` returns seeded host and guest profiles. |
 | Campus list | `GET /campuses` returns Tongji Jiading for the signed-in student. |
 | Structured options | Admin list returns at least five categories and four locations. |
-| Seeded feed/detail | Guest sees seeded `[DEMO]` activity in feed and can open detail. |
+| Seeded feed/detail | Guest sees a seeded realistic activity in feed and can open detail. |
 
 ## Conditional Checks
 
@@ -60,7 +60,7 @@ These run when required prerequisites are present. Unexpected failures are repor
 
 | Check | Expected result |
 | --- | --- |
-| Create direct-join activity | Host can create a runtime `[DEMO] SMOKE` activity through `POST /activities`. |
+| Create direct-join activity | Host can create a runtime smoke activity through `POST /activities`. |
 | Direct join | Guest can join that activity through `POST /activities/:id/join`. |
 | Direct-join notification | Host receives a notification record; list and context are readable. |
 | Create approval activity | Host can create an approval-based runtime activity. |
@@ -97,7 +97,7 @@ Use this checklist if the script cannot be run in the current environment.
    ```bash
    curl -s -X POST http://localhost:3000/auth/signin \
      -H 'content-type: application/json' \
-     -d '{"universityEmail":"demo.host@tongji.edu.cn","password":"InCampusDemo2026!"}'
+     -d '{"universityEmail":"demo.host@tongji.edu.cn","password":"88888888"}'
    ```
 
 3. Guest sign-in:
@@ -105,7 +105,7 @@ Use this checklist if the script cannot be run in the current environment.
    ```bash
    curl -s -X POST http://localhost:3000/auth/signin \
      -H 'content-type: application/json' \
-     -d '{"universityEmail":"demo.guest@tongji.edu.cn","password":"InCampusDemo2026!"}'
+     -d '{"universityEmail":"demo.guest@tongji.edu.cn","password":"88888888"}'
    ```
 
 4. Campus list:

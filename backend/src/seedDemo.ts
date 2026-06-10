@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { DataSource, In } from "typeorm";
+import { DataSource, Repository } from "typeorm";
 
 import { StudentAccount } from "../packages/access-profile/src/entities/StudentAccount";
 import { StudentProfile } from "../packages/access-profile/src/entities/StudentProfile";
@@ -8,17 +8,16 @@ import { Campus } from "../packages/campus-administration/src/entities/Campus";
 import { CampusStructuredOption } from "../packages/campus-administration/src/entities/CampusStructuredOption";
 import { Activity } from "../packages/hosting-lifecycle/src/entities/Activity";
 import { Participation } from "../packages/hosting-lifecycle/src/entities/Participation";
-import { NotificationRecord } from "../packages/notifications-system-flow/src/entities/NotificationRecord";
 import { ReportRecord } from "../packages/safety-moderation/src/entities/ReportRecord";
 import {
   createDefaultCampusInsightConsentSettings,
   createLegacyEnabledCampusInsightConsentSettings
 } from "../packages/shared/src/domain/campusInsightConsent";
 import { AppDataSource } from "../packages/shared/src/config/database";
+import { ParticipationRecordType, ParticipationStatus } from "../packages/shared/src/domain/enums";
 import {
-  demoActivityTitlePrefix,
   phase0DemoSeed,
-  type DemoActivitySeed,
+  type DemoParticipationSeed,
   type DemoReportSeed,
   type DemoSeedData
 } from "../packages/shared/src/seed/demoSeed";
@@ -32,9 +31,10 @@ interface DemoSeedRunSummary {
   studentAccounts: number;
   studentProfiles: number;
   activities: number;
+  participations: number;
   mockActivities: number;
   reports: number;
-  resetDemoActivityIds: string[];
+  refreshedDemoActivityIds: string[];
 }
 
 interface SeedContext {
@@ -61,9 +61,10 @@ export async function seedDemo(dataSource: DataSource): Promise<DemoSeedRunSumma
     studentAccounts: 0,
     studentProfiles: 0,
     activities: 0,
+    participations: 0,
     mockActivities: 0,
     reports: 0,
-    resetDemoActivityIds: []
+    refreshedDemoActivityIds: []
   };
 
   await seedUniversityIdentityRules(dataSource, phase0DemoSeed, summary);
@@ -72,6 +73,8 @@ export async function seedDemo(dataSource: DataSource): Promise<DemoSeedRunSumma
   await seedStudentAccounts(dataSource, phase0DemoSeed, context, summary);
   await seedStudentProfiles(dataSource, phase0DemoSeed, context, summary);
   await seedActivities(dataSource, phase0DemoSeed, context, summary);
+  await seedParticipations(dataSource, phase0DemoSeed, context, summary);
+  await refreshSeededActivityCounters(dataSource, phase0DemoSeed, context);
   const mockActivitySummary = await seedMockActivities(dataSource);
   summary.mockActivities = mockActivitySummary.inserted + mockActivitySummary.updated;
   await seedReports(dataSource, phase0DemoSeed, context, summary);
@@ -267,8 +270,6 @@ async function seedActivities(
   const repo = dataSource.getRepository(Activity);
 
   for (const activitySeed of seed.activities) {
-    assertDemoActivityTitle(activitySeed);
-
     const campusId = requireMappedValue(context.campusIdBySeedId, activitySeed.campusId, "campus");
     const hostAccountId = requireMappedValue(
       context.accountIdBySeedId,
@@ -286,17 +287,8 @@ async function seedActivities(
       "meeting point"
     );
     const existingActivity = await repo.findOne({
-      where: {
-        campusId,
-        hostAccountId,
-        title: activitySeed.title
-      }
+      where: { activityId: activitySeed.activityId }
     });
-
-    if (existingActivity) {
-      await resetDemoActivityRelations(dataSource, [existingActivity.activityId]);
-      summary.resetDemoActivityIds.push(existingActivity.activityId);
-    }
 
     const activity =
       existingActivity ??
@@ -306,7 +298,10 @@ async function seedActivities(
         hostAccountId,
         title: activitySeed.title
       });
-    const scheduledDateTime = buildFutureDate(activitySeed.startsInHours);
+    const scheduledDateTime = buildScheduledDate(
+      activitySeed.startsInDays,
+      activitySeed.startTime
+    );
 
     activity.campusId = campusId;
     activity.hostAccountId = hostAccountId;
@@ -328,7 +323,94 @@ async function seedActivities(
 
     const savedActivity = await repo.save(activity);
     context.activityIdBySeedId.set(activitySeed.activityId, savedActivity.activityId);
+    summary.refreshedDemoActivityIds.push(savedActivity.activityId);
     summary.activities += 1;
+  }
+}
+
+async function seedParticipations(
+  dataSource: DataSource,
+  seed: DemoSeedData,
+  context: SeedContext,
+  summary: DemoSeedRunSummary
+): Promise<void> {
+  const repo = dataSource.getRepository(Participation);
+
+  for (const participationSeed of seed.participations) {
+    const participation = await buildDemoParticipation(repo, participationSeed, context);
+
+    await repo.save(participation);
+    summary.participations += 1;
+  }
+}
+
+async function buildDemoParticipation(
+  repo: Repository<Participation>,
+  participationSeed: DemoParticipationSeed,
+  context: SeedContext
+): Promise<Participation> {
+  const activityId = requireMappedValue(
+    context.activityIdBySeedId,
+    participationSeed.activityId,
+    "activity"
+  );
+  const studentAccountId = requireMappedValue(
+    context.accountIdBySeedId,
+    participationSeed.studentAccountId,
+    "student account"
+  );
+  const existingParticipation = await repo.findOne({
+    where: { participationId: participationSeed.participationId }
+  });
+  const participation =
+    existingParticipation ??
+    repo.create({
+      participationId: participationSeed.participationId
+    });
+
+  participation.activityId = activityId;
+  participation.studentAccountId = studentAccountId;
+  participation.recordType = participationSeed.recordType;
+  participation.status = participationSeed.status;
+
+  return participation;
+}
+
+async function refreshSeededActivityCounters(
+  dataSource: DataSource,
+  seed: DemoSeedData,
+  context: SeedContext
+): Promise<void> {
+  const activityRepo = dataSource.getRepository(Activity);
+  const participationRepo = dataSource.getRepository(Participation);
+
+  for (const activitySeed of seed.activities) {
+    const activityId = requireMappedValue(
+      context.activityIdBySeedId,
+      activitySeed.activityId,
+      "activity"
+    );
+    const activity = await activityRepo.findOne({ where: { activityId } });
+    if (!activity) {
+      throw new Error(`Missing seeded activity for counter refresh: ${activitySeed.activityId}`);
+    }
+
+    activity.currentParticipantCount = await participationRepo.count({
+      where: {
+        activityId,
+        recordType: ParticipationRecordType.Participation,
+        status: ParticipationStatus.Confirmed
+      }
+    });
+    activity.currentRequestCount = await participationRepo.count({
+      where: {
+        activityId,
+        recordType: ParticipationRecordType.Request,
+        status: ParticipationStatus.Pending
+      }
+    });
+
+    await activityRepo.save(activity);
   }
 }
 
@@ -402,36 +484,33 @@ function applyDemoReportSeed(
   report.commandDispatchPending = reportSeed.commandDispatchPending;
 }
 
-async function resetDemoActivityRelations(
-  dataSource: DataSource,
-  demoActivityIds: string[]
-): Promise<void> {
-  if (demoActivityIds.length === 0) {
-    return;
+function buildScheduledDate(startsInDays: number, startTime: string): Date {
+  const now = new Date();
+  const [hours, minutes] = parseStartTime(startTime);
+  const scheduledDate = new Date(now);
+
+  scheduledDate.setDate(now.getDate() + startsInDays);
+  scheduledDate.setHours(hours, minutes, 0, 0);
+
+  while (scheduledDate <= now) {
+    scheduledDate.setDate(scheduledDate.getDate() + 1);
   }
 
-  await dataSource.getRepository(NotificationRecord).delete({
-    relatedActivityId: In(demoActivityIds)
-  });
-  await dataSource.getRepository(Participation).delete({
-    activityId: In(demoActivityIds)
-  });
-}
-
-function buildFutureDate(startsInHours: number): Date {
-  return new Date(Date.now() + startsInHours * 60 * 60 * 1000);
+  return scheduledDate;
 }
 
 function buildEndDate(start: Date, durationHours: number): Date {
   return new Date(start.getTime() + durationHours * 60 * 60 * 1000);
 }
 
-function assertDemoActivityTitle(activitySeed: DemoActivitySeed): void {
-  if (!activitySeed.title.startsWith(demoActivityTitlePrefix)) {
-    throw new Error(
-      `Refusing to seed activity without ${demoActivityTitlePrefix} prefix: ${activitySeed.title}`
-    );
+function parseStartTime(startTime: string): [number, number] {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(startTime);
+
+  if (!match) {
+    throw new Error(`Invalid demo activity start time: ${startTime}`);
   }
+
+  return [Number(match[1]), Number(match[2])];
 }
 
 function requireMappedValue(map: Map<string, string>, seedId: string, label: string): string {

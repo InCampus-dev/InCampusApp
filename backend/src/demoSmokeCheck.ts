@@ -2,11 +2,7 @@ import {
   CampusStructuredOptionType,
   ParticipationMode
 } from "../packages/shared/src/domain/enums";
-import {
-  demoActivityTitlePrefix,
-  demoPassword,
-  phase0DemoSeed
-} from "../packages/shared/src/seed/demoSeed";
+import { demoPassword, phase0DemoSeed } from "../packages/shared/src/seed/demoSeed";
 import { demoMockActivities } from "../packages/shared/src/seed/demoMockActivities";
 
 type CheckKind = "required" | "conditional" | "skipped";
@@ -214,6 +210,10 @@ async function runDemoChecks(): Promise<void> {
     requireAuth();
     assert(Boolean(seededOpenActivity), "No seeded open activity configured");
     const feed = await getJson<ActivityDto[]>("/activities", guestAuth!.accessToken);
+    assert(
+      feed.every((item) => !item.title.includes("[DEMO]")),
+      "Seeded feed should not expose [DEMO] activity titles"
+    );
     const activity = feed.find((item) => item.title === seededOpenActivity!.title);
     assert(Boolean(activity), `Seeded activity not visible: ${seededOpenActivity!.title}`);
     const mockActivityTitles = new Set(demoMockActivities.map((item) => item.title));
@@ -417,7 +417,7 @@ async function createSmokeActivity(label: string, mode: ParticipationMode): Prom
   return postJson<ActivityDto>(
     "/activities",
     {
-      title: `${demoActivityTitlePrefix} SMOKE ${label} ${runId}`,
+      title: `Smoke ${label} ${runId}`,
       description: `Backend smoke check activity for ${label}.`,
       categoryId: category!.optionId,
       scheduledDateTime: startsAt,

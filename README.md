@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="https://incampus-project.hgsk9jqhfx.chatgpt.site"><strong>Explore the InCampus project website ↗</strong></a>
+  <a href="https://incampus-dev.github.io/InCampusApp/"><strong>Explore the InCampus project website ↗</strong></a>
 </p>
 
 **InCampus helps university students turn campus life from something they watch into something they can enter.**

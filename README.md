@@ -4,6 +4,10 @@
   <img src="mobile/assets/incampus-wordmark.png" alt="InCampus wordmark" width="240" />
 </p>
 
+<p align="center">
+  <a href="https://incampus-project.hgsk9jqhfx.chatgpt.site"><strong>Explore the InCampus project website ↗</strong></a>
+</p>
+
 **InCampus helps university students turn campus life from something they watch into something they can enter.**
 
 It is a campus-scoped mobile app for low-pressure participation: lunch, coffee,
